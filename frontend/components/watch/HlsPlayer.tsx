@@ -158,6 +158,26 @@ function patchAacMainCodec(): void {
   };
 }
 
+// True only on iPhone/iPod: devices that have NO element-level Fullscreen API
+// (no requestFullscreen / webkitRequestFullscreen on elements) but CAN fullscreen
+// the bare <video> via webkitEnterFullscreen. iPad (element FS exists) and desktop
+// are excluded, so their custom-chrome fullscreen is untouched. Feature-detected
+// rather than UA-sniffed so it tracks the actual capability.
+function videoFsOnly(): boolean {
+  if (typeof document === 'undefined') return false;
+  const el = document.documentElement as HTMLElement & {
+    webkitRequestFullscreen?: unknown;
+  };
+  const v = document.createElement('video') as HTMLVideoElement & {
+    webkitEnterFullscreen?: unknown;
+  };
+  return (
+    !el.requestFullscreen &&
+    !el.webkitRequestFullscreen &&
+    typeof v.webkitEnterFullscreen === 'function'
+  );
+}
+
 // ---- Hand-rolled SVG icons (consistent 2px stroke, currentColor) ----
 type IconProps = { className?: string };
 const S = (className?: string) => `h-[22px] w-[22px] ${className || ''}`;
@@ -497,7 +517,14 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
         if (resumeTime.current > 0) v.currentTime = resumeTime.current;
         if (wasPlaying.current) v.play().catch(() => undefined);
       };
-      if (Hls.isSupported()) {
+      // iPhone/iPod can only fullscreen the <video> via webkitEnterFullscreen,
+      // and that path is reliable ONLY when Safari plays the HLS natively —
+      // hls.js (ManagedMediaSource) breaks it. So on those devices prefer native
+      // playback even though hls.js reports supported. Desktop / Android / iPad
+      // keep hls.js (videoFsOnly is false there, native HLS unsupported anyway).
+      const canNativeHls = !!v.canPlayType('application/vnd.apple.mpegurl');
+      const preferNative = canNativeHls && videoFsOnly();
+      if (Hls.isSupported() && !preferNative) {
         const inst = new Hls({ enableWorker: true });
         inst.on(Hls.Events.BUFFER_CODECS, (_e, data) => {
           // eslint-disable-next-line no-console
@@ -538,9 +565,12 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
         inst.loadSource(src);
         inst.attachMedia(v);
         hls = inst;
-      } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+      } else if (canNativeHls) {
         v.src = src;
         v.addEventListener('loadedmetadata', resume, { once: true });
+        v.addEventListener('error', () => onUnplayableRef.current(), {
+          once: true,
+        });
       }
     });
 
@@ -618,6 +648,13 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   useEffect(() => {
     if (subIdx >= subtitles.length) setSubIdx(-1);
   }, [subtitles.length, subIdx]);
+
+  // Mirror subIdx into a ref so the identity-stable toggleFs (deps []) can read
+  // the current selection when handing subtitles to the native iOS player.
+  const subIdxRef = useRef(subIdx);
+  useEffect(() => {
+    subIdxRef.current = subIdx;
+  }, [subIdx]);
 
   // ---- Watch progress ("Continue watching"). Persisted through the progress
   // module (`@utility/progress`, keyed by AniList id). The player remounts per
@@ -879,6 +916,16 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
       const fs = document.fullscreenElement === stageRef.current;
       setIsFs(fs);
       if (fs) stageRef.current?.focus();
+      // Mobile: rotate to landscape in fullscreen, release on exit (YouTube
+      // style). The Screen Orientation lock is Android/Chromium — it rejects on
+      // desktop + iPadOS, which we swallow. iPhone never reaches here (it uses
+      // webkitEnterFullscreen and the OS auto-rotates its native player).
+      const orientation = window.screen.orientation as ScreenOrientation & {
+        lock?: (o: 'landscape') => Promise<void>;
+        unlock?: () => void;
+      };
+      if (fs) orientation?.lock?.('landscape').catch(() => undefined);
+      else orientation?.unlock?.();
     };
     document.addEventListener('fullscreenchange', onFs);
     return () => document.removeEventListener('fullscreenchange', onFs);
@@ -908,25 +955,41 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
     v.currentTime = Math.min(Math.max(v.currentTime + d, 0), v.duration || 0);
   }, []);
   const toggleFs = useCallback(() => {
+    const v = videoRef.current as
+      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
+      | null;
+    // iPhone/iPod: no element-level Fullscreen API exists, so only the <video>
+    // itself can go fullscreen, via the webkit-prefixed call. Hand off straight
+    // to the native iOS player (a stray no-op requestFullscreen must not swallow
+    // this). Native controls take over, so the companion dock isn't available
+    // there — but the video actually fills the screen.
+    if (videoFsOnly() && v?.webkitEnterFullscreen) {
+      // The native player covers our DOM caption layer, and we keep the chosen
+      // track 'hidden' (we paint cues ourselves). Flip it to 'showing' so the
+      // native player renders subs, then restore our own rendering on close.
+      const idx = subIdxRef.current;
+      const track = idx >= 0 ? v.textTracks[idx] : undefined;
+      if (track) {
+        track.mode = 'showing';
+        v.addEventListener(
+          'webkitendfullscreen',
+          () => {
+            track.mode = 'hidden';
+          },
+          { once: true }
+        );
+      }
+      v.webkitEnterFullscreen();
+      return;
+    }
+    // Standard Fullscreen API — desktop + Android + iPad (keeps our chrome).
     if (document.fullscreenElement) {
       document.exitFullscreen().catch(() => undefined);
       return;
     }
-    const stage = stageRef.current;
-    // Standard Fullscreen API — desktop + Android (and iPad). On iPhone, Safari
-    // doesn't implement requestFullscreen on arbitrary elements, so this call
-    // is simply absent on our <div> stage and the button used to do nothing.
-    if (stage?.requestFullscreen) {
-      stage.requestFullscreen().catch(() => undefined);
-      return;
+    if (stageRef.current?.requestFullscreen) {
+      stageRef.current.requestFullscreen().catch(() => undefined);
     }
-    // iPhone fallback: only the <video> itself can go fullscreen, via the
-    // webkit-prefixed call. Native iOS controls take over here, so the
-    // companion dock isn't available — but the video actually fills the screen.
-    const v = videoRef.current as
-      | (HTMLVideoElement & { webkitEnterFullscreen?: () => void })
-      | null;
-    v?.webkitEnterFullscreen?.();
   }, []);
   const togglePip = useCallback(async () => {
     const v = videoRef.current;
