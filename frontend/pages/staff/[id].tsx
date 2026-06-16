@@ -6,16 +6,26 @@ import { AnimeInfoFragment, StaffPageQuery } from '@animeflix/api/aniList';
 import { EmojiSadIcon } from '@heroicons/react/solid';
 import { NextSeo } from 'next-seo';
 
-import Card from '@components/anime/Card';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
+import RoleCard from '@components/staff/RoleCard';
 
 type Staff = NonNullable<StaffPageQuery['Staff']>;
 
 interface RoleItem {
   node: AnimeInfoFragment;
-  character: string | null;
+  characterId: number | null;
+  characterName: string;
+  characterImage: string | null;
 }
+
+// AniList serves character art at .../character/medium/...; the same asset lives
+// at /large/ at a sharper resolution that suits a hero portrait. The "default"
+// placeholder has no real art, so treat it as no image (the card shows initials).
+const upscaleCharacter = (url?: string | null): string | null => {
+  if (!url || url.includes('default')) return null;
+  return url.replace('/character/medium/', '/character/large/');
+};
 
 interface StaffProps {
   staff: {
@@ -48,9 +58,11 @@ export const getServerSideProps: GetServerSideProps<StaffProps> = async (
 
   const staff: Staff = data.Staff;
 
-  // De-dupe by title (a VA can voice several characters in one show) and keep
-  // only fully-shaped media so the poster Card has what it needs.
-  const seen = new Set<number>();
+  // The character is the subject here, so de-dupe per character-in-show
+  // (a VA voicing two characters in one show gets two cards; the same character
+  // across seasons stays separate, one card per season). Keep only fully-shaped
+  // media + a named character so each card has a hero and a chip.
+  const seen = new Set<string>();
   const roles: RoleItem[] = (staff.characterMedia?.edges ?? [])
     .filter((edge): edge is NonNullable<typeof edge> => Boolean(edge))
     .map((edge) => {
@@ -58,15 +70,20 @@ export const getServerSideProps: GetServerSideProps<StaffProps> = async (
       const character = edge.characters?.find((c) => c && c.name?.full) ?? null;
       return {
         node,
-        character: character?.name?.full ?? null,
+        characterId: character?.id ?? null,
+        characterName: character?.name?.full ?? null,
+        characterImage: upscaleCharacter(character?.image?.medium),
       };
     })
-    .filter((item): item is RoleItem =>
-      Boolean(item.node && item.node.title && item.node.coverImage)
+    .filter(
+      (item): item is RoleItem =>
+        Boolean(item.node && item.node.title && item.node.coverImage) &&
+        Boolean(item.characterName)
     )
     .filter((item) => {
-      if (seen.has(item.node.id)) return false;
-      seen.add(item.node.id);
+      const key = `${item.characterId ?? item.characterName}:${item.node.id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     });
 
@@ -149,14 +166,15 @@ const StaffPage = ({
         {hasRoles ? (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
             {roles.map((role) => (
-              <div key={role.node.id} className="w-36 sm:w-44">
-                <Card anime={role.node} />
-                {role.character && (
-                  <p className="mt-1.5 truncate text-xs text-faint">
-                    as <span className="text-muted">{role.character}</span>
-                  </p>
-                )}
-              </div>
+              <RoleCard
+                key={`${role.characterId ?? role.characterName}:${
+                  role.node.id
+                }`}
+                characterId={role.characterId}
+                characterName={role.characterName}
+                characterImage={role.characterImage}
+                anime={role.node}
+              />
             ))}
           </div>
         ) : (
