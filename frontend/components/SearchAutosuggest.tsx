@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { SearchIcon } from '@heroicons/react/outline';
 
 import useSearchSuggest, { Suggestion } from '@hooks/useSearchSuggest';
+import { pickTitle, useTitleLang } from '@utility/titleLang';
 
 const formatLabel = (s: Suggestion): string => {
   const parts = [s.format, s.seasonYear ? String(s.seasonYear) : null].filter(
@@ -13,11 +14,9 @@ const formatLabel = (s: Suggestion): string => {
   return parts.join(' · ');
 };
 
-const titleOf = (s: Suggestion): string =>
-  s.title.english || s.title.romaji || 'Untitled';
-
 const SearchAutosuggest: React.FC = () => {
   const router = useRouter();
+  const lang = useTitleLang();
   const [term, setTerm] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -139,7 +138,7 @@ const SearchAutosuggest: React.FC = () => {
                             isActive ? 'text-accent' : 'text-fg'
                           }`}
                         >
-                          {titleOf(s)}
+                          {pickTitle(s.title, lang) || 'Untitled'}
                         </span>
                         {formatLabel(s) && (
                           <span className="mt-0.5 block truncate text-xs text-faint">

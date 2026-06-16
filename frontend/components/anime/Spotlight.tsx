@@ -15,7 +15,8 @@ import Genre from '@components/Genre';
 import Icon from '@components/Icon';
 import { EASE } from '@components/motion/Reveal';
 import progressBar from '@components/Progress';
-import { MediaBanner, mediaTitle } from '@utility/anilist';
+import { MediaBanner } from '@utility/anilist';
+import { pickTitle, useTitleLang } from '@utility/titleLang';
 import { stripHtml } from '@utility/utils';
 
 export interface SpotlightProps {
@@ -31,6 +32,7 @@ const ROTATE_MS = 7000;
  */
 const Spotlight: React.FC<SpotlightProps> = ({ items }) => {
   const reduced = useReducedMotion();
+  const lang = useTitleLang();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
 
@@ -50,8 +52,9 @@ const Spotlight: React.FC<SpotlightProps> = ({ items }) => {
   if (count === 0) return null;
 
   const active = items[Math.min(index, count - 1)];
-  const title = mediaTitle(active);
-  const subtitle = active.title.english ?? active.title.romaji;
+  const title = pickTitle(active.title, lang);
+  const subtitle =
+    lang === 'english' ? active.title.romaji : active.title.english;
   const go = (dir: number) => setIndex((i) => (i + dir + count) % count);
 
   return (

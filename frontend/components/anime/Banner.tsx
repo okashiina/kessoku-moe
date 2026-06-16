@@ -11,6 +11,7 @@ import { PlayIcon } from '@heroicons/react/solid';
 import Genre from '@components/Genre';
 import Icon from '@components/Icon';
 import progressBar from '@components/Progress';
+import { pickTitle, useTitleLang } from '@utility/titleLang';
 import { stripHtml } from '@utility/utils';
 
 export interface BannerProps {
@@ -26,8 +27,10 @@ const Banner: React.FC<BannerProps> = ({ anime }) => {
     if (!anime.bannerImage) progressBar.finish();
   }, [anime.bannerImage]);
 
-  const title = anime.title.romaji || anime.title.english;
-  const subtitle = anime.title.english ?? anime.title.romaji;
+  const lang = useTitleLang();
+  const title = pickTitle(anime.title, lang);
+  const subtitle =
+    lang === 'english' ? anime.title.romaji : anime.title.english;
 
   return (
     <section className="relative isolate w-full overflow-hidden">

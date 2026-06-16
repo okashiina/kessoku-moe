@@ -6,13 +6,14 @@ import Link from 'next/link';
 import { AnimeBannerFragment, AnimeInfoFragment } from '@animeflix/api/aniList';
 
 import { base64SolidImage } from '@utility/image';
+import { useTitle } from '@utility/titleLang';
 
 export interface CardProps {
   anime: AnimeInfoFragment & AnimeBannerFragment;
 }
 
 const Card: React.FC<CardProps> = ({ anime }) => {
-  const title = anime.title.english || anime.title.romaji;
+  const title = useTitle(anime.title);
 
   return (
     <Link href={`/watch/${anime.id}`} passHref>

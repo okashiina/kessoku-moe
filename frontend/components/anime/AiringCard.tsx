@@ -4,8 +4,9 @@ import Link from 'next/link';
 import { ClockIcon } from '@heroicons/react/outline';
 
 import { useCountdown } from '@hooks/useCountdown';
-import { AiringEntry, mediaTitle } from '@utility/anilist';
+import { AiringEntry } from '@utility/anilist';
 import { base64SolidImage } from '@utility/image';
+import { useTitle } from '@utility/titleLang';
 
 export interface AiringCardProps {
   entry: AiringEntry;
@@ -15,10 +16,12 @@ export interface AiringCardProps {
 const AiringCard: React.FC<AiringCardProps> = ({ entry }) => {
   const { media } = entry;
   const countdown = useCountdown(entry.airingAt);
+  // Hook must run unconditionally — call it before the early return (pickTitle
+  // tolerates a missing title and returns '').
+  const title = useTitle(media?.title);
 
   if (!media) return null;
 
-  const title = mediaTitle(media);
   const cover = media.coverImage.large || media.coverImage.medium || '';
 
   return (
