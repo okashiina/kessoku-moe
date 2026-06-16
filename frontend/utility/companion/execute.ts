@@ -447,7 +447,17 @@ const runRecapEpisode = async (
   const ep = await recapEpisode(src, asked);
   if (!ep) {
     return {
-      resultForModel: `No recap on record for episode ${asked} of ${src.title}. Say you don't have those details rather than invent them.`,
+      resultForModel: `No recap on record for episode ${asked} of ${src.title}. Tell the viewer you don't have that recap and ask what they remember; do NOT guess the arc or what happened from general knowledge of the show.`,
+      card: null,
+    };
+  }
+  if (!ep.synopsis) {
+    // Title-only (typical for fresh long-runner episodes): give the model the
+    // real title to anchor on, but forbid inventing what happened beyond it.
+    return {
+      resultForModel: `Episode ${ep.number} of ${src.title}${
+        ep.title ? ` is titled "${ep.title}"` : ' has no title on record'
+      }, but I have no written synopsis for it. You may reference the title only; do NOT describe what happened or guess the arc from general knowledge — say you don't have the details and ask what they remember.`,
       card: null,
     };
   }
@@ -492,7 +502,13 @@ const runRecapStorySoFar = async (ctx: ToolContext): Promise<ToolResult> => {
     const eps = await recapEpisodes(src, ceiling, 2);
     eps.forEach((e) =>
       parts.push(
-        `Episode ${e.number}${e.title ? ` ("${e.title}")` : ''}: ${e.synopsis}`
+        e.synopsis
+          ? `Episode ${e.number}${e.title ? ` ("${e.title}")` : ''}: ${
+              e.synopsis
+            }`
+          : `Episode ${e.number}${
+              e.title ? ` is titled "${e.title}"` : ''
+            } (no synopsis on record — reference the title only, do NOT invent what happened)`
       )
     );
   }

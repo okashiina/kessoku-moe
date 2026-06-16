@@ -82,5 +82,13 @@ export async function handleHls(req: FastifyRequest, reply: FastifyReply): Promi
   // an empty body here; segments are small ~200KB so buffering is fine + robust.)
   const buf = Buffer.from(await upstream.arrayBuffer());
   reply.header('content-type', ct || 'application/octet-stream');
+  // Let the browser + a CDN cache segments/keys so repeats don't re-hit this box
+  // (STREAMING-ROADMAP §13 wall 1), but respect the upstream's own directive when
+  // it set one, and avoid `immutable` so a rotated upstream URL can still
+  // revalidate. The rewritten playlist above is left uncached.
+  reply.header(
+    'Cache-Control',
+    upstream.headers.get('cache-control') || 'public, max-age=86400'
+  );
   reply.send(buf);
 }

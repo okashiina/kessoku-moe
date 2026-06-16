@@ -6,13 +6,14 @@ import { PlayIcon } from '@heroicons/react/solid';
 
 import WatchlistButton from '@components/anime/WatchlistButton';
 import { base64SolidImage } from '@utility/image';
+import { useTitle } from '@utility/titleLang';
 
 export interface CardProps {
   anime: AnimeInfoFragment;
 }
 
 const Card: React.FC<CardProps> = ({ anime }) => {
-  const title = anime.title.romaji || anime.title.english;
+  const title = useTitle(anime.title);
 
   return (
     <Link href={`/anime/${anime.id}`} passHref>

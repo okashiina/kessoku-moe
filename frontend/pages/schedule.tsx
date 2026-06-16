@@ -8,6 +8,7 @@ import Header from '@components/Header';
 import progressBar from '@components/Progress';
 import { ANILIST_ENDPOINT, requestWithRetry } from '@utility/anilist';
 import { base64SolidImage } from '@utility/image';
+import { pickTitle, useTitleLang } from '@utility/titleLang';
 
 // ---------------------------------------------------------------------------
 // AniList GraphQL (fetched directly in getServerSideProps — no auth needed).
@@ -131,8 +132,9 @@ interface ScheduleRowProps {
 }
 
 const ScheduleRow: React.FC<ScheduleRowProps> = ({ entry }) => {
+  const lang = useTitleLang();
   const media = entry.media!;
-  const title = media.title.romaji || media.title.english || 'Untitled';
+  const title = pickTitle(media.title, lang) || 'Untitled';
   const cover = media.coverImage.large || media.coverImage.medium || '';
 
   return (

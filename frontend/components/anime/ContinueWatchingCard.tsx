@@ -6,6 +6,7 @@ import { PlayIcon, XIcon } from '@heroicons/react/solid';
 
 import { base64SolidImage } from '@utility/image';
 import { removeContinue, type ProgressEntry } from '@utility/progress';
+import { useTitle } from '@utility/titleLang';
 
 export interface ContinueWatchingCardProps {
   anime: AnimeInfoFragment;
@@ -16,7 +17,7 @@ const ContinueWatchingCard: React.FC<ContinueWatchingCardProps> = ({
   anime,
   entry,
 }) => {
-  const title = anime.title?.romaji || anime.title?.english;
+  const title = useTitle(anime.title);
   const src =
     anime.bannerImage ||
     anime.coverImage?.large ||

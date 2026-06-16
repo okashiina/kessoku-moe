@@ -37,6 +37,7 @@ import { getResumeEpisode } from '@utility/progress';
 import { useRoom } from '@utility/room';
 import { useRoomUnread } from '@utility/roomChatStore';
 import { convertToDate, convertToTime } from '@utility/time';
+import { pickTitle, useTitleLang } from '@utility/titleLang';
 import { arrayToString } from '@utility/utils';
 
 interface WatchProps {
@@ -111,6 +112,7 @@ const Watch = ({
   const router = useRouter();
 
   const dispatch = useDispatch();
+  const titleLang = useTitleLang();
   const [animeId, episode] = useSelector((store) => [
     store.anime.anime,
     store.episode.episode,
@@ -374,7 +376,7 @@ const Watch = ({
               )}
               <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
                 <h1 className="font-display text-2xl font-bold leading-tight text-fg sm:text-3xl">
-                  {anime.title.romaji || anime.title.english}
+                  {pickTitle(anime.title, titleLang)}
                 </h1>
                 <StatusSelect id={anime.id} />
               </div>

@@ -873,3 +873,61 @@ RoomState = { videoId, episode, paused: bool, positionSec, updatedAt, lastActorI
 > Skills for the build (not this round): realtime / sync is backend — no UI skill gate; the room +
 > chat UI = `/impeccable` + `/ui-ux-pro-max` + `/frontend-design`; any room copy = `/brand-copywriter`
 > + `/brand` + `/stop-slop`.
+
+---
+
+## 13. Scalability — what scales, what walls first, in what order (2026-06-15)
+
+The app today is built for personal / friends scale. This is the honest map of where it stops
+scaling, the order the walls bite, and what is now guarded. Checked against the code, not guessed.
+
+### What already scales (no work needed)
+- **Frontend (Next.js on Railway):** stateless → just add replicas. User data is localStorage +
+  AniList, so there is **no per-user server state and no app DB** to scale.
+- **Embed playback:** runs in the viewer's own browser (their IP + their bandwidth), so it is
+  effectively free and unbounded. This is exactly why embed stays the public default.
+
+### The walls, in the order they bite
+1. **Direct-video bandwidth (hardest).** Every byte is proxied through ONE box: `fileProxy.ts`
+   streams the whole ~400 MB AllAnime MP4 per viewer; `hlsProxy.ts` buffers + re-serves every
+   AnimePahe segment. A handful of concurrent direct viewers saturate a home/VPS uplink. Levers,
+   cheap→dear: (a) CDN (Cloudflare) in front so repeat segments are edge-cached — **prep shipped
+   2026-06-15:** `/hls` segments + `/file` now send `Cache-Control` so an edge (and the browser)
+   can cache them; (b) prefer ABR-HLS over the full-MP4 path; (c) only proxy the genuinely
+   Referer-gated bytes and let the rest hit the CDN directly (**NOT done** — must be verified per
+   source on the live stack, since AnimePahe/kwik segments ARE referer-locked; tracked here);
+   (d) proxy pool when bans rise.
+2. **AI companion cost / rate — GUARDED 2026-06-15 (Rule 8).** Free tiers are shared across all
+   users (Gemini ~15 RPM·1500/day, Groq ~30 RPM·1000/day) and one chat turn fans out to ~2 upstream
+   calls. `frontend/pages/api/companion.ts` now gates on a tiered in-memory limiter
+   (`frontend/utility/companion/rateLimit.ts`): **per-IP** burst+RPM, a **global** RPM cap, and a
+   **daily budget ceiling** — returns `429` + `Retry-After`, the panel degrades to a friendly
+   "quota for now" line, and the limiter **fails open** if it errors (a guard bug never takes the
+   companion down). Single-instance process memory is the store; **Redis is the multi-replica
+   upgrade** (same call sites). Tunable via `COMPANION_IP_*` / `COMPANION_GLOBAL_*` /
+   `COMPANION_DAILY_MAX` (see `frontend/.env.example`).
+3. **Provider scraping fragility.** One IP scraping providers → more users = faster CF/DDoS-Guard
+   bans + more DMCA visibility. **Guarded 2026-06-15:** `/watch` (the only scrape + FlareSolverr
+   fan-out) is now rate-limited with a **global** token bucket
+   (`services/source-service/src/rateLimit.ts`) — global, not per-IP, because the box sits behind a
+   tunnel with no reliable per-client IP and `X-Forwarded-For` is spoofable, so a per-IP cap would
+   either false-throttle everyone or be bypassed. `/hls`, `/file`, `/subs` are deliberately **left
+   unthrottled** (high-frequency proxy/cache — throttling them would stutter video). Source +
+   subtitle caches (15 min / 24 h) already absorb repeats; a proxy pool is the costly next lever.
+4. **Realtime co-watch (§12, unbuilt).** Managed pub/sub (Ably/Pusher free) scales to friend-rooms
+   with zero ops; only a self-hosted ws server would itself need scaling.
+5. **AniList as a shared dependency.** SSR proxying hits AniList's per-IP ~90/min; cache hot queries
+   (trending / schedule) and use each user's own token for their list ops (already does). Mostly fine.
+
+### Cross-cutting precondition
+The source-service must move off the laptop to an **always-on VPS** (§4 / §9) before direct playback
+OR co-watch is dependable at any real scale. This is operational, not a code change.
+
+### Recommended order (the roadmap)
+1. ✅ **Companion rate-limit + cost cap** (done — wall 2).
+2. ◗ **Source caching/CDN prep + `/watch` throttle** (cache headers + global `/watch` limit done;
+   the "stop proxying non-gated segments" bandwidth win still needs the live stack — walls 1 + 3).
+3. Source-service → always-on VPS + Cloudflare in front (edge cache + hides the origin IP).
+4. CDN for segments / prefer ABR-HLS / proxy pool (when bandwidth actually bites).
+5. Co-watch on managed pub/sub (feature-driven, §12).
+6. Paid LLM tier or self-hosted GPU (only once usage justifies it — §10 D/E).

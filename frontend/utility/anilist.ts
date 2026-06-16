@@ -1,5 +1,7 @@
 import { request } from 'graphql-request';
 
+import { getTitleLang, pickTitle } from './titleLang';
+
 // ---------------------------------------------------------------------------
 // AniList GraphQL helpers for the landing pages (splash `/` + content `/home`).
 //
@@ -398,7 +400,10 @@ export const fetchSplashData = async (): Promise<SplashData> => {
   }
 };
 
-/** Best display title for a media item. */
+/** Best display title for a media item, honoring the viewer's title-language
+ * preference (romaji vs english). Non-reactive (reads the store directly), so
+ * React components that must update live on a toggle should use `useTitle`
+ * instead; this covers helper/SSR call sites. */
 export const mediaTitle = (media: {
   title: { romaji: string | null; english: string | null };
-}): string => media.title.romaji || media.title.english || 'Untitled';
+}): string => pickTitle(media.title, getTitleLang()) || 'Untitled';

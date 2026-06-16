@@ -1509,7 +1509,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
               </div>
 
               {/* Buttons */}
-              <div className="flex items-center gap-0.5 px-2">
+              <div className="flex items-center gap-1 px-2 sm:gap-0.5">
                 {/* Play/pause. For a follower this is dimmed + a no-op (togglePlay
                   self-gates); the title says who actually holds the remote. We
                   keep it hoverable (no pointer-events-none on the wrapper) so the
@@ -1533,11 +1533,11 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
                 </span>
                 {onNext && (
                   <span
-                    className={
+                    className={`hidden sm:block ${
                       controlsLocked
                         ? 'pointer-events-none cursor-not-allowed opacity-40'
                         : ''
-                    }
+                    }`}
                   >
                     <CtrlButton
                       label="Next episode (n)"
@@ -1579,7 +1579,7 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
                   </CtrlButton>
                 </span>
 
-                <div className="flex items-center">
+                <div className="hidden items-center sm:flex">
                   <CtrlButton
                     label={muted ? 'Unmute' : 'Mute'}
                     onClick={toggleMute}
@@ -1601,19 +1601,21 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
                   />
                 </div>
 
-                <span className="ml-1 select-none text-xs font-medium tabular-nums text-fg/90">
+                <span className="ml-1 select-none whitespace-nowrap text-xs font-medium tabular-nums text-fg/90">
                   {fmt(current)}
                   <span className="text-fg/45"> / {fmt(duration)}</span>
                 </span>
 
                 <div className="flex-1" />
 
-                <CtrlButton
-                  label="Keyboard shortcuts (?)"
-                  onClick={() => setHelp((h) => !h)}
-                >
-                  <KeyboardIcon />
-                </CtrlButton>
+                <span className="hidden sm:block">
+                  <CtrlButton
+                    label="Keyboard shortcuts (?)"
+                    onClick={() => setHelp((h) => !h)}
+                  >
+                    <KeyboardIcon />
+                  </CtrlButton>
+                </span>
 
                 {hasSubs && (
                   <CtrlButton

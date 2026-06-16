@@ -152,6 +152,27 @@ const CompanionChat: React.FC<{
     if (message) setError(message);
   }, []);
 
+  // A 429 from the companion endpoint: out of quota. The server tells us which
+  // tier tripped via `reason` ('daily' vs per-minute 'ip'/'global'); show that in
+  // the companion's own voice instead of guessing from the retry window.
+  const abort429 = useCallback(
+    async (res: Response): Promise<void> => {
+      let reason = '';
+      try {
+        const j = (await res.json()) as { reason?: string };
+        reason = String(j?.reason || '');
+      } catch {
+        /* ignore */
+      }
+      abort(
+        reason === 'daily'
+          ? "That's the free companion quota for today. Catch you tomorrow."
+          : 'Easy, one at a time. Give me a few seconds and ask again.'
+      );
+    },
+    [abort]
+  );
+
   // Typewriter: reveal fullRef toward the viewer a few chars per tick so both a
   // real token stream and an instant replay look like live typing. Finalizes
   // once the text is fully shown AND the stream is done.
@@ -256,6 +277,10 @@ const CompanionChat: React.FC<{
           abort();
           return;
         }
+        if (res.status === 429) {
+          await abort429(res);
+          return;
+        }
         if (!res.ok) {
           abort('I lost the signal there. Give it another shot in a sec.');
           return;
@@ -275,7 +300,7 @@ const CompanionChat: React.FC<{
         abort('I lost the signal there. Give it another shot in a sec.');
       }
     },
-    [abort]
+    [abort, abort429]
   );
 
   // Grab the current frame off the player and stage it for the next turn. Null
@@ -348,6 +373,10 @@ const CompanionChat: React.FC<{
       if (res.status === 503) {
         setConfigured('no');
         abort();
+        return;
+      }
+      if (res.status === 429) {
+        await abort429(res);
         return;
       }
       if (!res.ok || !res.body) {

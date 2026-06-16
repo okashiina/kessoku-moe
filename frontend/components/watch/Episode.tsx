@@ -153,6 +153,18 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
   const [currentPage, setPage] = useState(1);
   const [filler, setFiller] = useState<Record<number, FillerKind>>({});
 
+  // Keep the pager on the batch holding the episode in play, so a deep-progress
+  // viewer (e.g. One Piece ep 1115) lands on their page, not 1-100. The watch
+  // page seeds the episode from the resume point AFTER mount, so we must NOT latch
+  // on the first value (it would stick on 1-100 before the resume lands); instead
+  // follow `current` whenever it changes. A manual page click doesn't change
+  // `current`, so browsing other batches is left alone until the episode changes.
+  useEffect(() => {
+    if (!episodes || !current) return;
+    const totalPages = Math.ceil(episodes / 100);
+    setPage(Math.min(totalPages, Math.max(1, Math.ceil(current / 100))));
+  }, [current, episodes]);
+
   // Pull filler/canon classification client-side so the watch page's SSR is
   // never blocked on the third-party scrape. Purely decorative — failures are
   // swallowed and the grid simply renders unmarked.
