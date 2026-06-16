@@ -131,21 +131,28 @@ export const connectRoom = async (
     channel.presence.update(data);
 
   const close = (): void => {
-    try {
-      channel.presence.leave();
-    } catch {
-      /* already detached */
-    }
-    try {
-      channel.detach();
-    } catch {
-      /* ignore */
-    }
-    try {
-      client.close();
-    } catch {
-      /* ignore */
-    }
+    // Best-effort teardown. presence.leave() is ASYNC, so a sync try/catch can't
+    // catch its rejected promise — leaving an already-detaching channel rejects
+    // with "channel state is detached", which would surface as an unhandled
+    // rejection (the dev error overlay). Await it inside try/catch instead, then
+    // close the client, which detaches the channel on its own. We deliberately
+    // don't call channel.detach() separately: firing it alongside leave() is what
+    // raced into the detached-state error.
+    const teardown = async (): Promise<void> => {
+      try {
+        await channel.presence.leave();
+      } catch {
+        /* already leaving / detached — fine, we're tearing down */
+      }
+      try {
+        client.close();
+      } catch {
+        /* ignore */
+      }
+    };
+    // Fire-and-forget: close() is sync teardown. .catch keeps the rejection
+    // handled (no unhandled-rejection / dev overlay) without the void operator.
+    teardown().catch(() => undefined);
   };
 
   return { clientId, publish, subscribe, enter, update, onMembers, close };
