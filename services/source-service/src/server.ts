@@ -4,6 +4,7 @@ import { config } from './config.js';
 import { resolve } from './resolver.js';
 import { handleHls } from './hlsProxy.js';
 import { handleFile } from './fileProxy.js';
+import { watchRateLimit } from './rateLimit.js';
 import { snapshot } from './circuitBreaker.js';
 import { orderedProviders } from './providers/index.js';
 import {
@@ -33,7 +34,7 @@ app.get('/status', async () => ({
 // Main endpoint the frontend calls. Returns either a directly-playable result
 // (sources proxied through /hls) or { mode: 'embed' } so the frontend uses its
 // existing embed switcher as the fallback (SOP #2).
-app.get('/watch', async (req) => {
+app.get('/watch', { preHandler: watchRateLimit }, async (req) => {
   const q = req.query as Record<string, string>;
   const anilistId = Number(q.anilistId);
   const episode = Number(q.episode);

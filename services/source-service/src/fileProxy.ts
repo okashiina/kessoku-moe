@@ -45,9 +45,24 @@ export async function handleFile(
 
   reply.header('Access-Control-Allow-Origin', '*');
   reply.header('Accept-Ranges', 'bytes');
-  for (const h of ['content-type', 'content-length', 'content-range', 'cache-control']) {
+  for (const h of ['content-type', 'content-length', 'content-range']) {
     const v = upstream.headers.get(h);
     if (v) reply.header(h, v);
+  }
+  // Cache policy by response kind (STREAMING-ROADMAP §13 wall 1). We set it
+  // ourselves rather than forwarding the upstream's, so a partial can never be
+  // marked shared-cacheable:
+  // - full file (200): public, so a CDN/edge can offload repeats off this box.
+  // - partial (206): private — the browser may cache the range for seeks, but a
+  //   shared CDN must NOT (its key is the bare ?url= with no Vary: Range, so it
+  //   could serve one viewer's byte-range to another's request and corrupt seeks).
+  if (upstream.status === 206) {
+    reply.header('Cache-Control', 'private, max-age=86400');
+  } else {
+    reply.header(
+      'Cache-Control',
+      upstream.headers.get('cache-control') || 'public, max-age=86400'
+    );
   }
   reply.code(upstream.status); // 200 (full) or 206 (partial, when Range was honoured)
 
