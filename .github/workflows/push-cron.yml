@@ -1,0 +1,35 @@
+name: push-episode-cron
+
+# Pokes the app's notification trigger on a schedule so new-episode pushes fan
+# out without a long-running worker. The endpoint itself does the AniList airing
+# check + dedupe; this just wakes it up. Guarded by CRON_SECRET.
+#
+# Setup (repo Settings -> Secrets and variables -> Actions):
+#   PUSH_TRIGGER_URL = https://<your-domain>/api/push/trigger
+#   CRON_SECRET      = the same value set on Railway
+# Until both secrets exist the job no-ops (no red failures).
+
+on:
+  schedule:
+    - cron: '*/15 * * * *' # every 15 minutes (UTC)
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping notification trigger
+        env:
+          URL: ${{ secrets.PUSH_TRIGGER_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$SECRET" ]; then
+            echo "PUSH_TRIGGER_URL / CRON_SECRET not set yet, skipping."
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/out -w '%{http_code}' -X POST "$URL" \
+            -H "Authorization: Bearer $SECRET")
+          echo "trigger -> HTTP $code"
+          cat /tmp/out || true
+          # Only fail the run on a real server error, not on an empty quiet tick.
+          if [ "$code" -ge 500 ]; then exit 1; fi
