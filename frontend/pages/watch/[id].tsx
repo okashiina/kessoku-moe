@@ -12,6 +12,7 @@ import {
 import { SparklesIcon, UserGroupIcon } from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
+import RatingSelect from '@components/anime/RatingSelect';
 import RelatedSection, {
   type RelationItem,
 } from '@components/anime/RelatedSection';
@@ -25,6 +26,7 @@ import CompanionFab from '@components/watch/CompanionFab';
 import Episode from '@components/watch/Episode';
 import FullscreenDock from '@components/watch/FullscreenDock';
 import OverlayLayer from '@components/watch/OverlayLayer';
+import RateShowPrompt from '@components/watch/RateShowPrompt';
 import RoomUI from '@components/watch/RoomUI';
 import SourcePlayer from '@components/watch/SourcePlayer';
 import WatchControls from '@components/watch/WatchControls';
@@ -378,7 +380,10 @@ const Watch = ({
                 <h1 className="font-display text-2xl font-bold leading-tight text-fg sm:text-3xl">
                   {pickTitle(anime.title, titleLang)}
                 </h1>
-                <StatusSelect id={anime.id} />
+                <div className="flex items-center gap-2">
+                  <StatusSelect id={anime.id} />
+                  <RatingSelect id={anime.id} />
+                </div>
               </div>
             </div>
 
@@ -508,6 +513,15 @@ const Watch = ({
         animeId={animeId}
         episode={episode}
         total={totalEpisodes}
+      />
+
+      {/* "Rate this show" nudge — fires when caught up / finished the finale,
+          plus a rare mid-series nudge. Self-gating (skips if already rated). */}
+      <RateShowPrompt
+        animeId={animeId}
+        episode={episode}
+        totalEpisodes={totalEpisodes}
+        title={pickTitle(anime.title, titleLang)}
       />
     </>
   );

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   CheckCircleIcon,
@@ -6,6 +6,8 @@ import {
   TagIcon,
   XIcon,
 } from '@heroicons/react/outline';
+
+import { getAniListWrite, setAniListWrite } from '@utility/anilistWrite';
 
 // Sign-in explainer shown before the AniList redirect. It tells the viewer what
 // they actually get (sync, auto-counted episodes, status on their profile),
@@ -47,6 +49,14 @@ const AniListBenefitsModal: React.FC<Props> = ({
   onClose,
   onContinue,
 }) => {
+  // Write consent, chosen here before the redirect. Defaults to whatever is
+  // already stored (on for a first sign-in), and is changeable later in Settings.
+  const [allowWrite, setAllowWrite] = useState(true);
+
+  useEffect(() => {
+    if (open) setAllowWrite(getAniListWrite());
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e: KeyboardEvent) => {
@@ -62,6 +72,11 @@ const AniListBenefitsModal: React.FC<Props> = ({
   }, [open, onClose]);
 
   if (!open) return null;
+
+  const handleContinue = () => {
+    setAniListWrite(allowWrite);
+    onContinue();
+  };
 
   return (
     <div
@@ -118,10 +133,34 @@ const AniListBenefitsModal: React.FC<Props> = ({
           ))}
         </ul>
 
+        {/* Write consent. AniList hands out no read-only token, so we gate this
+            in the app: off means changes stay on this device, nothing is sent. */}
+        <label
+          htmlFor="anilist-write-consent"
+          className="mt-6 flex cursor-pointer items-start gap-3 rounded-2xl border border-line/50 bg-surface/40 p-3.5 transition hover:border-line"
+        >
+          <input
+            id="anilist-write-consent"
+            type="checkbox"
+            checked={allowWrite}
+            onChange={(e) => setAllowWrite(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-line bg-surface accent-accent"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-fg">
+              Let kessoku update my AniList
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted">
+              Your ratings, status, and episode count ride up to your account.
+              Leave it off and everything stays on this device.
+            </span>
+          </span>
+        </label>
+
         <button
           type="button"
-          onClick={onContinue}
-          className="mt-7 flex w-full items-center justify-center gap-2 rounded-full bg-aurora px-5 py-3 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110 active:scale-95"
+          onClick={handleContinue}
+          className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-aurora px-5 py-3 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110 active:scale-95"
         >
           Continue with AniList
         </button>

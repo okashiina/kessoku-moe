@@ -36,15 +36,16 @@ const AniListCallback = () => {
         return;
       }
       const { access_token: token, expires_in: expiresIn } = await res.json();
-      const user = token ? await fetchViewer(token) : null;
-      if (!token || !user) {
+      const viewer = token ? await fetchViewer(token) : null;
+      if (!token || !viewer) {
         setFailed(true);
         return;
       }
       setSession({
         token,
         expiresAt: Date.now() + (expiresIn ? expiresIn * 1000 : ONE_YEAR_MS),
-        user,
+        user: viewer.user,
+        scoreFormat: viewer.scoreFormat,
       });
       router.replace('/home');
     };

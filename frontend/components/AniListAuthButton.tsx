@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { UserCircleIcon } from '@heroicons/react/outline';
+import Link from 'next/link';
+
+import { CogIcon, UserCircleIcon } from '@heroicons/react/outline';
 
 import AniListBenefitsModal from '@components/AniListBenefitsModal';
 import useAniListAuth from '@hooks/useAniListAuth';
@@ -126,6 +128,17 @@ const AniListAuthButton: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* Full settings page — sync/privacy + display prefs live there. */}
+          <Link href="/settings" passHref>
+            <a
+              onClick={() => setOpen(false)}
+              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-muted transition hover:bg-surface/60 hover:text-fg"
+            >
+              <CogIcon className="h-4 w-4" />
+              Settings
+            </a>
+          </Link>
 
           {/* AniList sign in / out — only when a client id is configured. */}
           {hasAniList &&

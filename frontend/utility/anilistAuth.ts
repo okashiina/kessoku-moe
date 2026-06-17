@@ -14,10 +14,21 @@ export interface AniListUser {
   avatar: string | null;
 }
 
+// The viewer's chosen score display format (AniList Settings > Lists). Score is
+// stored internally as scoreRaw 0-100 and AniList renders it in this format, so
+// the rating control mirrors it. Absent on legacy sessions → treat as POINT_10.
+export type ScoreFormat =
+  | 'POINT_100'
+  | 'POINT_10_DECIMAL'
+  | 'POINT_10'
+  | 'POINT_5'
+  | 'POINT_3';
+
 export interface AniListSession {
   token: string;
   expiresAt: number; // ms epoch
   user: AniListUser;
+  scoreFormat?: ScoreFormat | null;
 }
 
 const KEY = 'kessoku.anilist.token';
