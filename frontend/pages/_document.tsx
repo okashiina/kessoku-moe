@@ -15,7 +15,8 @@ const Document = () => (
         rel="stylesheet"
       />
 
-      <link rel="manifest" href="/site.webmanifest" />
+      <link rel="manifest" href="/manifest.webmanifest" />
+      <meta name="theme-color" content="#0B0B14" />
       <link rel="icon" href="/kessoku-moe-appicon.svg" type="image/svg+xml" />
       <link rel="icon" type="image/x-icon" href="/favicon.ico" />
       <link
