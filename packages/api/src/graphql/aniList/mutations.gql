@@ -1,20 +1,25 @@
 # Two-way sync writes. SaveMediaListEntry upserts (creates if absent), so it
-# covers both "add to list" and "update progress/status". Requires an
-# Authorization: Bearer <token> header (passed per-request from the client).
+# covers "add to list", "update progress/status", and "rate". scoreRaw is the
+# format-independent 0-100 score (AniList renders it in the viewer's own format).
+# Requires an Authorization: Bearer <token> header (passed per-request from the
+# client). The frontend keeps an inline copy of this in utility/anilistSync.ts.
 mutation saveMediaListEntry(
   $mediaId: Int
   $status: MediaListStatus
   $progress: Int
+  $scoreRaw: Int
 ) {
   SaveMediaListEntry(
     mediaId: $mediaId
     status: $status
     progress: $progress
+    scoreRaw: $scoreRaw
   ) {
     id
     mediaId
     status
     progress
+    score
     updatedAt
   }
 }

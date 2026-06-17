@@ -17,6 +17,7 @@ import { NextSeo } from 'next-seo';
 
 import Banner from '@components/anime/Banner';
 import EpisodeSection from '@components/anime/EpisodeSection';
+import RatingSelect from '@components/anime/RatingSelect';
 import RelatedSection, {
   type RelationItem,
 } from '@components/anime/RelatedSection';
@@ -363,6 +364,7 @@ const Anime = ({
           surfaces the list-status picker alongside it. */}
       <div className="mx-auto mt-6 flex w-full max-w-screen-2xl flex-wrap gap-3 px-4 sm:px-6 lg:px-8">
         <StatusSelect id={anime.id} />
+        <RatingSelect id={anime.id} />
       </div>
 
       <main className="mx-auto w-full max-w-screen-2xl pb-20">

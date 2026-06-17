@@ -8,6 +8,8 @@ import {
   pullAndMerge,
   pushChanges,
 } from '@utility/anilistSync';
+import { getAniListWrite, subscribeAniListWrite } from '@utility/anilistWrite';
+import { subscribeScore } from '@utility/listScore';
 import { subscribeStatus } from '@utility/listStatus';
 import { subscribeProgress } from '@utility/progress';
 import { subscribeWatchlist } from '@utility/watchlist';
@@ -61,12 +63,26 @@ const useAniListSync = (): void => {
       }, PUSH_DEBOUNCE_MS);
     };
 
+    // When the viewer re-enables writing, flush whatever local intent built up
+    // while it was off (pushChanges itself no-ops while read-only).
+    const onWriteToggle = () => {
+      if (!getAniListWrite()) return;
+      const s = getSession();
+      if (s && !isApplyingRemote()) {
+        pushChanges(s).catch(() => {
+          /* best-effort */
+        });
+      }
+    };
+
     initLocalBaseline();
     maybePull();
     const unsubAuth = subscribeAuth(maybePull);
     const unsubProgress = subscribeProgress(onLocalChange);
     const unsubWatchlist = subscribeWatchlist(onLocalChange);
     const unsubStatus = subscribeStatus(onLocalChange);
+    const unsubScore = subscribeScore(onLocalChange);
+    const unsubWrite = subscribeAniListWrite(onWriteToggle);
 
     return () => {
       if (timer) clearTimeout(timer);
@@ -74,6 +90,8 @@ const useAniListSync = (): void => {
       unsubProgress();
       unsubWatchlist();
       unsubStatus();
+      unsubScore();
+      unsubWrite();
     };
   }, []);
 };
