@@ -1,4 +1,4 @@
-FROM node:16-slim AS prebuild
+FROM node:20-slim AS prebuild
 WORKDIR /app
 
 # Copy package metadata
@@ -13,7 +13,7 @@ RUN find packages \! -name "package.json" -mindepth 2 -maxdepth 2 -print | xargs
 RUN find frontend \! -name "package.json" -mindepth 1 -maxdepth 1 -print | xargs rm -rf
 
 
-FROM node:16-slim AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 
 # Copy all the package metadata from prebuild stage
@@ -44,12 +44,18 @@ ENV NEXT_PUBLIC_SOURCE_SERVICE_URL=$NEXT_PUBLIC_SOURCE_SERVICE_URL
 ARG NEXT_PUBLIC_ANILIST_CLIENT_ID
 ENV NEXT_PUBLIC_ANILIST_CLIENT_ID=$NEXT_PUBLIC_ANILIST_CLIENT_ID
 
+# Web Push VAPID public key — NEXT_PUBLIC_* baked at build time so the client can
+# subscribe. Unset = the notify UI hides itself. Private key + DATABASE_URL stay
+# server-only (runtime env), never build args. Same ARG→ENV pattern.
+ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
 # build the image
 RUN yarn build
 
 
 # Production image, copy all the files and run the server
-FROM node:16-slim AS runner
+FROM node:20-slim AS runner
 
 # link the docker image to animeflix repo
 LABEL org.opencontainers.image.source https://github.com/chirag-droid/animeflix

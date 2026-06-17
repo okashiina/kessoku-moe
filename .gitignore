@@ -3,6 +3,7 @@
 # generated service worker files
 frontend/public/sw.js
 frontend/public/workbox-*.js
+frontend/public/worker-*.js
 frontend/public/*.js.map
 
 # generated
