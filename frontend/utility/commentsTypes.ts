@@ -5,6 +5,9 @@
 
 export type CommentTarget = 'anime' | 'episode';
 
+// Listing order: newest-first, or highest-voted-first ("Top").
+export type CommentSort = 'new' | 'top';
+
 export interface CommentNode {
   id: number;
   parentId: number | null;
@@ -16,6 +19,8 @@ export interface CommentNode {
   editedAt: string | null;
   deleted: boolean; // soft-deleted or auto-hidden (body blanked)
   reportCount: number;
+  voteCount: number; // upvotes
+  voted: boolean; // the authed viewer has upvoted this
   mine: boolean; // the authed viewer is the author (drives edit/delete affordance)
   replies: CommentNode[]; // one level; always [] on a reply itself
 }

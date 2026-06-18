@@ -11,6 +11,8 @@ interface CommentItemProps {
   onEdit: (id: number, body: string) => Promise<boolean>;
   onRemove: (id: number) => Promise<boolean>;
   onReport: (id: number) => Promise<boolean>;
+  onVote: (id: number) => Promise<boolean>;
+  onUnvote: (id: number) => Promise<boolean>;
 }
 
 // Compact relative time, no dependency. Falls back to a short date once a post
@@ -42,10 +44,18 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onEdit,
   onRemove,
   onReport,
+  onVote,
+  onUnvote,
 }) => {
   const [replying, setReplying] = useState(false);
   const [editing, setEditing] = useState(false);
   const [reported, setReported] = useState(false);
+
+  const handleVote = () => {
+    if (!isLoggedIn) return;
+    if (node.voted) onUnvote(node.id);
+    else onVote(node.id);
+  };
 
   const isTopLevel = node.parentId === null;
   const canReply = isLoggedIn && isTopLevel;
@@ -121,8 +131,29 @@ const CommentItem: React.FC<CommentItemProps> = ({
           </p>
         )}
 
-        {!node.deleted && (canReply || node.mine || canReport) ? (
-          <div className="mt-1 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+        {!node.deleted ? (
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <button
+              type="button"
+              onClick={handleVote}
+              disabled={!isLoggedIn}
+              aria-pressed={node.voted}
+              aria-label={
+                node.voted
+                  ? `Remove upvote, ${node.voteCount} total`
+                  : `Upvote, ${node.voteCount} total`
+              }
+              style={{ touchAction: 'manipulation' }}
+              className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-semibold tabular-nums transition-colors disabled:cursor-default ${
+                node.voted ? 'text-accent' : 'text-muted enabled:hover:text-fg'
+              }`}
+            >
+              <span aria-hidden className={node.voted ? '' : 'opacity-70'}>
+                ▲
+              </span>
+              {node.voteCount}
+            </button>
+
             {canReply ? (
               <button
                 type="button"
@@ -209,6 +240,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 onEdit={onEdit}
                 onRemove={onRemove}
                 onReport={onReport}
+                onVote={onVote}
+                onUnvote={onUnvote}
               />
             ))}
           </div>

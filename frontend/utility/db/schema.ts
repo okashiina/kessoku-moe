@@ -158,6 +158,7 @@ export const comments = pgTable(
     authorAvatar: text('author_avatar'),
     body: text('body').notNull(),
     reportCount: integer('report_count').notNull().default(0),
+    voteCount: integer('vote_count').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -204,4 +205,19 @@ export const commentReports = pgTable(
       .notNull(),
   },
   (t) => [uniqueIndex('comment_report_unq').on(t.commentId, t.anilistUserId)]
+);
+
+// One upvote per user per comment (the unique key); the running total is
+// mirrored onto comments.vote_count for cheap "Top" sorting.
+export const commentVotes = pgTable(
+  'comment_votes',
+  {
+    id: serial('id').primaryKey(),
+    commentId: integer('comment_id').notNull(),
+    anilistUserId: integer('anilist_user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [uniqueIndex('comment_vote_unq').on(t.commentId, t.anilistUserId)]
 );
