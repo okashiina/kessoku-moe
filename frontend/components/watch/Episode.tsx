@@ -68,7 +68,7 @@ const GoToEpisode: React.FC = () => {
       <input
         ref={inputRef}
         inputMode="numeric"
-        className="w-24 rounded-lg border border-line/70 bg-surface px-3 py-1.5 text-sm text-fg placeholder-faint outline-none transition focus:border-accent/70"
+        className="w-24 rounded-lg border border-line/70 bg-surface px-3 py-2 text-base text-fg placeholder-faint outline-none transition focus:border-accent/70"
         placeholder="Ep no."
         onKeyDown={(e) => {
           if (e.key !== 'Enter') return;
@@ -351,7 +351,7 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                 className={`relative flex select-none items-center rounded-md text-sm tabular-nums transition duration-150 active:scale-95 ${
                   hasRatings
                     ? 'h-14 flex-col justify-center gap-0.5'
-                    : 'h-10 justify-center'
+                    : 'h-11 justify-center'
                 } ${
                   isCurrent
                     ? 'bg-aurora font-semibold text-accent-ink shadow-glow'
@@ -365,8 +365,8 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                   (score ? (
                     <span
                       aria-hidden
-                      className={`text-[10px] font-semibold leading-none ${
-                        isCurrent ? 'text-accent-ink/80' : 'text-accent/85'
+                      className={`text-[11px] font-semibold leading-none ${
+                        isCurrent ? 'text-accent-ink' : 'text-accent'
                       }`}
                     >
                       {score}
@@ -374,8 +374,8 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                   ) : (
                     <span
                       aria-hidden
-                      className={`text-[10px] leading-none ${
-                        isCurrent ? 'text-accent-ink/45' : 'text-faint/60'
+                      className={`text-[11px] leading-none ${
+                        isCurrent ? 'text-accent-ink/70' : 'text-faint'
                       }`}
                     >
                       ·

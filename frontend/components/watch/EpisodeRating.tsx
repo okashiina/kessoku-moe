@@ -51,7 +51,7 @@ const EpisodeRating: React.FC<{ animeId: number; episode: number }> = ({
 
       {isLoggedIn ? (
         <>
-          <div className="mt-3 grid grid-cols-5 gap-1.5 sm:grid-cols-10">
+          <div className="mt-3 grid grid-cols-5 gap-2 sm:grid-cols-10">
             {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
               <button
                 key={n}
@@ -59,7 +59,8 @@ const EpisodeRating: React.FC<{ animeId: number; episode: number }> = ({
                 onClick={() => choose(n)}
                 aria-label={`${n} out of 10`}
                 aria-pressed={n <= myTen}
-                className={`h-9 rounded-lg text-sm font-semibold tabular-nums transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                style={{ touchAction: 'manipulation' }}
+                className={`h-11 rounded-lg text-sm font-semibold tabular-nums transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
                   n <= myTen
                     ? 'bg-aurora text-accent-ink shadow-glow'
                     : 'bg-surface/70 text-muted hover:text-fg'
@@ -73,7 +74,8 @@ const EpisodeRating: React.FC<{ animeId: number; episode: number }> = ({
             <button
               type="button"
               onClick={() => clear(episode)}
-              className="mt-2.5 text-xs text-muted transition hover:text-fg"
+              style={{ touchAction: 'manipulation' }}
+              className="mt-1 inline-flex min-h-[44px] items-center text-xs text-muted transition hover:text-fg active:text-accent"
             >
               Clear my rating
             </button>
@@ -84,7 +86,8 @@ const EpisodeRating: React.FC<{ animeId: number; episode: number }> = ({
           <button
             type="button"
             onClick={login}
-            className="inline-flex items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-4 py-2 text-sm font-semibold text-fg transition hover:border-accent/60 active:scale-95 motion-reduce:active:scale-100"
+            style={{ touchAction: 'manipulation' }}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-4 py-2 text-sm font-semibold text-fg transition hover:border-accent/60 active:scale-95 motion-reduce:active:scale-100"
           >
             Sign in to rate
           </button>
