@@ -16,7 +16,7 @@ on:
 jobs:
   build:
     name: fix
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     if: |
       github.actor == 'dependabot[bot]' &&
       contains(github.event.pull_request.head.ref, 'dependabot/npm_and_yarn/')
@@ -29,7 +29,7 @@ jobs:
       YARN_ENABLE_IMMUTABLE_INSTALLS: false
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           # Using a Personal Access Token here is required to trigger workflows on our new commit.
           # The default GitHub token doesn't trigger any workflows.
@@ -39,9 +39,9 @@ jobs:
           # Need fetch-depth in order to soft reset the most recent commit.
           fetch-depth: 2
 
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
-          node-version: '16.5'
+          node-version: '20'
       
       # Undo yarn.lock changes from last commit (if any), run yarn install,
       # and add/commit any yarn.lock changes. Dependabot will commit an invalid

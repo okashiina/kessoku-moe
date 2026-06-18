@@ -1,8 +1,12 @@
 frontend:
-  - "frontend/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "frontend/**/*"
 eslint:
-  - "packages/eslint-config-animeflix/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "packages/eslint-config-animeflix/**/*"
 tsconfig:
-  - "packages/tsconfig/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "packages/tsconfig/**/*"
 api:
-  - "packages/api/**/*"
+  - changed-files:
+      - any-glob-to-any-file: "packages/api/**/*"
