@@ -56,6 +56,15 @@ dependency in a feature branch without flagging the lockfile change.
 
 **Per-feature "done" checklist** (before opening the PR):
 - `tsc -p frontend --noEmit` clean + `next lint` clean (run from the `frontend` dir).
+- **Run a mobile + PWA audit (Android + iOS) and resolve every blocker.** MANDATORY
+  whenever the diff touches any UI surface, the service worker, the manifest,
+  viewport/layout, gestures, push, or media. The site is mobile-first + an
+  installable PWA, so desktop-passing is not enough — this gate exists so a
+  phone-only break (iOS `100vh`, push-in-installed-PWA, native fullscreen,
+  long-press, sub-44px tap targets, safe-area) is caught here instead of after
+  merge, avoiding a re-PPRM. The `/mobile-pwa-audit` skill runs this (fans out an
+  Android lens + an iOS lens against a PWA-safe standard). Skip only when the diff
+  is purely backend/non-UI (say so).
 - In-browser smoke check of the actual change (say what you verified vs. couldn't).
 - Update [docs/STREAMING-ROADMAP.md](docs/STREAMING-ROADMAP.md),
   [docs/COMPETITIVE-ANALYSIS.md](docs/COMPETITIVE-ANALYSIS.md), and memory to mark it shipped.
