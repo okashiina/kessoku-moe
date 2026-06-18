@@ -221,3 +221,33 @@ export const commentVotes = pgTable(
   },
   (t) => [uniqueIndex('comment_vote_unq').on(t.commentId, t.anilistUserId)]
 );
+
+// In-app notifications. Currently one type ('reply'): someone replied to the
+// recipient's comment. The recipient is an AniList user id; the row carries a
+// denormalized actor name + reply snippet + a deep link's pieces so the inbox
+// renders without extra joins. read_at null = unread.
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: serial('id').primaryKey(),
+    recipientAnilistUserId: integer('recipient_anilist_user_id').notNull(),
+    type: text('type').notNull(), // 'reply'
+    actorName: text('actor_name').notNull(),
+    commentId: integer('comment_id').notNull(), // the reply that triggered it
+    anilistId: integer('anilist_id').notNull(),
+    targetType: text('target_type').notNull(), // 'anime' | 'episode'
+    episode: integer('episode'), // null for anime-level
+    snippet: text('snippet').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('notifications_recipient_idx').on(
+      t.recipientAnilistUserId,
+      t.createdAt,
+      t.id
+    ),
+  ]
+);

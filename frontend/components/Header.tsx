@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 import AniListAuthButton from '@components/AniListAuthButton';
+import NotificationBell from '@components/NotificationBell';
 import RoomJoinLauncher from '@components/RoomJoinLauncher';
 import SearchAutosuggest from '@components/SearchAutosuggest';
 
@@ -69,6 +70,7 @@ const Header: React.FC<{}> = () => {
 
         <SearchAutosuggest />
         <RoomJoinLauncher />
+        <NotificationBell />
         <AniListAuthButton />
       </div>
     </header>
