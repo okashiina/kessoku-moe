@@ -138,3 +138,70 @@ export const notifyLog = pgTable(
   },
   (t) => [uniqueIndex('notify_log_anime_ep_unq').on(t.anilistId, t.episode)]
 );
+
+// Community comments on a show (target_type 'anime') or a single episode
+// ('episode', keyed by ABSOLUTE episode number). Posting requires AniList login
+// (author id/name/avatar are SERVER-resolved snapshots, never client-claimed);
+// reads are public. One level of replies: parent_id points at a top-level
+// comment, and depth is enforced in the route. Soft-deleted (deleted_at) so a
+// thread keeps its shape; reported rows accrue report_count for cheap auto-hide.
+export const comments = pgTable(
+  'comments',
+  {
+    id: serial('id').primaryKey(),
+    targetType: text('target_type').notNull(), // 'anime' | 'episode'
+    anilistId: integer('anilist_id').notNull(),
+    episode: integer('episode'), // null for anime-level
+    parentId: integer('parent_id'), // null = top-level; else a top-level id
+    anilistUserId: integer('anilist_user_id').notNull(),
+    authorName: text('author_name').notNull(),
+    authorAvatar: text('author_avatar'),
+    body: text('body').notNull(),
+    reportCount: integer('report_count').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    editedAt: timestamp('edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (t) => [
+    // Keyset pagination: top-level comments within a target, newest-first
+    // (anilist_id, target_type, episode) then created_at desc, id desc.
+    index('comments_target_idx').on(
+      t.anilistId,
+      t.targetType,
+      t.episode,
+      t.createdAt,
+      t.id
+    ),
+    index('comments_parent_idx').on(t.parentId),
+    check(
+      'comments_target_type_chk',
+      sql`${t.targetType} in ('anime', 'episode')`
+    ),
+    check(
+      'comments_body_len_chk',
+      sql`char_length(${t.body}) between 1 and 2000`
+    ),
+    // anime-level has no episode; episode-level must carry one.
+    check(
+      'comments_episode_shape_chk',
+      sql`(${t.targetType} = 'episode') = (${t.episode} is not null)`
+    ),
+  ]
+);
+
+// One report per user per comment (the unique key); the running total is
+// mirrored onto comments.report_count for a cheap auto-hide threshold.
+export const commentReports = pgTable(
+  'comment_reports',
+  {
+    id: serial('id').primaryKey(),
+    commentId: integer('comment_id').notNull(),
+    anilistUserId: integer('anilist_user_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [uniqueIndex('comment_report_unq').on(t.commentId, t.anilistUserId)]
+);

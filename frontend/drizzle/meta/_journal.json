@@ -15,6 +15,13 @@
       "when": 1781749236445,
       "tag": "0001_lively_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781756023906,
+      "tag": "0002_wide_hardball",
+      "breakpoints": true
     }
   ]
 }

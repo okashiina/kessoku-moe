@@ -10,10 +10,11 @@ import { LRUCache } from 'lru-cache';
 export interface Viewer {
   id: number;
   name: string;
+  avatar?: string | null;
 }
 
 const ENDPOINT = 'https://graphql.anilist.co';
-const VIEWER_Q = 'query { Viewer { id name } }';
+const VIEWER_Q = 'query { Viewer { id name avatar { large medium } } }';
 
 const cache = new LRUCache<string, Viewer>({ max: 5000, ttl: 60_000 });
 
@@ -43,11 +44,21 @@ export const resolveViewer = async (
     });
     if (!res.ok) return null;
     const json = (await res.json()) as {
-      data?: { Viewer?: { id: number; name: string } | null };
+      data?: {
+        Viewer?: {
+          id: number;
+          name: string;
+          avatar?: { large?: string | null; medium?: string | null } | null;
+        } | null;
+      };
     };
     const v = json?.data?.Viewer;
     if (!v?.id) return null;
-    const viewer: Viewer = { id: v.id, name: v.name };
+    const viewer: Viewer = {
+      id: v.id,
+      name: v.name,
+      avatar: v.avatar?.large ?? v.avatar?.medium ?? null,
+    };
     cache.set(token, viewer);
     return viewer;
   } catch {
