@@ -8,6 +8,7 @@ import { NextSeo } from 'next-seo';
 import AiringCard from '@components/anime/AiringCard';
 import ContinueWatchingRail from '@components/anime/ContinueWatchingRail';
 import MyListRail from '@components/anime/MyListRail';
+import RecommendationRails from '@components/anime/RecommendationRails';
 import Section from '@components/anime/Section';
 import Spotlight from '@components/anime/Spotlight';
 import WatchLaterRail from '@components/anime/WatchLaterRail';
@@ -92,6 +93,10 @@ const Home = ({
       <div className="pb-2">
         <Reveal>
           <ContinueWatchingRail />
+        </Reveal>
+
+        <Reveal>
+          <RecommendationRails />
         </Reveal>
 
         <Reveal>

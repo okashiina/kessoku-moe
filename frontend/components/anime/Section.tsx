@@ -15,8 +15,8 @@ const Section: React.FC<SectionProps> = ({ title, animeList }) => {
   return (
     <section className="mt-10 first:mt-8">
       <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+        <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
+        <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
           {title}
         </h2>
       </div>
