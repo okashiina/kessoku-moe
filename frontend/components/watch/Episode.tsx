@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { FillerKind } from '@animeflix/api';
 import { CheckCircleIcon, RewindIcon } from '@heroicons/react/solid';
 
+import { useEpisodeRatings } from '@hooks/useEpisodeRatings';
 import useWatchedEpisodes from '@hooks/useWatchedEpisodes';
 import { setEpisode } from '@slices/episode';
 import { useDispatch, useSelector } from '@store/store';
@@ -95,6 +96,13 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
 
   // Live set of episodes the viewer has finished (or hand-marked).
   const watched = new Set(useWatchedEpisodes(animeId));
+
+  // Community per-episode averages for the whole anime, batch-fetched once.
+  // Shares the SWR key with the EpisodeRating widget above, so it's the same
+  // single request (deduped), not a second one. Off entirely when the ratings
+  // DB isn't configured, or until any episode has a score.
+  const { aggregates, unavailable } = useEpisodeRatings(animeId);
+  const hasRatings = !unavailable && Object.keys(aggregates).length > 0;
 
   // Context menu (right-click / long-press an episode tile): single-episode
   // mark toggle + "unwatch from here" rewind. Fixed-positioned at the press
@@ -239,6 +247,12 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
         Long-press or right-click an episode to mark watched or rewind.
       </p>
 
+      {hasRatings && (
+        <p className="mb-3 text-xs text-faint">
+          The small number under an episode is its community rating out of 10.
+        </p>
+      )}
+
       {pages > 1 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {new Array(pages).fill(1).map((_v, i) => (
@@ -261,12 +275,20 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
             const bar = kind ? BAR_COLOR[kind] : '';
             const isCurrent = v === current;
             const isWatchedEp = watched.has(v);
-            let epTitle: string | undefined;
-            if (kind) {
-              epTitle = `${KIND_LABEL[kind]}${isWatchedEp ? ' · watched' : ''}`;
-            } else if (isWatchedEp) {
-              epTitle = 'Watched';
-            }
+            const agg = aggregates[v];
+            const score = agg ? (agg.avg / 10).toFixed(1) : null;
+            const titleBits: string[] = [];
+            if (kind) titleBits.push(KIND_LABEL[kind]);
+            if (isWatchedEp) titleBits.push('watched');
+            if (agg)
+              titleBits.push(
+                `community ${score}/10 from ${agg.count} ${
+                  agg.count === 1 ? 'rating' : 'ratings'
+                }`
+              );
+            const epTitle = titleBits.length
+              ? titleBits.join(' · ')
+              : undefined;
             const startPress = (e: React.PointerEvent) => {
               clearPress();
               // A new gesture: any click belonging to the previous one has
@@ -306,6 +328,17 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                   if (dx * dx + dy * dy > 100) clearPress();
                 }}
                 aria-current={isCurrent}
+                aria-label={
+                  hasRatings
+                    ? `Episode ${v}${
+                        agg
+                          ? `, rated ${score} out of 10 by ${agg.count} ${
+                              agg.count === 1 ? 'viewer' : 'viewers'
+                            }`
+                          : ', no community ratings yet'
+                      }`
+                    : undefined
+                }
                 title={epTitle}
                 // iOS Safari fires its own text-selection + magnifier on a
                 // long-press, fighting our mark-watched menu. Kill the native
@@ -315,7 +348,11 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                   WebkitUserSelect: 'none',
                   touchAction: 'manipulation',
                 }}
-                className={`relative flex h-10 select-none items-center justify-center rounded-md text-sm tabular-nums transition duration-150 active:scale-95 ${
+                className={`relative flex select-none items-center rounded-md text-sm tabular-nums transition duration-150 active:scale-95 ${
+                  hasRatings
+                    ? 'h-14 flex-col justify-center gap-0.5'
+                    : 'h-10 justify-center'
+                } ${
                   isCurrent
                     ? 'bg-aurora font-semibold text-accent-ink shadow-glow'
                     : `bg-surface text-muted hover:bg-surface-2 hover:text-fg ${
@@ -323,7 +360,27 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                       }`
                 }`}
               >
-                {v}
+                <span className="leading-none">{v}</span>
+                {hasRatings &&
+                  (score ? (
+                    <span
+                      aria-hidden
+                      className={`text-[10px] font-semibold leading-none ${
+                        isCurrent ? 'text-accent-ink/80' : 'text-accent/85'
+                      }`}
+                    >
+                      {score}
+                    </span>
+                  ) : (
+                    <span
+                      aria-hidden
+                      className={`text-[10px] leading-none ${
+                        isCurrent ? 'text-accent-ink/45' : 'text-faint/60'
+                      }`}
+                    >
+                      ·
+                    </span>
+                  ))}
                 {isWatchedEp && (
                   <CheckCircleIcon
                     className={`absolute right-0.5 top-0.5 h-3.5 w-3.5 ${
