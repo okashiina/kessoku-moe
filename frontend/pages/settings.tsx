@@ -91,14 +91,22 @@ const isIOS = (): boolean =>
   typeof navigator !== 'undefined' &&
   /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-const isStandalone = (): boolean =>
-  typeof window !== 'undefined' &&
-  typeof window.matchMedia === 'function' &&
-  window.matchMedia('(display-mode: standalone)').matches;
+const isStandalone = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const displayMode =
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(display-mode: standalone)').matches;
+  // iOS reports installed-PWA mode via the non-standard navigator.standalone.
+  const iosStandalone =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return displayMode || iosStandalone;
+};
 
 const NotificationsSection: React.FC = () => {
   // SSR-safe defaults; everything browser-facing hydrates in the effect.
   const [supported, setSupported] = useState(true);
+  const [browserSupported, setBrowserSupported] = useState(true);
+  const [configured, setConfigured] = useState(true);
   const [status, setStatus] = useState<PushStatus>('default');
   const [iosHint, setIosHint] = useState(false);
 
@@ -113,7 +121,11 @@ const NotificationsSection: React.FC = () => {
   // Hydrate capability + server prefs once on the client.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const ok = pushSupported() && pushConfigured();
+    const browserOk = pushSupported();
+    const cfg = pushConfigured();
+    const ok = browserOk && cfg;
+    setBrowserSupported(browserOk);
+    setConfigured(cfg);
     setSupported(ok);
     setStatus(pushStatus());
     setIosHint(isIOS() && !isStandalone());
@@ -240,15 +252,22 @@ const NotificationsSection: React.FC = () => {
     }
   };
 
-  // States where there's nothing to toggle — show an honest line instead.
+  // States where there's nothing to toggle — show an honest line instead. iOS
+  // guidance comes first: in a normal Safari tab the Push APIs simply don't
+  // exist (they appear only in an installed PWA), so the fix is "install", not a
+  // dead-end "unsupported". Only steer them to install when the site itself is
+  // push-ready (VAPID configured), otherwise installing wouldn't help.
   let notice: string | null = null;
-  if (!supported) notice = "This browser doesn't support push notifications.";
+  if (iosHint && configured && !granted)
+    notice =
+      'On iPhone, add kessoku to your Home Screen, then open it from there to turn on alerts.';
+  else if (!configured)
+    notice = "Notifications aren't switched on for this site yet.";
+  else if (!browserSupported)
+    notice = "This browser doesn't support push notifications.";
   else if (unavailable) notice = "Notifications aren't available right now.";
   else if (status === 'denied')
     notice = 'Notifications are blocked. Enable them in your browser settings.';
-  else if (iosHint && !granted)
-    notice =
-      'On iPhone, add kessoku to your Home Screen first, then enable alerts.';
 
   return (
     <Section title="Notifications">
