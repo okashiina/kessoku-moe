@@ -24,6 +24,7 @@ import RelatedSection, {
 } from '@components/anime/RelatedSection';
 import Section from '@components/anime/Section';
 import StatusSelect from '@components/anime/StatusSelect';
+import CommentsSection from '@components/comments/CommentsSection';
 import Header from '@components/Header';
 
 interface AnimeProps {
@@ -399,6 +400,14 @@ const Anime = ({
         ) : (
           <EmptyState message="No recommendations found" />
         )}
+
+        <div className="px-4 sm:px-6 lg:px-8">
+          <CommentsSection
+            anilistId={anime.id}
+            targetType="anime"
+            title="Comments"
+          />
+        </div>
       </main>
     </>
   );

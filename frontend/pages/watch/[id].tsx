@@ -17,6 +17,7 @@ import RelatedSection, {
   type RelationItem,
 } from '@components/anime/RelatedSection';
 import StatusSelect from '@components/anime/StatusSelect';
+import CommentsSection from '@components/comments/CommentsSection';
 import Genre from '@components/Genre';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
@@ -428,6 +429,13 @@ const Watch = ({
                 {anime.description?.replace(/<\w*\\?>/g, '')}
               </p>
             </div>
+
+            <CommentsSection
+              anilistId={animeId}
+              targetType="episode"
+              episode={episode}
+              title={`Episode ${episode} discussion`}
+            />
 
             {/* Related franchise entries — jump to sequels/OVAs without leaving
                 the watch page. flush: the column already has its own padding. */}
