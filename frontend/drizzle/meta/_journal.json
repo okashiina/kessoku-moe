@@ -29,6 +29,13 @@
       "when": 1781764578086,
       "tag": "0003_clever_giant_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781765918494,
+      "tag": "0004_cultured_proudstar",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import {
 } from '@utility/commentsTypes';
 import { cacheDel, cacheGet, cacheSet } from '@utility/db/cache';
 import { getDb, hasDb, schema } from '@utility/db/client';
+import { notifyReply } from '@utility/db/notifyReply';
 import { resolveViewer } from '@utility/db/viewer';
 import { checkWriteRate, clientIp } from '@utility/db/writeRate';
 
@@ -343,6 +344,7 @@ const handlePost = async (
   const { comments } = schema;
 
   let parentId: number | null = null;
+  let parentAuthorId: number | null = null;
   if (body.parentId !== undefined && body.parentId !== null) {
     parentId = posInt(body.parentId);
     if (parentId === null) {
@@ -368,6 +370,7 @@ const handlePost = async (
       res.status(400).json({ error: 'bad_parent' });
       return;
     }
+    parentAuthorId = parent.anilistUserId;
   }
 
   const inserted = await db
@@ -389,6 +392,22 @@ const handlePost = async (
 
   const node = toNode(row, viewer.id, new Set());
   res.status(200).json({ comment: node });
+
+  // Notify the parent author (in-app inbox + best-effort push). Fire-and-forget
+  // so the reply response isn't held up by the push fan-out; notifyReply
+  // swallows its own errors and skips a self-reply.
+  if (parentId !== null && parentAuthorId !== null) {
+    notifyReply(db, {
+      recipientId: parentAuthorId,
+      actorId: viewer.id,
+      actorName: viewer.name,
+      commentId: row.id,
+      anilistId: target.anilistId,
+      targetType: target.targetType,
+      episode: target.episode,
+      snippet: text,
+    }).catch(() => undefined);
+  }
 };
 
 const handler = async (
