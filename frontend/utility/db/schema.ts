@@ -1,9 +1,12 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   index,
   integer,
   pgTable,
   serial,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -87,6 +90,38 @@ export const notifyTargets = pgTable(
       t.source
     ),
     index('notify_target_anime_idx').on(t.anilistId),
+  ]
+);
+
+// Per-episode community ratings. Separate from the show rating (listScore.ts,
+// which syncs to AniList): these are our-DB-only, keyed by AniList media id +
+// ABSOLUTE episode number. Rating requires AniList login so the average reflects
+// real accounts (one row per user per episode); reads are public. Score is on
+// the same 0-100 scoreRaw scale as the show rating, here entered on a 1-10 dial.
+export const episodeRatings = pgTable(
+  'episode_ratings',
+  {
+    id: serial('id').primaryKey(),
+    anilistId: integer('anilist_id').notNull(),
+    episode: integer('episode').notNull(),
+    anilistUserId: integer('anilist_user_id').notNull(),
+    score: smallint('score').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    // One rating per user per episode; its leftmost prefix (anilist_id, episode)
+    // also serves the single-episode read and the GROUP BY episode batch.
+    uniqueIndex('episode_rating_user_unq').on(
+      t.anilistId,
+      t.episode,
+      t.anilistUserId
+    ),
+    check('episode_rating_score_range', sql`${t.score} between 1 and 100`),
   ]
 );
 

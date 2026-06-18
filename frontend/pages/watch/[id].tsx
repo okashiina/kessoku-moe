@@ -24,6 +24,7 @@ import RecommendationCard from '@components/watch/Card';
 import CompanionChat from '@components/watch/CompanionChat';
 import CompanionFab from '@components/watch/CompanionFab';
 import Episode from '@components/watch/Episode';
+import EpisodeRating from '@components/watch/EpisodeRating';
 import FullscreenDock from '@components/watch/FullscreenDock';
 import OverlayLayer from '@components/watch/OverlayLayer';
 import RateShowPrompt from '@components/watch/RateShowPrompt';
@@ -408,6 +409,10 @@ const Watch = ({
 
             <div className="mt-4">
               <WatchControls />
+            </div>
+
+            <div className="mt-6">
+              <EpisodeRating animeId={animeId} episode={episode} />
             </div>
 
             <Episode
