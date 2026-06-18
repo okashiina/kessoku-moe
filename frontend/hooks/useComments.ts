@@ -7,15 +7,16 @@ import { getToken } from '@utility/anilistAuth';
 import {
   CommentNode,
   CommentsPage,
+  CommentSort,
   CommentTarget,
 } from '@utility/commentsTypes';
 
 // Comments for one target (a show or a single episode). Reads are public and
 // keyset-paginated (SWR Infinite, one page of top-level comments + their replies
 // per request); writes attach the AniList bearer so the server resolves the
-// author and marks `mine`. Every writer revalidates so the thread reflects the
-// change. `unavailable` (503) means the comments DB isn't configured — the
-// section hides entirely.
+// author and marks `mine`/`voted`. Posting/editing/reporting revalidate; voting
+// patches the cache in place (no reload, no scroll jump). `unavailable` (503)
+// means the comments DB isn't configured, so the section hides.
 
 export interface CommentTargetInput {
   anilistId: number;
@@ -34,17 +35,24 @@ export interface UseComments {
   edit: (id: number, body: string) => Promise<boolean>;
   remove: (id: number) => Promise<boolean>;
   report: (id: number) => Promise<boolean>;
+  vote: (id: number) => Promise<boolean>;
+  unvote: (id: number) => Promise<boolean>;
   isLoggedIn: boolean;
   login: () => void;
 }
 
-const buildUrl = (t: CommentTargetInput, cursor: string | null): string => {
+const buildUrl = (
+  t: CommentTargetInput,
+  sort: CommentSort,
+  cursor: string | null
+): string => {
   const p = new URLSearchParams();
   p.set('anilistId', String(t.anilistId));
   p.set('targetType', t.targetType);
   if (t.targetType === 'episode' && t.episode) {
     p.set('episode', String(t.episode));
   }
+  p.set('sort', sort);
   if (cursor) p.set('cursor', cursor);
   return `/api/comments?${p.toString()}`;
 };
@@ -58,7 +66,25 @@ const fetcher = async (url: string): Promise<CommentsPage> => {
   return res.json() as Promise<CommentsPage>;
 };
 
-const useComments = (target: CommentTargetInput): UseComments => {
+// Apply a vote result to one node (or its replies), in place in a cloned tree.
+const patchNode = (
+  node: CommentNode,
+  id: number,
+  voteCount: number,
+  voted: boolean
+): CommentNode => {
+  if (node.id === id) return { ...node, voteCount, voted };
+  if (node.replies.length === 0) return node;
+  return {
+    ...node,
+    replies: node.replies.map((r) => patchNode(r, id, voteCount, voted)),
+  };
+};
+
+const useComments = (
+  target: CommentTargetInput,
+  sort: CommentSort = 'new'
+): UseComments => {
   const { isLoggedIn, login } = useAniListAuth();
   const [posting, setPosting] = useState(false);
 
@@ -68,9 +94,9 @@ const useComments = (target: CommentTargetInput): UseComments => {
 
   const getKey = (index: number, prev: CommentsPage | null): string | null => {
     if (!enabled) return null;
-    if (index === 0) return buildUrl(target, null);
+    if (index === 0) return buildUrl(target, sort, null);
     if (!prev || !prev.nextCursor) return null;
-    return buildUrl(target, prev.nextCursor);
+    return buildUrl(target, sort, prev.nextCursor);
   };
 
   const { data, error, size, setSize, mutate, isValidating } =
@@ -142,6 +168,42 @@ const useComments = (target: CommentTargetInput): UseComments => {
     [write]
   );
 
+  // Vote / unvote patch the cached tree in place from the server's authoritative
+  // count, without a revalidation, so the list doesn't reload or jump.
+  const setVote = useCallback(
+    async (id: number, makeVoted: boolean): Promise<boolean> => {
+      const token = getToken();
+      try {
+        const res = await fetch(`/api/comments/${id}/vote`, {
+          method: makeVoted ? 'POST' : 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) return false;
+        const result = (await res.json()) as {
+          voteCount: number;
+          voted: boolean;
+        };
+        await mutate(
+          (current) =>
+            (current ?? []).map((pg) => ({
+              ...pg,
+              comments: pg.comments.map((c) =>
+                patchNode(c, id, result.voteCount, result.voted)
+              ),
+            })),
+          { revalidate: false }
+        );
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    [mutate]
+  );
+
+  const vote = useCallback((id: number) => setVote(id, true), [setVote]);
+  const unvote = useCallback((id: number) => setVote(id, false), [setVote]);
+
   return {
     comments,
     loading,
@@ -153,6 +215,8 @@ const useComments = (target: CommentTargetInput): UseComments => {
     edit,
     remove,
     report,
+    vote,
+    unvote,
     isLoggedIn,
     login,
   };

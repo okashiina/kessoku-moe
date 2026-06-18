@@ -44,6 +44,10 @@ const toNode = (row: Row, viewerId: number): CommentNode => {
     editedAt: row.editedAt ? row.editedAt.toISOString() : null,
     deleted: removed,
     reportCount: row.reportCount,
+    voteCount: row.voteCount,
+    // The edit response is revalidated client-side, so `voted` is recomputed by
+    // the next list read; false here is a safe placeholder.
+    voted: false,
     mine: row.anilistUserId === viewerId,
     replies: [],
   };

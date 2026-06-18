@@ -7,6 +7,7 @@ import {
   REPORT_HIDE_THRESHOLD,
   type CommentNode,
   type CommentsPage,
+  type CommentSort,
   type CommentTarget,
 } from '@utility/commentsTypes';
 import { cacheDel, cacheGet, cacheSet } from '@utility/db/cache';
@@ -60,28 +61,41 @@ const parseTarget = (src: {
   return { anilistId, targetType, episode: null };
 };
 
+const sortOf = (v: unknown): CommentSort => (v === 'top' ? 'top' : 'new');
+
+// Only the default ('new') anonymous first page is cached; 'top' and authed
+// reads always hit the DB, so a single per-target key invalidates correctly.
 const firstPageKey = (t: TargetKey): string =>
   `comments:${t.targetType}:${t.anilistId}:${t.episode || 0}:p1`;
 
 interface Cursor {
+  sort: CommentSort;
   createdAt: Date;
+  voteCount: number;
   id: number;
 }
 
-const encodeCursor = (createdAt: Date, id: number): string =>
-  Buffer.from(`${createdAt.toISOString()}|${id}`, 'utf8').toString('base64');
+// The cursor self-describes its sort so a stale cursor from the other ordering
+// is ignored rather than mis-paginating.
+const encodeCursor = (sort: CommentSort, row: Row): string =>
+  Buffer.from(
+    `${sort}|${row.createdAt.toISOString()}|${row.voteCount}|${row.id}`,
+    'utf8'
+  ).toString('base64');
 
 const decodeCursor = (raw: unknown): Cursor | null => {
   if (typeof raw !== 'string' || !raw) return null;
   try {
-    const text = Buffer.from(raw, 'base64').toString('utf8');
-    const sep = text.lastIndexOf('|');
-    if (sep < 0) return null;
-    const iso = text.slice(0, sep);
-    const id = posInt(text.slice(sep + 1));
+    const parts = Buffer.from(raw, 'base64').toString('utf8').split('|');
+    if (parts.length !== 4) return null;
+    const [s, iso, votes, idRaw] = parts;
+    if (s !== 'new' && s !== 'top') return null;
+    const id = posInt(idRaw);
+    const voteCount = Math.trunc(Number(votes));
     const createdAt = new Date(iso);
     if (id === null || Number.isNaN(createdAt.getTime())) return null;
-    return { createdAt, id };
+    if (!Number.isFinite(voteCount)) return null;
+    return { sort: s, createdAt, voteCount, id };
   } catch {
     return null;
   }
@@ -92,7 +106,11 @@ type Row = typeof schema.comments.$inferSelect;
 // A removed comment (soft-deleted or auto-hidden by reports) keeps its place in
 // the tree for stable pagination, but its body and author are blanked so a
 // pulled comment never leaks who wrote it or what it said.
-const toNode = (row: Row, viewerId: number | null): CommentNode => {
+const toNode = (
+  row: Row,
+  viewerId: number | null,
+  votedIds: Set<number>
+): CommentNode => {
   const removed =
     row.deletedAt !== null || row.reportCount >= REPORT_HIDE_THRESHOLD;
   return {
@@ -106,6 +124,8 @@ const toNode = (row: Row, viewerId: number | null): CommentNode => {
     editedAt: row.editedAt ? row.editedAt.toISOString() : null,
     deleted: removed,
     reportCount: row.reportCount,
+    voteCount: row.voteCount,
+    voted: votedIds.has(row.id),
     mine: viewerId !== null && row.anilistUserId === viewerId,
     replies: [],
   };
@@ -122,9 +142,11 @@ const buildPage = (
   topRows: Row[],
   replyRows: Row[],
   hasMore: boolean,
-  viewerId: number | null
+  viewerId: number | null,
+  votedIds: Set<number>,
+  sort: CommentSort
 ): CommentsPage => {
-  const nodes = topRows.map((r) => toNode(r, viewerId));
+  const nodes = topRows.map((r) => toNode(r, viewerId, votedIds));
   const byId = new Map<number, CommentNode>();
   nodes.forEach((n) => byId.set(n.id, n));
 
@@ -133,12 +155,11 @@ const buildPage = (
     const parent = byId.get(r.parentId);
     if (!parent) return;
     if (parent.replies.length >= REPLY_CAP) return;
-    parent.replies.push(toNode(r, viewerId));
+    parent.replies.push(toNode(r, viewerId, votedIds));
   });
 
   const last = topRows[topRows.length - 1];
-  const nextCursor =
-    hasMore && last ? encodeCursor(last.createdAt, last.id) : null;
+  const nextCursor = hasMore && last ? encodeCursor(sort, last) : null;
 
   return { comments: nodes, nextCursor };
 };
@@ -153,17 +174,22 @@ const handleGet = async (
     return;
   }
 
-  const cursor = decodeCursor(req.query.cursor);
+  const sort = sortOf(req.query.sort);
+
+  let cursor = decodeCursor(req.query.cursor);
   if (req.query.cursor && !cursor) {
     res.status(400).json({ error: 'bad_input' });
     return;
   }
+  // A cursor from the other ordering can't paginate this one — drop it.
+  if (cursor && cursor.sort !== sort) cursor = null;
 
-  // Reads are public; resolve the viewer only to flag their own comments. The
-  // cached path is the anonymous first page, so we never serve a stale `mine`.
+  // Reads are public; resolve the viewer only to flag their own comments + which
+  // ones they've upvoted. Only the default ('new') anonymous first page is
+  // cached, so we never serve a stale `mine`/`voted`.
   const viewer = await resolveViewer(req);
   const viewerId = viewer ? viewer.id : null;
-  const cacheable = !cursor && viewerId === null;
+  const cacheable = !cursor && viewerId === null && sort === 'new';
   const key = firstPageKey(target);
 
   if (cacheable) {
@@ -180,29 +206,41 @@ const handleGet = async (
     return;
   }
 
-  const { comments } = schema;
+  const { comments, commentVotes } = schema;
+
+  // Keyset boundary for the active ordering: 'new' walks (createdAt, id), 'top'
+  // walks (voteCount, id), both descending.
+  let keyset;
+  if (cursor && sort === 'top') {
+    keyset = or(
+      lt(comments.voteCount, cursor.voteCount),
+      and(eq(comments.voteCount, cursor.voteCount), lt(comments.id, cursor.id))
+    );
+  } else if (cursor) {
+    keyset = or(
+      lt(comments.createdAt, cursor.createdAt),
+      and(eq(comments.createdAt, cursor.createdAt), lt(comments.id, cursor.id))
+    );
+  }
 
   const where = and(
     eq(comments.anilistId, target.anilistId),
     eq(comments.targetType, target.targetType),
     matchEpisode(target.episode),
     isNull(comments.parentId),
-    cursor
-      ? or(
-          lt(comments.createdAt, cursor.createdAt),
-          and(
-            eq(comments.createdAt, cursor.createdAt),
-            lt(comments.id, cursor.id)
-          )
-        )
-      : undefined
+    keyset
   );
+
+  const order =
+    sort === 'top'
+      ? [desc(comments.voteCount), desc(comments.id)]
+      : [desc(comments.createdAt), desc(comments.id)];
 
   const topRows = await db
     .select()
     .from(comments)
     .where(where)
-    .orderBy(desc(comments.createdAt), desc(comments.id))
+    .orderBy(...order)
     .limit(PAGE_SIZE + 1);
 
   const hasMore = topRows.length > PAGE_SIZE;
@@ -218,7 +256,32 @@ const handleGet = async (
       .orderBy(comments.createdAt, comments.id);
   }
 
-  const page = buildPage(pageRows, replyRows, hasMore, viewerId);
+  // Which of the shown comments the viewer has upvoted (for the filled arrow).
+  const votedIds = new Set<number>();
+  if (viewerId !== null) {
+    const shownIds = [...pageRows, ...replyRows].map((r) => r.id);
+    if (shownIds.length > 0) {
+      const voted = await db
+        .select({ commentId: commentVotes.commentId })
+        .from(commentVotes)
+        .where(
+          and(
+            eq(commentVotes.anilistUserId, viewerId),
+            or(...shownIds.map((id) => eq(commentVotes.commentId, id)))
+          )
+        );
+      voted.forEach((v) => votedIds.add(v.commentId));
+    }
+  }
+
+  const page = buildPage(
+    pageRows,
+    replyRows,
+    hasMore,
+    viewerId,
+    votedIds,
+    sort
+  );
 
   if (cacheable) cacheSet(key, page);
   res.status(200).json(page);
@@ -324,7 +387,7 @@ const handlePost = async (
   const row = inserted[0];
   cacheDel(firstPageKey(target));
 
-  const node = toNode(row, viewer.id);
+  const node = toNode(row, viewer.id, new Set());
   res.status(200).json({ comment: node });
 };
 

@@ -1,5 +1,7 @@
+import { useState } from 'react';
+
 import useComments from '@hooks/useComments';
-import type { CommentTarget } from '@utility/commentsTypes';
+import type { CommentSort, CommentTarget } from '@utility/commentsTypes';
 
 import CommentComposer from './CommentComposer';
 import CommentItem from './CommentItem';
@@ -10,6 +12,11 @@ interface CommentsSectionProps {
   episode?: number;
   title?: string;
 }
+
+const SORTS: { key: CommentSort; label: string }[] = [
+  { key: 'new', label: 'Newest' },
+  { key: 'top', label: 'Top' },
+];
 
 // The mountable comments block. Owns nothing but the wiring: it reads the hook,
 // hands the composer a post(), and maps top-level nodes to items. It stays
@@ -22,6 +29,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   episode,
   title,
 }) => {
+  const [sort, setSort] = useState<CommentSort>('new');
   const {
     comments,
     loading,
@@ -33,19 +41,42 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
     edit,
     remove,
     report,
+    vote,
+    unvote,
     isLoggedIn,
     login,
-  } = useComments({ anilistId, targetType, episode });
+  } = useComments({ anilistId, targetType, episode }, sort);
 
   if (unavailable) return null;
 
   return (
     <section className="mt-10" aria-label={title ?? 'Comments'}>
-      <div className="mb-3 flex items-center gap-2.5">
+      <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
         <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+        <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
           {title ?? 'Comments'}
         </h2>
+
+        {comments.length > 0 ? (
+          <div className="ml-auto inline-flex rounded-full border border-line/60 p-0.5 text-xs font-semibold">
+            {SORTS.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setSort(s.key)}
+                aria-pressed={sort === s.key}
+                style={{ touchAction: 'manipulation' }}
+                className={`inline-flex min-h-[44px] items-center rounded-full px-3 transition-colors ${
+                  sort === s.key
+                    ? 'bg-aurora text-accent-ink'
+                    : 'text-muted hover:text-fg'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       <div className="mb-6">
@@ -74,6 +105,8 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
               onEdit={edit}
               onRemove={remove}
               onReport={report}
+              onVote={vote}
+              onUnvote={unvote}
             />
           ))}
         </div>
