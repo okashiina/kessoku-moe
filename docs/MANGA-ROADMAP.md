@@ -455,3 +455,35 @@ with the user before committing.
   (P2, reuse CommentsSection with `targetType:'manga_chapter'`); offline downloads
   (P2); double-page spread (P2); follows/bookmarks server layer.
   **Not committed** — awaiting user PPRM (CLAUDE.md §3).
+
+---
+
+## Update 2026-06-21 — prod source bypass, search fix, landing announcement
+
+Three shipped changes (PR `feat/manga-prod-source-and-landing`):
+
+- **Prod manhwatop bypass (`MANHWATOP_PROXY`).** The Pizza BL (and other licensed
+  KR BL/adult on manhwatop) returned "No readable chapters" on Railway while working
+  on localhost. Root cause: manhwatop's Cloudflare blocks **datacenter IPs** (Railway),
+  so even `curl` gets the "Just a moment" challenge; a residential IP (the laptop)
+  passes. Fix: `utility/server/madara.ts` now reads `MANHWATOP_PROXY` and, when set,
+  routes BOTH the HTML `curl` (execFile) and the image stream (spawn) through it via
+  `--proxy` (longer 45s timeout for proxied bytes). Unset = direct curl, unchanged
+  (localhost stays working). Accepts any curl proxy URL: a paid residential proxy
+  (`http://user:pass@host:port`, always-on) or a free self-hosted SOCKS5 tunnelled
+  from a home box (`socks5://...`, needs that box awake). Server-only runtime var on
+  the Railway frontend service — no rebuild, restart only. MangaDex (DoH) + Weebcentral
+  are unaffected and need no proxy.
+- **Search results manga fix.** `/search` (type=manga) reinvented a card with
+  `aspect-[2/3]`, which collapses to 0 height (core aspectRatio plugin disabled) —
+  no thumbnail + a thin barely-tappable strip. Replaced the bespoke card with the
+  shared `components/manga/Card.tsx` (uses `aspect-w-2 aspect-h-3`), so covers,
+  origin tags, and the `/manga/[id]` link match the catalog. Grid matches `/manga`.
+- **Landing announcement.** Splash (`pages/index.tsx`): hero broadened to "anime and
+  manga, one stage", a dedicated "Read between episodes" section with an interactive
+  reader mock (Webtoon/Paged toggle) + "Open the reader" CTA, a "manga & manhwa · NEW"
+  credential chip, and a "Manga" nav link. Brand-voiced copy (`brand-copywriter` +
+  `brand` + `stop-slop`); honest about coverage ("English and Indonesian, wherever the
+  scanlators have them"). Mobile/PWA audit (Android + iOS) run: one sub-44px tap-target
+  blocker (the mock toggle) + warns fixed — all new controls ≥44px with touch-action +
+  active feedback. tsc + next lint clean.
