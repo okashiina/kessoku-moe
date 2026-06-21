@@ -14,9 +14,9 @@ import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
 import Header from '@components/Header';
+import MangaCard from '@components/manga/Card';
 import progressBar from '@components/Progress';
-import { fetchMangaBrowse, MangaInfo, originLabel } from '@utility/manga';
-import { useTitle } from '@utility/titleLang';
+import { fetchMangaBrowse, MangaInfo } from '@utility/manga';
 
 // The lenses search supports. "anime" is the default and keeps the original
 // title-grid behavior untouched.
@@ -82,39 +82,6 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
       staff,
     },
   };
-};
-
-// Local manga result card — links to /manga/{id}. We deliberately do not reuse
-// the anime Card (it points at /anime/) or the manga Card component (out of
-// scope). Mirrors the dropdown's design tokens.
-const MangaResultCard: React.FC<{ manga: MangaInfo }> = ({ manga }) => {
-  const title = useTitle(manga.title);
-  const meta = [manga.format, originLabel(manga.countryOfOrigin)]
-    .filter(Boolean)
-    .join(' · ');
-  return (
-    <Link href={`/manga/${manga.id}`} passHref>
-      <a className="group flex flex-col">
-        <span
-          className="aspect-[2/3] relative w-full overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-line/40 transition duration-200 group-hover:ring-accent/60"
-          style={{ backgroundColor: manga.coverImage.color || undefined }}
-        >
-          {manga.coverImage.large && (
-            <Image
-              alt={title || 'Manga cover'}
-              src={manga.coverImage.large}
-              layout="fill"
-              objectFit="cover"
-            />
-          )}
-        </span>
-        <span className="mt-2 text-sm font-medium text-fg line-clamp-2 group-hover:text-accent">
-          {title || 'Untitled'}
-        </span>
-        {meta && <span className="mt-0.5 text-xs text-faint">{meta}</span>}
-      </a>
-    </Link>
-  );
 };
 
 const EmptyState: React.FC<{ keyword: string }> = ({ keyword }) => (
@@ -239,11 +206,14 @@ const Search = ({
           </div>
         )}
 
-        {/* Manga — poster grid linking to /manga/{id} */}
+        {/* Manga — poster grid linking to /manga/{id}. Reuses the catalog
+            MangaCard so covers, origin tags, and the link behave identically to
+            the /manga library (the bespoke card here collapsed to no thumbnail:
+            aspect-[2/3] needs the disabled core plugin). */}
         {tab === 'manga' && hasResults && (
-          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
             {mangaResults.map((media) => (
-              <MangaResultCard key={media.id} manga={media} />
+              <MangaCard key={media.id} manga={media} />
             ))}
           </div>
         )}
