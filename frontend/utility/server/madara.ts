@@ -16,6 +16,7 @@ import {
   spawn,
   type ChildProcessWithoutNullStreams,
 } from 'node:child_process';
+import { Readable } from 'node:stream';
 import { promisify } from 'node:util';
 
 import { LRUCache } from 'lru-cache';
@@ -78,7 +79,42 @@ const curlArgs = (url: string): string[] => {
   ];
 };
 
+// Optional RELAY: a residential machine that does the actual fetch and returns
+// the bytes (see tools/manhwatop-proxy/relay.mjs). Needed in the cloud because
+// Cloudflare blocks the Linux container's curl TLS fingerprint even through a
+// residential proxy — only the bytes' source IP changes, not the fingerprint
+// doing the TLS handshake. The relay fetches with a fingerprint that passes and
+// hands back the bytes, so the container never speaks TLS to manhwatop. Set
+// MANHWATOP_RELAY (base URL) + MANHWATOP_RELAY_KEY. Unset = direct curl (local).
+const relayBase = (): string =>
+  process.env.MANHWATOP_RELAY?.trim().replace(/\/$/, '') || '';
+const relayKey = (): string => process.env.MANHWATOP_RELAY_KEY?.trim() || '';
+export const relayEnabled = (): boolean => relayBase().length > 0;
+
+async function fetchViaRelay(target: string): Promise<Response | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  try {
+    const res = await fetch(
+      `${relayBase()}/f?u=${encodeURIComponent(target)}`,
+      {
+        headers: { 'x-relay-key': relayKey() },
+        signal: controller.signal,
+      }
+    );
+    return res.ok ? res : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getText(url: string): Promise<string | null> {
+  if (relayEnabled()) {
+    const res = await fetchViaRelay(url);
+    return res ? res.text() : null;
+  }
   try {
     const { stdout } = await execFileP('curl', curlArgs(url), {
       encoding: 'utf8',
@@ -94,6 +130,16 @@ async function getText(url: string): Promise<string | null> {
  *  proc.stdout to the response. */
 export function streamMadaraImage(url: string): ChildProcessWithoutNullStreams {
   return spawn('curl', curlArgs(url));
+}
+
+/** Image bytes via the relay, as a Node stream. Null if the relay is off or the
+ *  fetch failed. The image route prefers this when MANHWATOP_RELAY is set. */
+export async function relayImageStream(
+  target: string
+): Promise<Readable | null> {
+  const res = await fetchViaRelay(target);
+  if (!res || !res.body) return null;
+  return Readable.fromWeb(res.body as Parameters<typeof Readable.fromWeb>[0]);
 }
 
 export function madaraImageContentType(url: string): string {
