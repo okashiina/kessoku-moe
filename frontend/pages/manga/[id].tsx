@@ -359,6 +359,8 @@ const MangaDetailPage = ({
                 chaptersByLang={chaptersByLang}
                 languages={languages}
                 defaultLang={defaultLang}
+                title={title}
+                cover={cover}
               />
             ) : (
               <div className="rounded-2xl border border-line/40 bg-surface/30 px-6 py-12 text-center">
