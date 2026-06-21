@@ -20,6 +20,16 @@ services:
     environment:
       - LOG_LEVEL=info
       - TZ=Asia/Jakarta
+      # Don't let idle Chromium sessions pile up RAM — reap them after 10 min.
+      - SESSION_TTL_MINUTES=10
+      - BROWSER_TIMEOUT=40000
+    # Hard resource caps so headless Chromium can't eat the laptop (it was seen
+    # taking ~16 GB unbounded). honored by `docker compose` (non-Swarm). Chromium
+    # needs shared memory; cap it too instead of mounting host /dev/shm.
+    mem_limit: 1536m
+    memswap_limit: 1536m
+    cpus: 1.5
+    shm_size: 512m
     # No published ports — only source-service reaches it internally.
 
   source-service:
@@ -31,6 +41,9 @@ services:
       - FLARESOLVERR_URL=http://flaresolverr:8191/v1
     ports:
       - "8088:8080"
+    mem_limit: 512m
+    memswap_limit: 512m
+    cpus: 1.0
     depends_on:
       - flaresolverr
     healthcheck:
