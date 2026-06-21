@@ -107,13 +107,16 @@ const SearchAutosuggest: React.FC = () => {
   const activeKey = active >= 0 ? flat[active]?.key : undefined;
 
   return (
-    <div ref={wrapRef} className="relative ml-auto w-full max-w-xs sm:max-w-sm">
-      <div className="flex items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-3.5 py-2 text-muted backdrop-blur-sm transition duration-200 focus-within:border-accent/70 focus-within:bg-surface-2 focus-within:text-fg">
+    <div
+      ref={wrapRef}
+      className="relative ml-auto w-full min-w-0 max-w-xs sm:max-w-sm"
+    >
+      <div className="flex min-w-0 items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-3.5 py-2 text-muted backdrop-blur-sm transition duration-200 focus-within:border-accent/70 focus-within:bg-surface-2 focus-within:text-fg">
         <SearchIcon className="h-4 w-4 shrink-0" aria-hidden />
         <input
           type="search"
           role="combobox"
-          className="w-full bg-transparent text-sm text-fg placeholder-faint outline-none"
+          className="w-full min-w-0 bg-transparent text-sm text-fg placeholder-faint outline-none"
           placeholder="Search anime &amp; manga..."
           value={term}
           onChange={(e) => {
