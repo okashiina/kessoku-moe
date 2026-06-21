@@ -47,18 +47,36 @@ export function isMadaraImageHost(rawUrl: string): boolean {
 // shell out to the system `curl` (present on Windows 10+ and Railway/Linux) for
 // every manhwatop request — HTML and images alike. Verified 2026-06-21: undici
 // gets "Just a moment" 403, curl gets 200.
-const curlArgs = (url: string): string[] => [
-  '-s',
-  '-L',
-  '--compressed',
-  '--max-time',
-  '25',
-  '-A',
-  UA,
-  '-H',
-  `Referer: ${MADARA_REFERER}`,
-  url,
-];
+//
+// IP CAVEAT (the prod fix): Cloudflare also blocks datacenter IPs, so from a
+// cloud host (Railway) even curl gets the "Just a moment" challenge — the title
+// reads fine on a residential connection (localhost) but shows "No readable
+// chapters" in prod. Set MANHWATOP_PROXY to a residential egress to make the
+// requests look like a home connection again. Accepts any curl proxy URL:
+//   - paid residential proxy:  http://user:pass@host:port  (always-on)
+//   - free self-hosted:        socks5://127.0.0.1:1080 tunnelled from a home
+//     machine (e.g. over Tailscale) — costs nothing but needs that box awake.
+// Unset (the default, and localhost) = direct curl, unchanged behavior.
+const proxyUrl = (): string => process.env.MANHWATOP_PROXY?.trim() || '';
+
+const curlArgs = (url: string): string[] => {
+  const proxy = proxyUrl();
+  return [
+    ...(proxy ? ['--proxy', proxy] : []),
+    '-s',
+    '-L',
+    '--compressed',
+    '--max-time',
+    // A residential proxy adds latency, and image bytes flow through it, so give
+    // proxied requests a longer ceiling than direct curl.
+    proxy ? '45' : '25',
+    '-A',
+    UA,
+    '-H',
+    `Referer: ${MADARA_REFERER}`,
+    url,
+  ];
+};
 
 async function getText(url: string): Promise<string | null> {
   try {

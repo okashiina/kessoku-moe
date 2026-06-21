@@ -10,6 +10,7 @@ import {
   ArrowRightIcon,
   BadgeCheckIcon,
   BookmarkIcon,
+  BookOpenIcon,
   CalendarIcon,
   ChartBarIcon,
   ChatAlt2Icon,
@@ -369,6 +370,102 @@ const FillerMock: React.FC = () => (
   </div>
 );
 
+// The manga reader, in miniature: a language switch, the spot it saved you, and
+// the two ways to read. Tapping a mode flips the frame between a webtoon's long
+// scroll and side-by-side pages, the same choice the real reader gives you.
+const READER_MODES = ['Webtoon', 'Paged'] as const;
+const MangaMock: React.FC = () => {
+  const reduced = useReducedMotion();
+  const [mode, setMode] = useState<typeof READER_MODES[number]>('Webtoon');
+
+  return (
+    <div className="mx-auto max-w-sm rounded-2xl border border-line/50 bg-canvas-2/70 p-4 shadow-card">
+      <div className="mb-3 flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-aurora text-accent-ink">
+          <BookOpenIcon className="h-4 w-4" aria-hidden />
+        </span>
+        <span className="text-sm font-semibold text-fg">now reading</span>
+        <span className="ml-auto flex items-center gap-1">
+          <span className="rounded-full bg-aurora px-2 py-0.5 text-[11px] font-semibold text-accent-ink">
+            EN
+          </span>
+          <span className="rounded-full border border-line/60 bg-surface/60 px-2 py-0.5 text-[11px] font-semibold text-muted">
+            ID
+          </span>
+        </span>
+      </div>
+
+      <div className="relative h-44 overflow-hidden rounded-xl border border-line/40 bg-surface/40 p-3">
+        <span className="absolute left-3 top-3 z-10 rounded-full bg-canvas/70 px-2 py-0.5 text-[10px] font-semibold text-fg backdrop-blur-sm">
+          Ch. 12
+        </span>
+        <motion.div
+          key={mode}
+          initial={reduced ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25, ease: EASE }}
+          className="h-full pt-5"
+        >
+          {mode === 'Webtoon' ? (
+            <div className="space-y-2">
+              {[
+                'h-10 from-accent/30',
+                'h-14 from-accent-soft/25',
+                'h-9 from-accent/20',
+              ].map((c) => (
+                <div
+                  key={c}
+                  className={`rounded-md bg-gradient-to-br to-surface-2 ${c}`}
+                  aria-hidden
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-full justify-center gap-2">
+              <div
+                className="h-full w-1/3 rounded-md bg-gradient-to-br from-accent/30 to-surface-2"
+                aria-hidden
+              />
+              <div
+                className="h-full w-1/3 rounded-md bg-gradient-to-br from-accent-soft/25 to-surface-2"
+                aria-hidden
+              />
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface">
+        <div className="h-full w-2/3 rounded-full bg-aurora" />
+      </div>
+
+      <div className="mt-3 flex items-center gap-2">
+        {READER_MODES.map((m) => {
+          const on = m === mode;
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              aria-pressed={on}
+              className={
+                on
+                  ? 'inline-flex min-h-[44px] items-center rounded-full bg-aurora px-3.5 text-[11px] font-semibold text-accent-ink transition [touch-action:manipulation] active:scale-95'
+                  : 'inline-flex min-h-[44px] items-center rounded-full border border-line/60 bg-surface/60 px-3.5 text-[11px] text-muted transition [touch-action:manipulation] hover:border-accent/50 hover:text-fg active:scale-95'
+              }
+            >
+              {m}
+            </button>
+          );
+        })}
+        <span className="ml-auto text-[11px] text-muted">
+          picks up on page 14
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // ---------------------------------------------------------------------------
 // Splash top nav (own minimal bar; the app Header lives on /home)
 // ---------------------------------------------------------------------------
@@ -413,6 +510,14 @@ const SplashNav: React.FC = () => {
           <Link href="/browse" passHref>
             <a className="text-sm font-medium text-muted transition hover:text-fg">
               Browse
+            </a>
+          </Link>
+          <Link href="/manga" passHref>
+            <a className="-my-2 inline-flex min-h-[44px] items-center gap-1.5 py-2 text-sm font-medium text-muted transition hover:text-fg">
+              Manga
+              <span className="rounded-full bg-aurora px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-accent-ink">
+                new
+              </span>
             </a>
           </Link>
           <Link href="/schedule" passHref>
@@ -526,7 +631,7 @@ const Hero: React.FC<{ covers: string[] }> = ({ covers }) => {
             variants={heroItem}
             className="mt-4 font-display text-4xl font-extrabold leading-[1.02] text-fg sm:text-6xl lg:text-7xl"
           >
-            all your anime,
+            anime and manga,
             <br />
             one stage.
           </motion.h1>
@@ -535,8 +640,9 @@ const Hero: React.FC<{ covers: string[] }> = ({ covers }) => {
             variants={heroItem}
             className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg"
           >
-            Thousands of titles, no pop-ups, no sign-up. Skip the intro, track
-            every episode, and bring a seat-mate who never spoils the ending.
+            Thousands of titles to stream, plus manga and manhwa to read. No
+            pop-ups, no sign-up. Skip the intro, save your page, and bring a
+            seat-mate who never spoils the ending.
           </motion.p>
 
           <motion.div
@@ -591,8 +697,8 @@ const Splash = ({
   return (
     <>
       <NextSeo
-        title="kessoku moe · all your anime, one stage"
-        description="Free anime streaming with trending, seasonal, and top-rated picks, plus an airing schedule with live countdowns. Dark, cute, a little rock."
+        title="kessoku moe · anime and manga, one stage"
+        description="Free anime streaming and a manga, manhwa, and manhua reader in one place. Trending and top-rated picks, an airing schedule with live countdowns, page-by-page or webtoon reading. Dark, cute, a little rock."
       />
 
       <SplashNav />
@@ -602,6 +708,17 @@ const Splash = ({
 
         {/* Credential strip */}
         <RevealStagger className="mx-auto -mt-4 flex max-w-screen-2xl flex-wrap gap-2.5 px-4 sm:px-6 lg:px-8">
+          <RevealItem>
+            <Link href="/manga" passHref>
+              <a className="bg-aurora/15 hover:bg-aurora/25 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-accent/60 px-3.5 py-1.5 text-sm font-semibold text-fg backdrop-blur-sm transition [touch-action:manipulation] active:scale-95">
+                <BookOpenIcon className="h-4 w-4 text-accent" aria-hidden />
+                manga &amp; manhwa
+                <span className="rounded-full bg-aurora px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-accent-ink">
+                  new
+                </span>
+              </a>
+            </Link>
+          </RevealItem>
           <Chip icon={BadgeCheckIcon}>AniList sync</Chip>
           <Chip icon={ChatAlt2Icon}>watch companion</Chip>
           <Chip icon={ChartBarIcon}>filler vs canon</Chip>
@@ -716,6 +833,45 @@ const Splash = ({
           </div>
         </section>
 
+        {/* Manga announcement — the new reader, framed as its own act */}
+        <Reveal className="mt-24">
+          <section className="mx-auto max-w-screen-2xl px-4 sm:px-6 lg:px-8">
+            <div className="relative overflow-hidden rounded-3xl border border-accent/30 bg-canvas-2/50 px-6 py-12 sm:px-10 sm:py-14">
+              <div aria-hidden className="absolute inset-0 -z-10">
+                <div className="bg-accent/15 absolute -right-16 -top-20 h-72 w-72 rounded-full blur-3xl" />
+              </div>
+              <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:gap-16">
+                <div className="lg:w-1/2">
+                  <FeatureEyebrow icon={BookOpenIcon}>
+                    new · manga &amp; manhwa
+                  </FeatureEyebrow>
+                  <h2 className="mt-3 font-display text-2xl font-bold text-fg sm:text-3xl">
+                    Read between episodes
+                  </h2>
+                  <p className="mt-4 max-w-md leading-relaxed text-muted">
+                    Manga, manhwa, and manhua, tagged by where they&apos;re from
+                    so you know what you&apos;re opening before the first page.
+                    Read it page by page, or let a webtoon run in one long
+                    scroll. It saves your spot to the exact page, your saves sit
+                    under My List next to your shows, and an 18+ switch stays
+                    off until you flip it. English and Indonesian, wherever the
+                    scanlators have them.
+                  </p>
+                  <Link href="/manga" passHref>
+                    <a className="mt-6 inline-flex min-h-[44px] items-center gap-2 rounded-full bg-aurora px-7 py-3.5 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 ease-out hover:brightness-110 active:scale-95">
+                      <BookOpenIcon className="h-5 w-5" />
+                      Open the reader
+                    </a>
+                  </Link>
+                </div>
+                <div className="lg:w-1/2">
+                  <MangaMock />
+                </div>
+              </div>
+            </div>
+          </section>
+        </Reveal>
+
         {/* The rest */}
         <section className="mx-auto mt-24 max-w-screen-2xl px-4 sm:px-6 lg:px-8">
           <Reveal>
@@ -817,8 +973,9 @@ const Splash = ({
                 Ready for the show?
               </h2>
               <p className="mx-auto mt-4 max-w-md text-muted">
-                Thousands of shows, zero hoops. Sync your list, skip the intro,
-                and bring someone to talk to. The stage is set.
+                Thousands of shows and a shelf of manga, zero hoops. Sync your
+                list, skip the intro, save your page, and bring someone to talk
+                to. The stage is set.
               </p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link href="/home" passHref>
