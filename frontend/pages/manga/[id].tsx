@@ -96,66 +96,86 @@ export const getServerSideProps: GetServerSideProps<DetailProps> = async ({
     new Set([...FETCH_LANGS, (detail.countryOfOrigin || '').toLowerCase()])
   ).filter(Boolean);
 
-  // Resolve all three providers in parallel: MangaDex (id/ja/en + general),
-  // Weebcentral (licensed titles MangaDex took down, English), and manhwatop
-  // (Madara — licensed Korean BL/adult webtoons the others lack, English).
-  const [mdChapters, weeb, madara] = await Promise.all([
-    (async () => {
-      try {
-        const md = await resolveByAniList(id, titles, nsfw);
-        if (!md) return null;
-        return groupByLang(await getChapterFeed(md.id, langs, nsfw));
-      } catch {
-        return null;
-      }
-    })(),
-    (async () => {
-      try {
-        const series = await searchWeeb(titles[0] ?? '', titles);
-        if (!series) return null;
-        const chs = await getWeebChapters(series.id);
-        if (!chs.length) return null;
-        return chs.map<ChapterLite>((c) => ({
-          id: encodeRef({
-            provider: 'wc',
-            weebSeriesId: series.id,
-            chapterId: c.id,
-          }),
-          chapterNum: c.num,
-          label: c.label,
-          title: null,
-          group: 'Weeb Central',
-          pages: 0,
-          volume: null,
-        }));
-      } catch {
-        return null;
-      }
-    })(),
-    (async () => {
-      try {
-        const series = await searchMadara(titles[0] ?? '', titles);
-        if (!series) return null;
-        const chs = await getMadaraChapters(series.slug);
-        if (!chs.length) return null;
-        return chs.map<ChapterLite>((c) => ({
-          id: encodeRef({
-            provider: 'mh',
-            madaraSlug: series.slug,
-            chapterId: c.slug,
-          }),
-          chapterNum: c.num,
-          label: c.label,
-          title: null,
-          group: 'manhwatop',
-          pages: 0,
-          volume: null,
-        }));
-      } catch {
-        return null;
-      }
-    })(),
+  // Cap any single provider so one slow source can't hang the whole page (worst
+  // case was ~30s). Returns null on timeout, same as a failed lookup.
+  const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+    Promise.race([
+      p,
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+
+  const resolveMd = async (): Promise<Record<string, ChapterLite[]> | null> => {
+    try {
+      const md = await resolveByAniList(id, titles, nsfw);
+      if (!md) return null;
+      return groupByLang(await getChapterFeed(md.id, langs, nsfw));
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveWeeb = async (): Promise<ChapterLite[] | null> => {
+    try {
+      const series = await searchWeeb(titles[0] ?? '', titles);
+      if (!series) return null;
+      const chs = await getWeebChapters(series.id);
+      if (!chs.length) return null;
+      return chs.map<ChapterLite>((c) => ({
+        id: encodeRef({
+          provider: 'wc',
+          weebSeriesId: series.id,
+          chapterId: c.id,
+        }),
+        chapterNum: c.num,
+        label: c.label,
+        title: null,
+        group: 'Weeb Central',
+        pages: 0,
+        volume: null,
+      }));
+    } catch {
+      return null;
+    }
+  };
+
+  const resolveMadara = async (): Promise<ChapterLite[] | null> => {
+    try {
+      const series = await searchMadara(titles[0] ?? '', titles);
+      if (!series) return null;
+      const chs = await getMadaraChapters(series.slug);
+      if (!chs.length) return null;
+      return chs.map<ChapterLite>((c) => ({
+        id: encodeRef({
+          provider: 'mh',
+          madaraSlug: series.slug,
+          chapterId: c.slug,
+        }),
+        chapterNum: c.num,
+        label: c.label,
+        title: null,
+        group: 'manhwatop',
+        pages: 0,
+        volume: null,
+      }));
+    } catch {
+      return null;
+    }
+  };
+
+  // MangaDex + Weebcentral first (the fast sources), each capped.
+  const [mdChapters, weeb] = await Promise.all([
+    withTimeout(resolveMd(), 12000),
+    withTimeout(resolveWeeb(), 12000),
   ]);
+
+  // manhwatop is the SLOW path (a residential relay round-trip) and only carries
+  // licensed BL/adult the others lack. So only pay it when md + weeb produced no
+  // English at all — every MangaDex/Weebcentral-covered title skips the relay.
+  const hasEnglish =
+    (mdChapters?.en?.length ?? 0) > 0 || (weeb?.length ?? 0) > 0;
+  const madara = hasEnglish ? null : await withTimeout(resolveMadara(), 15000);
 
   const chaptersByLang: Record<string, ChapterLite[]> = {
     ...(mdChapters ?? {}),
