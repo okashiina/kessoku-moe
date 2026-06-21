@@ -93,7 +93,7 @@ export const relayEnabled = (): boolean => relayBase().length > 0;
 
 async function fetchViaRelay(target: string): Promise<Response | null> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45000);
+  const timer = setTimeout(() => controller.abort(), 30000);
   try {
     const res = await fetch(
       `${relayBase()}/f?u=${encodeURIComponent(target)}`,
