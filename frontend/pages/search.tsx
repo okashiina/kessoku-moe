@@ -15,13 +15,16 @@ import { NextSeo } from 'next-seo';
 import Card from '@components/anime/Card';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
+import { fetchMangaBrowse, MangaInfo, originLabel } from '@utility/manga';
+import { useTitle } from '@utility/titleLang';
 
-// The three lenses search supports. "anime" is the default and keeps the
-// original title-grid behavior untouched.
-type SearchTab = 'anime' | 'studios' | 'staff';
+// The lenses search supports. "anime" is the default and keeps the original
+// title-grid behavior untouched.
+type SearchTab = 'anime' | 'manga' | 'studios' | 'staff';
 
 const TABS: { value: SearchTab; label: string }[] = [
   { value: 'anime', label: 'Anime' },
+  { value: 'manga', label: 'Manga' },
   { value: 'studios', label: 'Studios' },
   { value: 'staff', label: 'Voice actors' },
 ];
@@ -30,6 +33,7 @@ interface SearchResult {
   tab: SearchTab;
   keyword: string;
   anime: SearchAnimeQuery | null;
+  manga: MangaInfo[] | null;
   studios: SearchStudiosQuery | null;
   staff: SearchStaffQuery | null;
 }
@@ -47,11 +51,20 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
     : 'anime';
 
   let anime: SearchAnimeQuery | null = null;
+  let manga: MangaInfo[] | null = null;
   let studios: SearchStudiosQuery | null = null;
   let staff: SearchStaffQuery | null = null;
 
   // Only fetch the active lens — keeps each search a single AniList round-trip.
-  if (tab === 'studios') {
+  if (tab === 'manga') {
+    const result = await fetchMangaBrowse({
+      page: 1,
+      perPage: 20,
+      search: keyword || undefined,
+      sort: keyword ? ['SEARCH_MATCH'] : ['POPULARITY_DESC'],
+    });
+    manga = result.media;
+  } else if (tab === 'studios') {
     studios = await searchStudios({ keyword, page: 1, perPage: 20 });
   } else if (tab === 'staff') {
     staff = await searchStaff({ keyword, page: 1, perPage: 20 });
@@ -64,10 +77,44 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
       tab,
       keyword,
       anime,
+      manga,
       studios,
       staff,
     },
   };
+};
+
+// Local manga result card — links to /manga/{id}. We deliberately do not reuse
+// the anime Card (it points at /anime/) or the manga Card component (out of
+// scope). Mirrors the dropdown's design tokens.
+const MangaResultCard: React.FC<{ manga: MangaInfo }> = ({ manga }) => {
+  const title = useTitle(manga.title);
+  const meta = [manga.format, originLabel(manga.countryOfOrigin)]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <Link href={`/manga/${manga.id}`} passHref>
+      <a className="group flex flex-col">
+        <span
+          className="aspect-[2/3] relative w-full overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-line/40 transition duration-200 group-hover:ring-accent/60"
+          style={{ backgroundColor: manga.coverImage.color || undefined }}
+        >
+          {manga.coverImage.large && (
+            <Image
+              alt={title || 'Manga cover'}
+              src={manga.coverImage.large}
+              layout="fill"
+              objectFit="cover"
+            />
+          )}
+        </span>
+        <span className="mt-2 text-sm font-medium text-fg line-clamp-2 group-hover:text-accent">
+          {title || 'Untitled'}
+        </span>
+        {meta && <span className="mt-0.5 text-xs text-faint">{meta}</span>}
+      </a>
+    </Link>
+  );
 };
 
 const EmptyState: React.FC<{ keyword: string }> = ({ keyword }) => (
@@ -90,6 +137,7 @@ const Search = ({
   tab,
   keyword,
   anime,
+  manga,
   studios,
   staff,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -98,6 +146,7 @@ const Search = ({
   progressBar.finish();
 
   const animeResults = anime?.Page?.media ?? [];
+  const mangaResults = manga ?? [];
   const studioResults = (studios?.Page?.studios ?? []).filter(
     (s): s is NonNullable<typeof s> => Boolean(s)
   );
@@ -107,6 +156,7 @@ const Search = ({
 
   const counts: Record<SearchTab, number> = {
     anime: animeResults.length,
+    manga: mangaResults.length,
     studios: studioResults.length,
     staff: staffResults.length,
   };
@@ -185,6 +235,15 @@ const Search = ({
           <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
             {animeResults.map((media) => (
               <Card key={media.id} anime={media} />
+            ))}
+          </div>
+        )}
+
+        {/* Manga — poster grid linking to /manga/{id} */}
+        {tab === 'manga' && hasResults && (
+          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+            {mangaResults.map((media) => (
+              <MangaResultCard key={media.id} manga={media} />
             ))}
           </div>
         )}

@@ -66,6 +66,16 @@ ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# curl is required at runtime by the manhwatop (Madara) manga provider, which
+# shells out to curl to fetch HTML + stream images: that source sits behind
+# Cloudflare bot protection that 403s Node's undici fetch ("Just a moment") while
+# curl's TLS fingerprint passes. node:20-slim ships without curl, so install it.
+# (Caveat: from a datacenter IP Cloudflare may still challenge curl; if manhwatop
+# breaks in prod, route that provider through a residential egress — MangaDex via
+# DoH + Weebcentral are unaffected. See docs/MANGA-ROADMAP.md.)
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+  && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 

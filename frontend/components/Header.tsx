@@ -11,6 +11,7 @@ import SearchAutosuggest from '@components/SearchAutosuggest';
 const NAV_LINKS = [
   { label: 'Home', href: '/home' },
   { label: 'Browse', href: '/browse' },
+  { label: 'Manga', href: '/manga' },
   { label: 'Schedule', href: '/schedule' },
   { label: 'My List', href: '/watchlist' },
 ];
