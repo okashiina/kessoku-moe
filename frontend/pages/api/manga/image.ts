@@ -5,6 +5,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import {
   isMadaraImageHost,
   madaraImageContentType,
+  relayEnabled,
+  relayImageStream,
   streamMadaraImage,
 } from '@utility/server/madara';
 import { isMangadexImageHost, mdOpenImage } from '@utility/server/mangadex';
@@ -59,7 +61,24 @@ export default async function handler(
     }
 
     if (isMadaraImageHost(target)) {
-      // manhwatop is Cloudflare-protected (undici gets 403); stream via curl.
+      // manhwatop is Cloudflare-protected (undici gets 403). In the cloud the
+      // container's own curl is fingerprint-blocked, so prefer the residential
+      // relay (it fetches the bytes for us); locally, stream via curl directly.
+      if (relayEnabled()) {
+        const stream = await relayImageStream(target);
+        if (!stream) {
+          res.status(502).json({ error: 'relay image failed' });
+          return;
+        }
+        res.setHeader('Content-Type', madaraImageContentType(target));
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        res.status(200);
+        stream.on('error', () => {
+          if (!res.writableEnded) res.end();
+        });
+        stream.pipe(res);
+        return;
+      }
       const proc = streamMadaraImage(target);
       res.setHeader('Content-Type', madaraImageContentType(target));
       res.setHeader('Cache-Control', 'public, max-age=604800, immutable');

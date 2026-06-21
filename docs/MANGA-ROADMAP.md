@@ -487,3 +487,31 @@ Three shipped changes (PR `feat/manga-prod-source-and-landing`):
   scanlators have them"). Mobile/PWA audit (Android + iOS) run: one sub-44px tap-target
   blocker (the mock toggle) + warns fixed — all new controls ≥44px with touch-action +
   active feedback. tsc + next lint clean.
+
+## Update 2026-06-21 (2) — manhwatop prod fix via residential RELAY
+
+The `MANHWATOP_PROXY` (CONNECT proxy) approach did NOT fix manhwatop in prod.
+Diagnosis: a CONNECT proxy only tunnels bytes, so the Railway container still
+performs the TLS handshake with manhwatop. Cloudflare blocks the Linux
+container's curl TLS fingerprint **even from a residential IP** (verified: the
+same residential tunnel returns the full page to a Windows curl but the container
+gets an empty/challenge response). Fixing the egress IP is not enough; the
+fingerprint doing the handshake is the tripwire.
+
+Fix = a **relay**: a residential machine fetches the page itself (its curl passes
+Cloudflare) and returns the bytes; the container never speaks TLS to manhwatop.
+- `frontend/utility/server/madara.ts`: when `MANHWATOP_RELAY` (+ `MANHWATOP_RELAY_KEY`)
+  is set, `getText` and image streaming go through `<relay>/f?u=<url>` instead of
+  curl. Unset = direct curl (localhost), unchanged.
+- `frontend/pages/api/manga/image.ts`: prefers the relay stream when enabled.
+- `tools/manhwatop-proxy/relay.mjs`: the laptop-side relay (HTTP service, key-auth,
+  manhwatop-only SSRF guard), exposed over an ngrok HTTP **static domain** (free,
+  no credit card — the card requirement was only for ngrok TCP). Static domain +
+  stable key ⇒ set the Railway vars once, no redeploy churn.
+- Verified locally end-to-end: search returns the slug, chapter list returns 102
+  chapters, key-auth rejects (403), non-manhwatop rejected (400).
+- Trade-off: relay machine must be awake. The CONNECT-proxy path (`MANHWATOP_PROXY`)
+  is left in place as a local convenience but does not bypass Cloudflare from a
+  datacenter. For true 24/7 hands-off, a paid residential proxy + a
+  browser-fingerprint client (e.g. curl-impersonate) would be needed; the relay
+  is the free route.
