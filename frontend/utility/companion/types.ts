@@ -13,6 +13,7 @@ export interface CardMedia {
   title: string;
   cover: string | null;
   color?: string | null;
+  type?: 'ANIME' | 'MANGA' | null;
   // For a voice actor's roles: the character they played in this title.
   as?: string | null;
 }

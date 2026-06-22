@@ -56,7 +56,7 @@ const TonePicker: React.FC<{ placement?: 'bottom' | 'top' }> = ({
           setOpen((v) => !v);
           setConfirmMature(false);
         }}
-        className="flex items-center gap-1 rounded-full border border-line/60 px-2.5 py-1 text-xs font-semibold text-muted transition hover:border-accent/50 hover:text-fg"
+        className="flex min-h-[44px] items-center gap-1 rounded-full border border-line/60 px-3 text-xs font-semibold text-muted transition [touch-action:manipulation] hover:border-accent/50 hover:text-fg active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -76,7 +76,8 @@ const TonePicker: React.FC<{ placement?: 'bottom' | 'top' }> = ({
             }}
           />
           <div
-            className={`absolute right-0 z-20 w-56 overflow-hidden rounded-xl border border-line/60 bg-canvas-2 p-1 shadow-lift ${menuPos}`}
+            className={`absolute right-0 z-20 w-56 max-w-[calc(100vw-2rem)] overflow-y-auto overscroll-contain rounded-xl border border-line/60 bg-canvas-2 p-1 shadow-lift ${menuPos}`}
+            style={{ maxHeight: 'calc(85svh - 4.5rem)' }}
           >
             {COMPANION_TONES.map((t) => {
               const locked = Boolean(t.mature) && !prefs.mature;
@@ -86,7 +87,7 @@ const TonePicker: React.FC<{ placement?: 'bottom' | 'top' }> = ({
                   key={t.id}
                   type="button"
                   onClick={() => pickTone(t.id, t.mature)}
-                  className={`flex w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition ${
+                  className={`flex min-h-[44px] w-full items-start gap-2 rounded-lg px-2.5 py-2 text-left transition [touch-action:manipulation] ${
                     active
                       ? 'bg-surface text-fg'
                       : 'text-muted hover:bg-surface/70 hover:text-fg'
@@ -124,14 +125,14 @@ const TonePicker: React.FC<{ placement?: 'bottom' | 'top' }> = ({
                   <button
                     type="button"
                     onClick={enableMature}
-                    className="rounded-full bg-aurora px-2.5 py-1 text-[11px] font-semibold text-accent-ink shadow-glow active:scale-95"
+                    className="min-h-[44px] rounded-full bg-aurora px-3 text-xs font-semibold text-accent-ink shadow-glow [touch-action:manipulation] active:scale-95 motion-reduce:active:scale-100"
                   >
                     Turn it on
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmMature(false)}
-                    className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-muted hover:text-fg"
+                    className="min-h-[44px] rounded-full px-3 text-xs font-semibold text-muted [touch-action:manipulation] hover:text-fg"
                   >
                     Not now
                   </button>

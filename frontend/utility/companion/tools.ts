@@ -115,6 +115,16 @@ export const COMPANION_TOOLS: CompanionToolSchema[] = [
   },
 ];
 
+// Manga has no voice-actor/studio/episode-recap context. Keep its tool surface
+// narrow so an identity question can only resolve a character or list the
+// title's verified cast instead of wandering into anime-only lookups.
+export const MANGA_COMPANION_TOOLS: CompanionToolSchema[] =
+  COMPANION_TOOLS.filter(
+    (tool) =>
+      tool.function.name === 'lookup_character' ||
+      tool.function.name === 'list_main_cast'
+  );
+
 // Short present-tense label for the "looking it up…" indicator while a tool runs.
 export const labelForToolCall = (call: ToolCall): string => {
   const name = typeof call.args.name === 'string' ? call.args.name.trim() : '';

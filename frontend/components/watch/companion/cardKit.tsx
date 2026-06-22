@@ -50,7 +50,10 @@ export const MiniPoster: React.FC<{
   media: CardMedia;
   target: LinkTarget;
 }> = ({ media, target }) => (
-  <Link href={`/anime/${media.id}`} passHref>
+  <Link
+    href={media.type === 'MANGA' ? `/manga/${media.id}` : `/anime/${media.id}`}
+    passHref
+  >
     <a
       target={target}
       rel={relFor(target)}

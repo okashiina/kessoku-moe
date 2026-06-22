@@ -27,7 +27,10 @@ import { fileURLToPath } from 'node:url';
 const PORT = Number(process.env.RELAY_PORT) || 1080;
 // Your free ngrok static domain, e.g. 'kessoku-pizza.ngrok-free.app'.
 // Reserve one (free) at https://dashboard.ngrok.com/domains.
-const NGROK_DOMAIN = process.env.NGROK_DOMAIN || '';
+const NGROK_DOMAIN = (process.env.NGROK_DOMAIN || '')
+  .trim()
+  .replace(/^https?:\/\//i, '')
+  .replace(/\/+$/, '');
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 // ---------------------------------------------------------------------------

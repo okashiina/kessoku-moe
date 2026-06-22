@@ -35,6 +35,7 @@ const norm = (s: string): string => s.trim().toLowerCase();
 // Loose, defensive shapes — AniList can hand back sparse nodes.
 interface MediaNode {
   id: number;
+  type?: 'ANIME' | 'MANGA' | null;
   title?: { romaji?: string | null; english?: string | null } | null;
   coverImage?: {
     large?: string | null;
@@ -58,6 +59,7 @@ const toCardMedia = (
     title: mediaTitle(node),
     cover,
     color: node.coverImage.color ?? null,
+    type: node.type ?? null,
     as: as ?? null,
   };
 };
@@ -246,6 +248,7 @@ const CHARACTER_FIELDS = `
         characterRole
         node {
           id
+          type
           title { romaji english }
           coverImage { large medium color }
         }

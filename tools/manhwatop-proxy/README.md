@@ -62,18 +62,25 @@ never changes — just keep `relay.mjs` running whenever someone needs to read.
 
 ## Start automatically at login
 
-Point the autostart at **`relay-supervisor.mjs`** (not `relay.mjs`) so a crash
-self-heals:
+On Windows, run the installer once. It creates a hidden launcher in the current
+user's Startup folder, points it at **`relay-supervisor.mjs`**, and starts it
+immediately:
 
 ```powershell
-schtasks /create /tn "kessoku-manhwatop-relay" /sc onlogon /rl limited ^
-  /tr "node \"C:\Projects\kessoku-moe\tools\manhwatop-proxy\relay-supervisor.mjs\""
+cd C:\Projects\kessoku-moe\tools\manhwatop-proxy
+.\install-windows-autostart.ps1 -NgrokDomain your-domain.ngrok-free.dev
 ```
 
-Remove later: `schtasks /delete /tn "kessoku-manhwatop-relay" /f`
+Re-running the command safely replaces the existing launcher. Remove it later
+with:
 
-> A local startup launcher (e.g. `relay-launch.vbs`, gitignored) should likewise
-> invoke `relay-supervisor.mjs` rather than `relay.mjs` for resilience.
+```powershell
+Remove-Item "$([Environment]::GetFolderPath('Startup'))\kessoku-relay.vbs"
+```
+
+The installer uses `set "NGROK_DOMAIN=value"` deliberately. With cmd.exe,
+`set NGROK_DOMAIN=value && ...` includes the space before `&&` in the value and
+makes ngrok reject the domain as malformed.
 
 ## Notes
 

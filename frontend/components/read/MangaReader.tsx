@@ -18,6 +18,8 @@ import {
   PhotographIcon,
 } from '@heroicons/react/solid';
 
+import ReadingCompanion from '@components/manga/ReadingCompanion';
+import type { CompanionRosterEntry } from '@utility/companion/types';
 import { markChapterRead, saveMangaPosition } from '@utility/mangaProgress';
 import {
   getReaderPrefs,
@@ -47,6 +49,7 @@ export interface MangaReaderProps {
   group: string | null;
   siblings: ReaderSibling[]; // ascending by chapter number
   webtoonDefault: boolean;
+  roster: CompanionRosterEntry[];
 }
 
 interface PagesResponse {
@@ -65,6 +68,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   group,
   siblings,
   webtoonDefault,
+  roster,
 }) => {
   const router = useRouter();
   const prefs = useSyncExternalStore(
@@ -231,6 +235,13 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   useEffect(() => {
     if (continuous) return undefined;
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.isContentEditable ||
+        target?.closest('input, textarea, select, button')
+      ) {
+        return;
+      }
       if (e.key === 'ArrowRight') advance(mode === 'rtl' ? -1 : 1);
       else if (e.key === 'ArrowLeft') advance(mode === 'rtl' ? 1 : -1);
       else if (e.key === ' ' || e.key === 'ArrowDown') {
@@ -310,6 +321,15 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         >
           <CogIcon className="h-5 w-5" />
         </button>
+        <ReadingCompanion
+          anilistId={anilistId}
+          title={seriesTitle}
+          chapterNum={chapterNum}
+          totalChapters={siblings.length}
+          pageIndex={page}
+          pageUrl={pages[page] || null}
+          roster={roster}
+        />
       </header>
 
       {/* Settings sheet */}
@@ -411,49 +431,51 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       )}
 
       {status === 'ready' && continuous && (
-        <div
-          ref={scrollRef}
-          onClick={() => setChromeVisible((v) => !v)}
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
-        >
+        <>
           <div
-            className={`mx-auto flex w-full max-w-3xl flex-col items-center ${
-              mode === 'vertical' ? 'gap-2 py-2' : 'gap-0'
-            }`}
+            ref={scrollRef}
+            onClick={() => setChromeVisible((v) => !v)}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
           >
-            {pages.map((src, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={src}
-                data-page={i}
-                src={src}
-                alt={`Page ${i + 1}`}
-                loading={i < 2 ? 'eager' : 'lazy'}
-                draggable={false}
-                className="block w-full select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
-              />
-            ))}
+            <div
+              className={`mx-auto flex w-full max-w-3xl flex-col items-center ${
+                mode === 'vertical' ? 'gap-2 py-2' : 'gap-0'
+              }`}
+            >
+              {pages.map((src, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={src}
+                  data-page={i}
+                  src={src}
+                  alt={`Page ${i + 1}`}
+                  loading={i < 2 ? 'eager' : 'lazy'}
+                  draggable={false}
+                  className="block w-full select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
+                />
+              ))}
+            </div>
+            {/* End-of-chapter footer */}
+            <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 px-4 py-10 text-center">
+              <p className="text-sm text-white/60">End of {chapterLabel}</p>
+              {nextChapter ? (
+                <button
+                  type="button"
+                  onClick={() => goChapter(nextChapter)}
+                  className="min-h-[44px] rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink [touch-action:manipulation]"
+                >
+                  Next: {nextChapter.label}
+                </button>
+              ) : (
+                <Link href={detailHref} passHref>
+                  <a className="inline-flex min-h-[44px] items-center rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold [touch-action:manipulation]">
+                    Back to chapters
+                  </a>
+                </Link>
+              )}
+            </div>
           </div>
-          {/* End-of-chapter footer */}
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 px-4 py-10 text-center">
-            <p className="text-sm text-white/60">End of {chapterLabel}</p>
-            {nextChapter ? (
-              <button
-                type="button"
-                onClick={() => goChapter(nextChapter)}
-                className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink"
-              >
-                Next: {nextChapter.label}
-              </button>
-            ) : (
-              <Link href={detailHref} passHref>
-                <a className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold">
-                  Back to chapters
-                </a>
-              </Link>
-            )}
-          </div>
-        </div>
+        </>
       )}
 
       {status === 'ready' && !continuous && pages.length > 0 && (
