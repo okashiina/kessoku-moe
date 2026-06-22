@@ -3,6 +3,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import { NextSeo } from 'next-seo';
 
 import MangaReader, { ReaderSibling } from '@components/read/MangaReader';
+import type { CompanionRosterEntry } from '@utility/companion/types';
 import { defaultWebtoon, fetchMangaDetail } from '@utility/manga';
 import { decodeRef, encodeRef } from '@utility/mangaRef';
 import { nsfwFromCookie } from '@utility/nsfw';
@@ -33,6 +34,7 @@ interface ReadProps {
   group: string | null;
   siblings: ReaderSibling[];
   webtoonDefault: boolean;
+  roster: CompanionRosterEntry[];
 }
 
 export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
@@ -52,6 +54,7 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
   let seriesTitle = '';
   let cover: string | null = null;
   let webtoonDefault = false;
+  let roster: CompanionRosterEntry[] = [];
   if (hasAniList) {
     const detail = await fetchMangaDetail(anilistId);
     if (detail) {
@@ -62,6 +65,18 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
         '';
       cover = detail.coverImage.large || detail.coverImage.medium || null;
       webtoonDefault = defaultWebtoon(detail.countryOfOrigin);
+      roster = (detail.characters?.edges ?? [])
+        .map<CompanionRosterEntry | null>((edge) => {
+          const name = edge?.node?.name?.full;
+          if (!name || !edge?.node?.id) return null;
+          return {
+            name,
+            role: edge.role?.toLowerCase() || undefined,
+            characterId: edge.node.id,
+            characterImage: edge.node.image?.medium || undefined,
+          };
+        })
+        .filter((entry): entry is CompanionRosterEntry => Boolean(entry));
     }
   }
 
@@ -168,6 +183,7 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
       group,
       siblings,
       webtoonDefault,
+      roster,
     },
   };
 };

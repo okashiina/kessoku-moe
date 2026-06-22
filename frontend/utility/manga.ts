@@ -29,12 +29,22 @@ export interface MangaInfo {
   genres: string[] | null;
 }
 
+export interface MangaCharacter {
+  role: string | null;
+  node: {
+    id: number;
+    name: { full: string | null } | null;
+    image: { medium: string | null } | null;
+  } | null;
+}
+
 export interface MangaDetail extends MangaInfo {
   bannerImage: string | null;
   description: string | null;
   synonyms: string[] | null;
   startDate: { year: number | null } | null;
   isAdult: boolean | null;
+  characters: { edges: (MangaCharacter | null)[] | null } | null;
 }
 
 const INFO = `
@@ -57,6 +67,16 @@ const DETAIL = `
   synonyms
   startDate { year }
   isAdult
+  characters(sort: [ROLE, RELEVANCE], perPage: 50) {
+    edges {
+      role
+      node {
+        id
+        name { full }
+        image { medium }
+      }
+    }
+  }
 `;
 
 export interface MangaHome {
