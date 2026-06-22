@@ -76,4 +76,37 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
+// Offline manga: serve downloaded chapter pages + page-list JSON from the
+// `offline-manga-v1` cache when present, otherwise fall through to the network.
+// The PAGE writes this cache (see frontend/utility/mangaDownloads.ts); the SW
+// only reads. Scoped strictly to manga URLs — every other request is left for
+// Workbox (we never call respondWith for those). Defensive: any error just
+// falls back to the network.
+self.addEventListener('fetch', (event) => {
+  let pathname: string;
+  try {
+    pathname = new URL(event.request.url).pathname;
+  } catch {
+    return; // not a parseable URL — let Workbox handle it
+  }
+
+  const isManga =
+    pathname === '/api/manga/image' ||
+    (/^\/api\/manga\/chapter\/[^/]+\/pages$/.test(pathname) &&
+      event.request.method === 'GET');
+  if (!isManga) return; // not ours — Workbox handles it
+
+  event.respondWith(
+    (async () => {
+      try {
+        const cache = await caches.open('offline-manga-v1');
+        const hit = await cache.match(event.request, { ignoreSearch: false });
+        return hit || (await fetch(event.request));
+      } catch {
+        return fetch(event.request);
+      }
+    })()
+  );
+});
+
 export {};

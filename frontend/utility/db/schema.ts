@@ -256,6 +256,10 @@ export const mangaNotifyTargets = pgTable(
 // recipient is an AniList user id; the row carries a denormalized actor name +
 // reply snippet + a deep link's pieces so the inbox renders without extra joins.
 // read_at null = unread.
+// 'manga_chapter' shape reuses these same columns: commentId 0 (no comment),
+// episode = floored chapter number, actorName = manga title, targetType 'manga',
+// snippet = "Chapter N is out". Columns are unconstrained text/int so no
+// migration is needed for the new type/targetType values.
 export const notifications = pgTable(
   'notifications',
   {

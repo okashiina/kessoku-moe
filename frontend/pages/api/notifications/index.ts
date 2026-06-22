@@ -17,18 +17,27 @@ const PAGE = 30;
 
 type Row = typeof schema.notifications.$inferSelect;
 
-const deepLink = (row: Row): string =>
-  row.targetType === 'episode'
-    ? `/watch/${row.anilistId}?episode=${row.episode}`
-    : `/anime/${row.anilistId}`;
+const deepLink = (row: Row): string => {
+  if (row.targetType === 'episode') {
+    return `/watch/${row.anilistId}?episode=${row.episode}`;
+  }
+  if (row.targetType === 'manga') return `/manga/${row.anilistId}`;
+  return `/anime/${row.anilistId}`;
+};
+
+const mapTargetType = (t: string): NotificationItem['targetType'] => {
+  if (t === 'episode') return 'episode';
+  if (t === 'manga') return 'manga';
+  return 'anime';
+};
 
 const toItem = (row: Row): NotificationItem => ({
   id: row.id,
-  type: 'reply',
+  type: row.type as NotificationItem['type'],
   actorName: row.actorName,
   commentId: row.commentId,
   anilistId: row.anilistId,
-  targetType: row.targetType === 'episode' ? 'episode' : 'anime',
+  targetType: mapTargetType(row.targetType),
   episode: row.episode,
   snippet: row.snippet,
   createdAt: row.createdAt.toISOString(),

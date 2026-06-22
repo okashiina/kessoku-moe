@@ -8,9 +8,11 @@ import { NextSeo } from 'next-seo';
 import Header from '@components/Header';
 import MangaCard from '@components/manga/Card';
 import ContinueReading from '@components/manga/ContinueReading';
+import ForYouRail from '@components/manga/ForYouRail';
 import NsfwToggle from '@components/manga/NsfwToggle';
 import SavedRail from '@components/manga/SavedRail';
 import MangaSection from '@components/manga/Section';
+import VibeSearch from '@components/manga/VibeSearch';
 import progressBar from '@components/Progress';
 import {
   fetchMangaBrowse,
@@ -59,6 +61,7 @@ const firstParam = (v: string | string[] | undefined): string =>
 
 interface MangaIndexProps {
   mode: 'home' | 'grid';
+  nsfw: boolean;
   home: MangaHome | null;
   grid: {
     media: MangaInfo[];
@@ -83,7 +86,7 @@ export const getServerSideProps: GetServerSideProps<MangaIndexProps> = async ({
 
   if (!isFiltered) {
     const home = await fetchMangaHome(nsfw);
-    return { props: { mode: 'home', home, grid: null } };
+    return { props: { mode: 'home', nsfw, home, grid: null } };
   }
 
   const variables: Record<string, unknown> = {
@@ -98,11 +101,12 @@ export const getServerSideProps: GetServerSideProps<MangaIndexProps> = async ({
   if (STATUSES.some((s) => s.value === status)) variables.status = status;
 
   const grid = await fetchMangaBrowse(variables, nsfw);
-  return { props: { mode: 'grid', home: null, grid } };
+  return { props: { mode: 'grid', nsfw, home: null, grid } };
 };
 
 const MangaLibrary = ({
   mode,
+  nsfw,
   home,
   grid,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -192,6 +196,9 @@ const MangaLibrary = ({
             </button>
           </form>
 
+          {/* AI vibe-search: describe a mood, get matching titles */}
+          <VibeSearch />
+
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-2">
             {COUNTRIES.map((c) => (
@@ -247,6 +254,7 @@ const MangaLibrary = ({
           <>
             <ContinueReading />
             <SavedRail />
+            <ForYouRail nsfw={nsfw} />
             <MangaSection title="Trending now" mangaList={home.trending} />
             <MangaSection title="Popular manhwa" mangaList={home.manhwa} />
             <MangaSection title="All-time popular" mangaList={home.popular} />

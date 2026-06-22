@@ -15,11 +15,18 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CogIcon,
+  DownloadIcon,
   PhotographIcon,
 } from '@heroicons/react/solid';
 
 import ReadingCompanion from '@components/manga/ReadingCompanion';
 import type { CompanionRosterEntry } from '@utility/companion/types';
+import {
+  deleteChapter as deleteOfflineChapter,
+  downloadChapter,
+  isChapterDownloaded,
+  subscribeDownloads,
+} from '@utility/mangaDownloads';
 import { markChapterRead, saveMangaPosition } from '@utility/mangaProgress';
 import {
   getReaderPrefs,
@@ -87,6 +94,15 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const [page, setPage] = useState(0);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+
+  // Offline download state. `downloaded` is reactive via the external store;
+  // `dl` tracks an in-flight download's progress (null when idle).
+  const downloaded = useSyncExternalStore(
+    subscribeDownloads,
+    () => isChapterDownloaded(chapterId),
+    () => false
+  );
+  const [dl, setDl] = useState<{ done: number; total: number } | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -188,6 +204,26 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const markDone = useCallback(() => {
     if (anilistId != null) markChapterRead(anilistId, chapterNum);
   }, [anilistId, chapterNum]);
+
+  // Download the active `pages` (respects data saver) into the offline cache.
+  const handleDownload = useCallback(async () => {
+    if (dl || downloaded || pages.length === 0) return;
+    setDl({ done: 0, total: pages.length });
+    try {
+      await downloadChapter(
+        chapterId,
+        pages,
+        { title: `${seriesTitle} · ${chapterLabel}` },
+        (done, total) => setDl({ done, total })
+      );
+    } finally {
+      setDl(null);
+    }
+  }, [dl, downloaded, pages, chapterId, seriesTitle, chapterLabel]);
+
+  const handleDeleteDownload = useCallback(() => {
+    deleteOfflineChapter(chapterId).catch(() => {});
+  }, [chapterId]);
 
   const goChapter = (s: ReaderSibling | null) => {
     if (!s) return;
@@ -405,6 +441,37 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                 className="h-5 w-5 accent-pink-500"
               />
             </label>
+
+            {/* Offline download */}
+            <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/50">
+              Offline
+            </p>
+            {downloaded ? (
+              <div className="flex min-h-[44px] items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2.5">
+                <span className="flex items-center gap-2 text-sm text-emerald-300">
+                  <DownloadIcon className="h-4 w-4" /> Saved offline
+                </span>
+                <button
+                  type="button"
+                  onClick={handleDeleteDownload}
+                  className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition [touch-action:manipulation] hover:bg-white/10 hover:text-white active:bg-white/20"
+                >
+                  Delete
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleDownload}
+                disabled={Boolean(dl) || pages.length === 0}
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2.5 text-sm font-medium text-white/80 transition [touch-action:manipulation] hover:bg-white/10 active:bg-white/20 disabled:opacity-50"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {dl
+                  ? `Downloading… ${dl.done}/${dl.total}`
+                  : 'Download chapter'}
+              </button>
+            )}
           </div>
         </>
       )}
