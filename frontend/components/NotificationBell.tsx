@@ -134,10 +134,21 @@ const NotificationBell: React.FC = () => {
                         <span className="min-w-0 flex-1">
                           <span className="flex items-baseline justify-between gap-2">
                             <span className="truncate text-sm text-fg">
-                              <span className="font-semibold">
-                                {item.actorName}
-                              </span>{' '}
-                              replied to you
+                              {item.type === 'manga_chapter' ? (
+                                <>
+                                  <span className="font-semibold">
+                                    New chapter
+                                  </span>{' '}
+                                  · {item.actorName}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="font-semibold">
+                                    {item.actorName}
+                                  </span>{' '}
+                                  replied to you
+                                </>
+                              )}
                             </span>
                             <time
                               dateTime={item.createdAt}

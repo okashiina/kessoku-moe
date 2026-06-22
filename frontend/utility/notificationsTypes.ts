@@ -2,16 +2,16 @@
 
 export interface NotificationItem {
   id: number;
-  type: 'reply';
+  type: 'reply' | 'manga_chapter';
   actorName: string;
-  commentId: number; // the reply that triggered it
+  commentId: number; // the reply that triggered it (0 for manga_chapter)
   anilistId: number;
-  targetType: 'anime' | 'episode';
+  targetType: 'anime' | 'episode' | 'manga';
   episode: number | null;
   snippet: string;
   createdAt: string; // ISO 8601
   read: boolean;
-  href: string; // deep link to the comment's page
+  href: string; // deep link: the comment's page, or /manga/<id> for chapters
 }
 
 export interface NotificationsResponse {

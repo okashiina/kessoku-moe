@@ -39,16 +39,6 @@ const MANGA_MAX_PER_RUN =
     ? Number(process.env.MANGA_PUSH_MAX_PER_RUN)
     : 40;
 
-// The in-app inbox renderer (components/NotificationBell.tsx) + its API
-// (pages/api/notifications/index.ts) are hardcoded to the 'reply' shape today
-// ("{actorName} replied to you", deep-linking /anime/<id>). A 'manga_chapter'
-// row would therefore render wrong there. Web push (correct /manga/<id> link)
-// is always sent; the in-app row is written ONLY when the inbox understands the
-// new type, gated by this flag so we never ship a fake "replied to you".
-// ponytail: flip MANGA_INBOX_ENABLED=1 after the integrator teaches the inbox
-// the 'manga_chapter' type (see the report). Default off = push-only, no bug.
-const MANGA_INBOX_ENABLED = process.env.MANGA_INBOX_ENABLED === '1';
-
 const SCHEDULE_QUERY = `
 query($ids:[Int], $from:Int, $to:Int, $page:Int){
   Page(page:$page, perPage:50){
@@ -343,12 +333,11 @@ const runMangaPass = async (db: Db): Promise<MangaPassResult> => {
     }
 
     // In-app inbox row (signed-in owners only; recipient is an AniList user
-    // id). Gated until the inbox renderer understands 'manga_chapter'.
+    // id). The inbox renderer + API now understand the 'manga_chapter' type.
     // ponytail: reuse the 'reply'-shaped notifications table — commentId 0 (no
     // comment; column is NOT NULL but unconstrained), targetType 'manga' (no DB
-    // check on this column), episode = floored chapter for the int column. See
-    // the report for the inbox edits this needs.
-    if (MANGA_INBOX_ENABLED && t.ownerKind === 'user' && !muted) {
+    // check on this column), episode = floored chapter for the int column.
+    if (t.ownerKind === 'user' && !muted) {
       const recipientId = Number(t.ownerId);
       if (Number.isInteger(recipientId)) {
         await db.insert(notifications).values({
