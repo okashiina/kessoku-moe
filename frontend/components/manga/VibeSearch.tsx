@@ -26,13 +26,14 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: 'completed',
 };
 
-// "Action · Romance · trending · ongoing" — a human echo of what we searched.
+// "best matches · Action · Romance · popular" — a human echo of what we searched.
 const describeFilters = (f: VibeFilters): string => {
   const parts = [...f.genres];
   if (f.countryOfOrigin) parts.push(COUNTRY_LABEL[f.countryOfOrigin]);
   if (f.status) parts.push(STATUS_LABEL[f.status]);
   parts.push(SORT_LABEL[f.sort] ?? 'popular');
   if (f.search) parts.unshift(`“${f.search}”`);
+  if (f.titles?.length) parts.unshift('best matches');
   return parts.filter(Boolean).join(' · ');
 };
 
