@@ -222,10 +222,40 @@ export const commentVotes = pgTable(
   (t) => [uniqueIndex('comment_vote_unq').on(t.commentId, t.anilistUserId)]
 );
 
-// In-app notifications. Currently one type ('reply'): someone replied to the
-// recipient's comment. The recipient is an AniList user id; the row carries a
-// denormalized actor name + reply snippet + a deep link's pieces so the inbox
-// renders without extra joins. read_at null = unread.
+// What each owner wants "new chapter" alerts for, mirroring notifyTargets for
+// anime. ponytail: per-owner last_chapter column instead of a manga_notify_log
+// table — the highest chapter number we've already notified this owner about
+// (null = none yet, so the owner only gets FUTURE chapters, not a backfill
+// blast). Upgrade to a shared (anilist_id, chapter) log if dedupe needs to be
+// global across owners.
+export const mangaNotifyTargets = pgTable(
+  'manga_notify_targets',
+  {
+    id: serial('id').primaryKey(),
+    ownerKind: text('owner_kind').notNull(), // 'user' | 'device'
+    ownerId: text('owner_id').notNull(),
+    anilistId: integer('anilist_id').notNull(),
+    title: text('title'), // snapshot for the push body
+    lastChapter: text('last_chapter'), // highest chapter already notified; null = none
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex('manga_notify_target_owner_unq').on(
+      t.ownerKind,
+      t.ownerId,
+      t.anilistId
+    ),
+    index('manga_notify_target_anilist_idx').on(t.anilistId),
+  ]
+);
+
+// In-app notifications. Types: 'reply' (someone replied to the recipient's
+// comment) and 'manga_chapter' (a subscribed manga got a new chapter). The
+// recipient is an AniList user id; the row carries a denormalized actor name +
+// reply snippet + a deep link's pieces so the inbox renders without extra joins.
+// read_at null = unread.
 export const notifications = pgTable(
   'notifications',
   {

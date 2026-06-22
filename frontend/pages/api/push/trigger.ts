@@ -4,11 +4,13 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 
 import { getDb, hasDb, schema } from '@utility/db/client';
 import { bearer } from '@utility/db/viewer';
+import { fetchMangaDetail, mangaSearchTitles } from '@utility/manga';
 import {
   pushConfigured,
   sendToSubscriptions,
   type SendSub,
 } from '@utility/push/server';
+import { getChapterFeed, resolveByAniList } from '@utility/server/mangadex';
 
 // The cron entrypoint and the heart of "it actually works". On each run it:
 //   1. gathers every anime id any active owner wants alerts for (bells, plus
@@ -27,6 +29,25 @@ const LOOKBACK_SECONDS =
 
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co';
 const ID_CHUNK = 50;
+
+// ponytail: cap how many distinct manga we resolve per run so a large bell list
+// can't blow the 15-min cron budget (each manga is a throttled MangaDex feed
+// fetch). Unscanned manga simply roll over to the next run. Raise via
+// MANGA_PUSH_MAX_PER_RUN, or move to a cursor if the backlog ever grows.
+const MANGA_MAX_PER_RUN =
+  Number(process.env.MANGA_PUSH_MAX_PER_RUN) > 0
+    ? Number(process.env.MANGA_PUSH_MAX_PER_RUN)
+    : 40;
+
+// The in-app inbox renderer (components/NotificationBell.tsx) + its API
+// (pages/api/notifications/index.ts) are hardcoded to the 'reply' shape today
+// ("{actorName} replied to you", deep-linking /anime/<id>). A 'manga_chapter'
+// row would therefore render wrong there. Web push (correct /manga/<id> link)
+// is always sent; the in-app row is written ONLY when the inbox understands the
+// new type, gated by this flag so we never ship a fake "replied to you".
+// ponytail: flip MANGA_INBOX_ENABLED=1 after the integrator teaches the inbox
+// the 'manga_chapter' type (see the report). Default off = push-only, no bug.
+const MANGA_INBOX_ENABLED = process.env.MANGA_INBOX_ENABLED === '1';
 
 const SCHEDULE_QUERY = `
 query($ids:[Int], $from:Int, $to:Int, $page:Int){
@@ -138,6 +159,239 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
   return out;
 };
 
+// ---------------------------------------------------------------------------
+// Manga pass. Mirrors the anime flow but for "new chapter available": each
+// owner has at most one manga_notify_targets row per manga, carrying the
+// highest chapter we've already told them about (last_chapter). For every
+// subscribed manga we resolve the current latest chapter from MangaDex and, for
+// each owner who is behind, push + (optionally) inbox + advance their
+// last_chapter. Defensive throughout: one manga or one owner failing must not
+// abort the run.
+// ---------------------------------------------------------------------------
+
+type Db = NonNullable<ReturnType<typeof getDb>>;
+
+// Chapter numbers are strings on the wire ("12", "12.5", "Oneshot"). Parse to a
+// comparable float; non-numeric / missing -> null (treated as "no chapter").
+const chapterToNum = (raw: string | null | undefined): number | null => {
+  if (raw == null) return null;
+  const n = parseFloat(String(raw));
+  return Number.isFinite(n) ? n : null;
+};
+
+// Latest chapter number for an AniList manga id, via MangaDex only. Resolves the
+// AniList id -> MangaDex manga (link-indexed, else best title hit), then takes
+// the max chapter across its feed in our reader languages. NSFW on: a bell is an
+// explicit opt-in, so adult titles must still resolve. Returns null on any miss
+// (unmatched title, empty feed, network) so the caller skips it this run.
+const latestChapterFor = async (
+  anilistId: number,
+  titles: string[]
+): Promise<number | null> => {
+  const md = await resolveByAniList(anilistId, titles, true);
+  if (!md) return null;
+  const feed = await getChapterFeed(md.id, ['id', 'en', 'ja'], true);
+  let max: number | null = null;
+  feed.forEach((c) => {
+    if (c.attributes.externalUrl) return; // unreadable external link
+    const n = chapterToNum(c.attributes.chapter);
+    if (n != null && (max == null || n > max)) max = n;
+  });
+  return max;
+};
+
+interface MangaPassResult {
+  checked: number;
+  fired: number;
+  sent: number;
+  pruned: number;
+}
+
+const runMangaPass = async (db: Db): Promise<MangaPassResult> => {
+  const { mangaNotifyTargets, pushSubscriptions, notifyPrefs, notifications } =
+    schema;
+  const result: MangaPassResult = { checked: 0, fired: 0, sent: 0, pruned: 0 };
+
+  // Every bell row (owner + manga + their last_chapter snapshot + title).
+  const targets = await db
+    .select({
+      id: mangaNotifyTargets.id,
+      ownerKind: mangaNotifyTargets.ownerKind,
+      ownerId: mangaNotifyTargets.ownerId,
+      anilistId: mangaNotifyTargets.anilistId,
+      title: mangaNotifyTargets.title,
+      lastChapter: mangaNotifyTargets.lastChapter,
+    })
+    .from(mangaNotifyTargets);
+  if (targets.length === 0) return result;
+
+  // Distinct manga ids, capped per run (ponytail budget guard).
+  const distinctIds = Array.from(
+    new Set(targets.map((t) => t.anilistId))
+  ).slice(0, MANGA_MAX_PER_RUN);
+  result.checked = distinctIds.length;
+
+  // A stored bell title snapshot for a manga id, if any (fallback when AniList
+  // is unreachable for resolution + display).
+  const snapshotTitle = (id: number): string | null =>
+    targets.find((t) => t.anilistId === id && t.title)?.title ?? null;
+
+  // Resolve each manga's latest chapter once, cached for the run. A failure for
+  // one manga leaves it absent from the map -> its owners are skipped this run.
+  const latestById = new Map<number, number>();
+  const titleById = new Map<number, string>();
+  // eslint-disable-next-line no-restricted-syntax
+  for (const id of distinctIds) {
+    try {
+      // AniList titles drive MangaDex resolution; fall back to the stored bell
+      // title snapshot if AniList is unreachable.
+      // eslint-disable-next-line no-await-in-loop
+      const detail = await fetchMangaDetail(id);
+      const snap = snapshotTitle(id);
+      const titles = detail
+        ? mangaSearchTitles(detail)
+        : [snap].filter((s): s is string => Boolean(s));
+      const display =
+        detail?.title.english ||
+        detail?.title.romaji ||
+        detail?.title.native ||
+        snap ||
+        'your manga';
+      titleById.set(id, display);
+      // eslint-disable-next-line no-await-in-loop
+      const latest = await latestChapterFor(id, titles);
+      if (latest != null) latestById.set(id, latest);
+    } catch (err) {
+      log(`manga resolve failed for ${id}`, err);
+    }
+  }
+
+  // Handle one owner+manga target end to end: behind-check, fan a push to that
+  // owner's subscriptions, (optionally) write the inbox row, advance the
+  // watermark. Early returns keep it flat and avoid `continue` (repo eslint
+  // forbids it). Returns counts to fold into the pass total.
+  type Target = typeof targets[number];
+  const processTarget = async (
+    t: Target
+  ): Promise<{ fired: boolean; sent: number; pruned: number }> => {
+    const noop = { fired: false, sent: 0, pruned: 0 };
+
+    const latest = latestById.get(t.anilistId);
+    if (latest == null) return noop; // unresolved this run
+    const prev = chapterToNum(t.lastChapter);
+    if (prev != null && latest <= prev) return noop; // already caught up
+
+    const title = titleById.get(t.anilistId) || t.title || 'your manga';
+    const latestLabel = Number.isInteger(latest)
+      ? String(latest)
+      : latest.toFixed(1);
+
+    // Owner's live subscriptions.
+    const subRows = await db
+      .select({
+        id: pushSubscriptions.id,
+        endpoint: pushSubscriptions.endpoint,
+        p256dh: pushSubscriptions.p256dh,
+        auth: pushSubscriptions.auth,
+      })
+      .from(pushSubscriptions)
+      .where(
+        and(
+          eq(pushSubscriptions.ownerKind, t.ownerKind),
+          eq(pushSubscriptions.ownerId, t.ownerId)
+        )
+      );
+
+    // Master switch gates push (default on when no prefs row).
+    const prefs = await db
+      .select({ masterEnabled: notifyPrefs.masterEnabled })
+      .from(notifyPrefs)
+      .where(
+        and(
+          eq(notifyPrefs.ownerKind, t.ownerKind),
+          eq(notifyPrefs.ownerId, t.ownerId)
+        )
+      )
+      .limit(1);
+    const muted = prefs[0]?.masterEnabled === false;
+
+    let fired = false;
+    let sent = 0;
+    let pruned = 0;
+
+    if (subRows.length > 0 && !muted) {
+      const subs: SendSub[] = subRows.map((s) => ({
+        id: s.id,
+        endpoint: s.endpoint,
+        p256dh: s.p256dh,
+        auth: s.auth,
+      }));
+      const sendResult = await sendToSubscriptions(subs, {
+        title: 'New chapter',
+        body: `${title} - Chapter ${latestLabel} is out`,
+        url: `/manga/${t.anilistId}`,
+        tag: `manga-${t.anilistId}-${latestLabel}`,
+      });
+      fired = true;
+      sent = sendResult.sent;
+      if (sendResult.prunedIds.length) {
+        pruned = sendResult.prunedIds.length;
+        await db
+          .delete(pushSubscriptions)
+          .where(inArray(pushSubscriptions.id, sendResult.prunedIds));
+      }
+    }
+
+    // In-app inbox row (signed-in owners only; recipient is an AniList user
+    // id). Gated until the inbox renderer understands 'manga_chapter'.
+    // ponytail: reuse the 'reply'-shaped notifications table — commentId 0 (no
+    // comment; column is NOT NULL but unconstrained), targetType 'manga' (no DB
+    // check on this column), episode = floored chapter for the int column. See
+    // the report for the inbox edits this needs.
+    if (MANGA_INBOX_ENABLED && t.ownerKind === 'user' && !muted) {
+      const recipientId = Number(t.ownerId);
+      if (Number.isInteger(recipientId)) {
+        await db.insert(notifications).values({
+          recipientAnilistUserId: recipientId,
+          type: 'manga_chapter',
+          actorName: title,
+          commentId: 0,
+          anilistId: t.anilistId,
+          targetType: 'manga',
+          episode: Math.floor(latest),
+          snippet: `Chapter ${latestLabel} is out`,
+        });
+      }
+    }
+
+    // Advance this owner's watermark regardless of whether a push went out (no
+    // live subs / muted) so we don't re-evaluate it forever.
+    await db
+      .update(mangaNotifyTargets)
+      .set({ lastChapter: latestLabel })
+      .where(eq(mangaNotifyTargets.id, t.id));
+
+    return { fired, sent, pruned };
+  };
+
+  // Process targets sequentially so a burst doesn't open too many push
+  // connections at once and each watermark advance lands before the next.
+  // eslint-disable-next-line no-restricted-syntax
+  for (const t of targets) {
+    try {
+      // eslint-disable-next-line no-await-in-loop
+      const r = await processTarget(t);
+      if (r.fired) result.fired += 1;
+      result.sent += r.sent;
+      result.pruned += r.pruned;
+    } catch (err) {
+      log(`manga notify failed for target ${t.id}`, err);
+    }
+  }
+
+  return result;
+};
+
 const handler = async (
   req: NextApiRequest,
   res: NextApiResponse
@@ -212,10 +466,12 @@ const handler = async (
 
   const wantedIds = Array.from(new Set(activeTargets.map((t) => t.anilistId)));
 
-  if (wantedIds.length === 0) {
-    res.status(200).json({ checked: 0, fired: 0, sent: 0, pruned: 0 });
-    return;
-  }
+  // Anime counts, accumulated as we go. The manga pass (further down) always
+  // runs even when there is no anime work, so we no longer early-return here —
+  // we fall through to runMangaPass() and report both in one JSON body.
+  let animeFired = 0;
+  let animeSent = 0;
+  let animePruned = 0;
 
   // anime id -> the set of owners (keyed "ownerKind ownerId") who actively want
   // alerts for it, so a send fans straight from anime to those owners.
@@ -235,20 +491,15 @@ const handler = async (
   const from = now - LOOKBACK_SECONDS;
   const idChunks = chunk(wantedIds, ID_CHUNK);
 
-  const chunkResults = await Promise.all(
-    idChunks.map((ids) => fetchSchedulesForChunk(ids, from, now))
-  );
+  // Skip the AniList round-trip entirely when no one wants any anime alerts;
+  // the manga pass still runs below.
+  const chunkResults =
+    wantedIds.length === 0
+      ? []
+      : await Promise.all(
+          idChunks.map((ids) => fetchSchedulesForChunk(ids, from, now))
+        );
   const aired = chunkResults.flat();
-
-  if (aired.length === 0) {
-    res.status(200).json({
-      checked: wantedIds.length,
-      fired: 0,
-      sent: 0,
-      pruned: 0,
-    });
-    return;
-  }
 
   // Insert the dedupe-log row for an (anime, episode) so a future run never
   // resends it. Idempotent via the unique index.
@@ -345,29 +596,41 @@ const handler = async (
   // --- 3. For each aired episode, send to its recipients (skip logged). ---
   // Process sequentially so a burst doesn't open too many push connections at
   // once and so each log insert lands before the next episode is considered.
-  let fired = 0;
-  let totalSent = 0;
-  let totalPruned = 0;
-
   const ordered = aired.slice();
   // eslint-disable-next-line no-restricted-syntax
   for (const ep of ordered) {
     try {
       // eslint-disable-next-line no-await-in-loop
       const r = await processEpisode(ep);
-      if (r.fired) fired += 1;
-      totalSent += r.sent;
-      totalPruned += r.pruned;
+      if (r.fired) animeFired += 1;
+      animeSent += r.sent;
+      animePruned += r.pruned;
     } catch (err) {
       log(`failed to process ep ${ep.mediaId}-${ep.episode}`, err);
     }
   }
 
+  // --- 4. Manga pass: same idea for "new chapter available". --------------
+  // Bells live in manga_notify_targets (one row per owner+manga). Dedupe is
+  // per-owner via that row's last_chapter, so there is no separate log table.
+  // ponytail: latest-chapter resolution is MangaDex-only here (resolveByAniList
+  // + getChapterFeed) — the fast, link-indexed source — even though the manga
+  // detail page also reads Weeb Central / manhwatop. Upgrade: union the other
+  // resolvers if a subscribed title is MangaDex-absent and users notice gaps.
+  const manga = await runMangaPass(db).catch((err) => {
+    log('manga pass failed', err);
+    return { checked: 0, fired: 0, sent: 0, pruned: 0 };
+  });
+
   res.status(200).json({
     checked: wantedIds.length,
-    fired,
-    sent: totalSent,
-    pruned: totalPruned,
+    fired: animeFired,
+    sent: animeSent,
+    pruned: animePruned,
+    mangaChecked: manga.checked,
+    mangaFired: manga.fired,
+    mangaSent: manga.sent,
+    mangaPruned: manga.pruned,
   });
 };
 

@@ -96,6 +96,41 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const nextChapter =
     idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
+  // Warm the NEXT chapter's first images so turning the page feels instant.
+  // Best-effort, client-only, no server change. Guarded to fire once per
+  // next-chapter id (no refetch loop). SSR-safe (runs in useEffect only).
+  const prefetchedRef = useRef<string | null>(null);
+  const nearEnd = continuous
+    ? // ponytail: webtoon/vertical has no cheap "near bottom" signal at this
+      // point, so prefetch on mount once pages are ready — good enough.
+      status === 'ready'
+    : pages.length > 0 && page >= pages.length - 2;
+  useEffect(() => {
+    const nextId = nextChapter?.id;
+    let cancelled = false;
+    if (nextId && nearEnd && prefetchedRef.current !== nextId) {
+      prefetchedRef.current = nextId;
+      fetch(`/api/manga/chapter/${nextId}/pages`)
+        .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+        .then((j: PagesResponse) => {
+          if (cancelled) return;
+          const list = prefs.dataSaver ? j.pagesDataSaver : j.pages;
+          // ponytail: warm only the first 3 images, not the whole chapter.
+          (list || []).slice(0, 3).forEach((src) => {
+            const img = new Image();
+            img.src = src;
+          });
+        })
+        .catch(() => {
+          // Best-effort: allow a later retry for this id if the fetch failed.
+          if (prefetchedRef.current === nextId) prefetchedRef.current = null;
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [nextChapter?.id, nearEnd, prefs.dataSaver]);
+
   // Fetch page list on chapter change.
   useEffect(() => {
     let alive = true;

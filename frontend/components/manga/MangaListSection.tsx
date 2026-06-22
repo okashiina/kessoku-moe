@@ -7,6 +7,7 @@ import {
   listSavedManga,
   MANGA_LIST_EMPTY,
   subscribeMangaList,
+  type MangaStatus,
 } from '@utility/mangaList';
 import {
   listMangaContinue,
@@ -19,7 +20,15 @@ interface Tile {
   title: string;
   cover: string | null;
   chapter: number | null;
+  status?: MangaStatus;
 }
+
+// Short badge label for a local reading status on a tile.
+const STATUS_BADGE: Record<MangaStatus, string> = {
+  READING: 'Reading',
+  COMPLETED: 'Done',
+  PLAN_TO_READ: 'Plan',
+};
 
 // "Manga" block on the My List page: bookmarked series (mangaList) unioned with
 // whatever you're mid-read on (mangaProgress), most-recent first.
@@ -37,7 +46,13 @@ const MangaListSection: React.FC = () => {
 
   const byId = new Map<number, Tile>();
   saved.forEach((s) =>
-    byId.set(s.id, { id: s.id, title: s.title, cover: s.cover, chapter: null })
+    byId.set(s.id, {
+      id: s.id,
+      title: s.title,
+      cover: s.cover,
+      chapter: null,
+      status: s.status,
+    })
   );
   reading.forEach(({ id, entry }) => {
     const prev = byId.get(id);
@@ -46,6 +61,7 @@ const MangaListSection: React.FC = () => {
       title: entry.title || prev?.title || 'Untitled',
       cover: entry.cover ?? prev?.cover ?? null,
       chapter: entry.ch,
+      status: prev?.status,
     });
   });
   const tiles = Array.from(byId.values());
@@ -79,6 +95,11 @@ const MangaListSection: React.FC = () => {
                     layout="fill"
                     objectFit="cover"
                   />
+                )}
+                {t.status && (
+                  <span className="absolute left-2 top-2 rounded-full bg-aurora px-2 py-0.5 text-[11px] font-semibold text-accent-ink shadow-glow">
+                    {STATUS_BADGE[t.status]}
+                  </span>
                 )}
                 {t.chapter != null && (
                   <span className="absolute bottom-2 left-2 rounded-full bg-canvas/75 px-2 py-0.5 text-[11px] font-semibold text-fg backdrop-blur-sm">
