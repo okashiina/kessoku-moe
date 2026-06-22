@@ -6,6 +6,7 @@ import { DefaultSeo } from 'next-seo';
 import { Provider } from 'react-redux';
 
 import progressBar from '@components/Progress';
+import useAniListMangaSync from '@hooks/useAniListMangaSync';
 import useAniListSync from '@hooks/useAniListSync';
 import { useStore } from '@store/store';
 
@@ -20,6 +21,7 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   // App-wide AniList sync (no-op when logged out / client id unset).
   useAniListSync();
+  useAniListMangaSync();
 
   return (
     <>

@@ -7,6 +7,9 @@ import { NextSeo } from 'next-seo';
 import Header from '@components/Header';
 import MangaBookmarkButton from '@components/manga/BookmarkButton';
 import ChapterList, { ChapterLite } from '@components/manga/ChapterList';
+import MangaNotifyBell from '@components/manga/NotifyBell';
+import MangaRatingSelect from '@components/manga/RatingSelect';
+import MangaStatusSelect from '@components/manga/StatusSelect';
 import progressBar from '@components/Progress';
 import {
   fetchMangaDetail,
@@ -309,8 +312,26 @@ const MangaDetailPage = ({
               {detail.title.native && (
                 <p className="mt-1 text-sm text-faint">{detail.title.native}</p>
               )}
-              <div className="mt-4">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <MangaBookmarkButton
+                  id={detail.id}
+                  title={title}
+                  cover={cover}
+                  country={detail.countryOfOrigin}
+                />
+                <MangaNotifyBell mangaId={detail.id} title={title} />
+              </div>
+              {/* Local reading status + score shelf. Rate is first so its wider
+                  1-10 popover opens from the left margin and never clips the
+                  right edge at 360px (mobile-pwa-audit). flex-wrap keeps it tidy. */}
+              <div className="mt-3 flex flex-wrap gap-3">
+                <MangaRatingSelect
+                  id={detail.id}
+                  title={title}
+                  cover={cover}
+                  country={detail.countryOfOrigin}
+                />
+                <MangaStatusSelect
                   id={detail.id}
                   title={title}
                   cover={cover}

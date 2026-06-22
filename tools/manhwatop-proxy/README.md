@@ -30,8 +30,19 @@ Trade-off: it only works while this machine is awake.
 
 ## Run it
 
+For an **auto-restarting** relay (recommended), run the supervisor — it respawns
+`relay.mjs` after a short backoff if it ever hard-crashes:
+
 ```powershell
 cd C:\Projects\kessoku-moe\tools\manhwatop-proxy
+node relay-supervisor.mjs
+```
+
+It passes `NGROK_DOMAIN` / `RELAY_PORT` straight through, so set them the same way
+you would for `relay.mjs`. You can still run the relay directly without the
+supervisor if you prefer:
+
+```powershell
 node relay.mjs
 ```
 
@@ -51,12 +62,18 @@ never changes — just keep `relay.mjs` running whenever someone needs to read.
 
 ## Start automatically at login
 
+Point the autostart at **`relay-supervisor.mjs`** (not `relay.mjs`) so a crash
+self-heals:
+
 ```powershell
 schtasks /create /tn "kessoku-manhwatop-relay" /sc onlogon /rl limited ^
-  /tr "node \"C:\Projects\kessoku-moe\tools\manhwatop-proxy\relay.mjs\""
+  /tr "node \"C:\Projects\kessoku-moe\tools\manhwatop-proxy\relay-supervisor.mjs\""
 ```
 
 Remove later: `schtasks /delete /tn "kessoku-manhwatop-relay" /f`
+
+> A local startup launcher (e.g. `relay-launch.vbs`, gitignored) should likewise
+> invoke `relay-supervisor.mjs` rather than `relay.mjs` for resilience.
 
 ## Notes
 
@@ -67,3 +84,7 @@ Remove later: `schtasks /delete /tn "kessoku-manhwatop-relay" /f`
   ngrok URL can't be abused as an open fetcher.
 - No more redeploys on restart: the static domain + key are stable, so the
   Railway variables are set once.
+- **Liveness check:** `curl http://127.0.0.1:1080/health` returns `ok` when the
+  relay is up (handy for the supervisor / monitoring). `relay.mjs` also logs and
+  keeps running on transient per-request errors; `relay-supervisor.mjs` covers the
+  hard crashes that can't be caught in-process.

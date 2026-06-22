@@ -54,6 +54,17 @@ function log(msg) {
   console.log(`[${t}] ${msg}`);
 }
 
+// ponytail: keeping the process alive on an uncaught error is a pragmatic
+// backstop so a single bad request can't take the relay down — it is NOT a
+// substitute for fixing a real bug. Pair with relay-supervisor.mjs for hard
+// crashes this can't catch. Errors are logged, not swallowed silently.
+process.on('uncaughtException', (e) => {
+  log(`uncaughtException (kept alive): ${e?.stack || e}`);
+});
+process.on('unhandledRejection', (e) => {
+  log(`unhandledRejection (kept alive): ${e?.stack || e}`);
+});
+
 // Only relay manhwatop URLs, and only with the shared key — so the public ngrok
 // URL can't be abused as an open fetcher.
 function allowedTarget(raw) {
@@ -69,54 +80,88 @@ function allowedTarget(raw) {
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://localhost');
-  if (url.pathname === '/health') {
-    res.writeHead(200);
-    res.end('ok');
-    return;
-  }
-  if (url.pathname !== '/f') {
-    res.writeHead(404);
-    res.end();
-    return;
-  }
-  if (req.headers['x-relay-key'] !== KEY) {
-    res.writeHead(403);
-    res.end('forbidden');
-    return;
-  }
-  const target = url.searchParams.get('u') || '';
-  if (!allowedTarget(target)) {
-    res.writeHead(400);
-    res.end('bad target');
-    return;
-  }
+  // Wrap the whole handler so a transient per-request error returns a 5xx
+  // instead of throwing out into uncaughtException and risking the process.
+  try {
+    const url = new URL(req.url, 'http://localhost');
+    if (url.pathname === '/health') {
+      res.writeHead(200);
+      res.end('ok');
+      return;
+    }
+    if (url.pathname !== '/f') {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    if (req.headers['x-relay-key'] !== KEY) {
+      res.writeHead(403);
+      res.end('forbidden');
+      return;
+    }
+    const target = url.searchParams.get('u') || '';
+    if (!allowedTarget(target)) {
+      res.writeHead(400);
+      res.end('bad target');
+      return;
+    }
 
-  log(`fetch ${target.slice(0, 90)}`);
-  // This machine's curl does the real request (passes Cloudflare). Pipe raw
-  // bytes back; the caller sets its own Content-Type (HTML vs image).
-  const proc = spawn(
-    'curl',
-    [
-      '-s',
-      '-L',
-      '--compressed',
-      '--max-time',
-      '30',
-      '-A',
-      UA,
-      '-H',
-      'Referer: https://manhwatop.com/',
-      target,
-    ],
-    { stdio: ['ignore', 'pipe', 'ignore'] }
-  );
-  res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
-  proc.stdout.pipe(res);
-  proc.on('error', () => {
+    log(`fetch ${target.slice(0, 90)}`);
+    // This machine's curl does the real request (passes Cloudflare). Pipe raw
+    // bytes back; the caller sets its own Content-Type (HTML vs image).
+    const proc = spawn(
+      'curl',
+      [
+        '-s',
+        '-L',
+        '--compressed',
+        '--max-time',
+        '30',
+        '-A',
+        UA,
+        '-H',
+        'Referer: https://manhwatop.com/',
+        target,
+      ],
+      { stdio: ['ignore', 'pipe', 'ignore'] }
+    );
+    // If curl can't be spawned at all (e.g. ENOENT: curl not on PATH), answer
+    // 502 instead of letting the error event throw.
+    proc.on('error', (e) => {
+      log(`curl spawn failed: ${e?.message || e}`);
+      if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'text/plain' });
+      if (!res.writableEnded) res.end('upstream fetch failed');
+    });
+    // Send the 200 only once curl actually started (the 'spawn' event), so a
+    // spawn failure can still return 502. Works for empty bodies too, since we
+    // don't wait for the first byte.
+    proc.on('spawn', () => {
+      if (!res.headersSent) {
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
+      }
+    });
+    proc.stdout.on('error', () => {
+      if (!res.writableEnded) res.end();
+    });
+    proc.stdout.pipe(res);
+    res.on('close', () => proc.kill());
+    // A broken client socket shouldn't bubble up as an uncaught error.
+    res.on('error', () => proc.kill());
+  } catch (e) {
+    log(`request handler error: ${e?.stack || e}`);
+    if (!res.headersSent) res.writeHead(500);
     if (!res.writableEnded) res.end();
-  });
-  res.on('close', () => proc.kill());
+  }
+});
+
+// Surface listen/runtime socket errors (e.g. EADDRINUSE) clearly instead of
+// crashing the process opaquely.
+server.on('error', (e) => {
+  if (e && e.code === 'EADDRINUSE') {
+    log(`!! port ${PORT} already in use — is another relay running?`);
+  } else {
+    log(`server error: ${e?.stack || e}`);
+  }
 });
 
 server.listen(PORT, '127.0.0.1', () => {
