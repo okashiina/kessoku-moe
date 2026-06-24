@@ -22,8 +22,15 @@ import {
 import ReadingCompanion from '@components/manga/ReadingCompanion';
 import type { CompanionRosterEntry } from '@utility/companion/types';
 import {
+  getAutoDownload,
+  isUnmeteredConnection,
+} from '@utility/mangaAutoDownload';
+import {
   deleteChapter as deleteOfflineChapter,
   downloadChapter,
+  DOWNLOAD_NEXT_MAX,
+  downloadNext,
+  ensurePersistentStorage,
   isChapterDownloaded,
   subscribeDownloads,
 } from '@utility/mangaDownloads';
@@ -91,6 +98,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading'
   );
+  // 'missing' = 404 (no pages for this chapter) vs 'source' = 502/timeout
+  // (relay/CDN down). Drives the error copy below.
+  const [errorKind, setErrorKind] = useState<'missing' | 'source'>('source');
   const [page, setPage] = useState(0);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -103,6 +113,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     () => false
   );
   const [dl, setDl] = useState<{ done: number; total: number } | null>(null);
+  // Multi-chapter "download next N" progress (null when idle).
+  const [bulk, setBulk] = useState<{ index: number; count: number } | null>(
+    null
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +165,38 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     };
   }, [nextChapter?.id, nearEnd, prefs.dataSaver]);
 
-  // Fetch page list on chapter change.
+  // Auto-save the next chapter for offline when the reader opts in (the toggle in
+  // the downloads page) AND is on an unmetered connection. Reuses the same
+  // near-end signal as image prefetch; downloadNext skips a chapter that's
+  // already saved. ponytail: real implementation of the deferred auto-download
+  // trigger (path (b) in mangaAutoDownload) — pre-save the next sibling while
+  // reading, no chapter-list API needed.
+  const autoSavedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const nextId = nextChapter?.id;
+    const eligible =
+      Boolean(nextId) &&
+      nearEnd &&
+      autoSavedRef.current !== nextId &&
+      getAutoDownload().enabled &&
+      isUnmeteredConnection() &&
+      !isChapterDownloaded(nextId as string);
+    if (eligible && nextChapter) {
+      autoSavedRef.current = nextId as string;
+      downloadNext(
+        [{ id: nextChapter.id, title: nextChapter.label }],
+        prefs.dataSaver
+      ).catch(() => {
+        if (autoSavedRef.current === nextId) autoSavedRef.current = null;
+      });
+    }
+  }, [nextChapter, nearEnd, prefs.dataSaver]);
+
+  // Fetch page list on chapter change (and on Retry). `reloadKey` bumps to
+  // re-run the effect without changing the chapter. A 404 means this chapter has
+  // no pages; anything else (502/timeout/offline) is treated as a flaky source.
+  const [reloadKey, setReloadKey] = useState(0);
+  const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useEffect(() => {
     let alive = true;
     setStatus('loading');
@@ -164,11 +209,15 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         setData(j);
         setStatus('ready');
       })
-      .catch(() => alive && setStatus('error'));
+      .catch((code) => {
+        if (!alive) return;
+        setErrorKind(code === 404 ? 'missing' : 'source');
+        setStatus('error');
+      });
     return () => {
       alive = false;
     };
-  }, [chapterId]);
+  }, [chapterId, reloadKey]);
 
   // Persist progress (chapter open + page moves). Only when we know the series.
   const persist = useCallback(
@@ -208,6 +257,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   // Download the active `pages` (respects data saver) into the offline cache.
   const handleDownload = useCallback(async () => {
     if (dl || downloaded || pages.length === 0) return;
+    ensurePersistentStorage().catch(() => {});
     setDl({ done: 0, total: pages.length });
     try {
       await downloadChapter(
@@ -220,6 +270,32 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       setDl(null);
     }
   }, [dl, downloaded, pages, chapterId, seriesTitle, chapterLabel]);
+
+  // The up-to-N chapters after the current one, for "download next N".
+  const upcoming = useMemo(() => {
+    if (idx < 0) return [] as ReaderSibling[];
+    return siblings.slice(idx + 1, idx + 1 + DOWNLOAD_NEXT_MAX);
+  }, [siblings, idx]);
+
+  // Sequentially save the next up-to-N chapters. Respects data saver; skips any
+  // already downloaded; a chapter that fails is skipped (best-effort).
+  const handleDownloadNext = useCallback(async () => {
+    if (bulk || upcoming.length === 0) return;
+    ensurePersistentStorage().catch(() => {});
+    setBulk({ index: 0, count: upcoming.length });
+    try {
+      await downloadNext(
+        upcoming.map((s) => ({
+          id: s.id,
+          title: `${seriesTitle} · ${s.label}`,
+        })),
+        prefs.dataSaver,
+        (p) => setBulk({ index: p.index, count: p.count })
+      );
+    } finally {
+      setBulk(null);
+    }
+  }, [bulk, upcoming, seriesTitle, prefs.dataSaver]);
 
   const handleDeleteDownload = useCallback(() => {
     deleteOfflineChapter(chapterId).catch(() => {});
@@ -463,13 +539,28 @@ const MangaReader: React.FC<MangaReaderProps> = ({
               <button
                 type="button"
                 onClick={handleDownload}
-                disabled={Boolean(dl) || pages.length === 0}
+                disabled={Boolean(dl) || Boolean(bulk) || pages.length === 0}
                 className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2.5 text-sm font-medium text-white/80 transition [touch-action:manipulation] hover:bg-white/10 active:bg-white/20 disabled:opacity-50"
               >
                 <DownloadIcon className="h-4 w-4" />
                 {dl
                   ? `Downloading… ${dl.done}/${dl.total}`
                   : 'Download chapter'}
+              </button>
+            )}
+
+            {/* Download the next few chapters in one go (skips saved ones). */}
+            {upcoming.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDownloadNext}
+                disabled={Boolean(dl) || Boolean(bulk)}
+                className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2.5 text-sm font-medium text-white/80 transition [touch-action:manipulation] hover:bg-white/10 active:bg-white/20 disabled:opacity-50"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {bulk
+                  ? `Saving ${bulk.index} of ${bulk.count}…`
+                  : `Download next ${upcoming.length}`}
               </button>
             )}
           </div>
@@ -484,16 +575,33 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       )}
 
       {status === 'error' && (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          <p className="text-sm text-white/70">
-            Couldn&apos;t load this chapter&apos;s pages. The source may be
-            temporarily unavailable.
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+          <p className="text-base font-semibold text-white">
+            {errorKind === 'missing'
+              ? 'No pages for this chapter yet'
+              : 'This source is temporarily unavailable'}
           </p>
-          <Link href={detailHref} passHref>
-            <a className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold transition hover:bg-white/20">
-              Back to chapters
-            </a>
-          </Link>
+          <p className="max-w-xs text-sm text-white/60">
+            {errorKind === 'missing'
+              ? 'This release has nothing to show. Try another chapter or check back later.'
+              : 'The page server did not answer. Try again in a bit.'}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+            {errorKind === 'source' && (
+              <button
+                type="button"
+                onClick={retry}
+                className="min-h-[44px] rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition [touch-action:manipulation] hover:brightness-110 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+              >
+                Retry
+              </button>
+            )}
+            <Link href={detailHref} passHref>
+              <a className="inline-flex min-h-[44px] items-center rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold transition [touch-action:manipulation] hover:bg-white/20 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100">
+                Back to chapters
+              </a>
+            </Link>
+          </div>
         </div>
       )}
 

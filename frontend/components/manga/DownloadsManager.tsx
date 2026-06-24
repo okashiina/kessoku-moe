@@ -3,10 +3,18 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 
 import {
+  getAutoDownload,
+  setAutoDownloadEnabled,
+  subscribeAutoDownload,
+} from '@utility/mangaAutoDownload';
+import {
   clearAll,
   deleteChapter,
   DOWNLOADS_EMPTY,
   downloadsSnapshot,
+  ensurePersistentStorage,
+  getPersistState,
+  PersistState,
   subscribeDownloads,
 } from '@utility/mangaDownloads';
 
@@ -47,6 +55,67 @@ const useStorageEstimate = (): string | null => {
   return label;
 };
 
+// Read current persistence and best-effort request it on mount, so opening this
+// page nudges the browser to keep downloads around. Feature-gated; never crashes.
+const usePersistState = (): PersistState => {
+  const [state, setState] = useState<PersistState>('unsupported');
+  useEffect(() => {
+    let alive = true;
+    ensurePersistentStorage()
+      .then((s) => alive && setState(s))
+      .catch(
+        () => alive && getPersistState().then((s) => alive && setState(s))
+      );
+    return () => {
+      alive = false;
+    };
+  }, []);
+  return state;
+};
+
+// Persistence status + the "auto-save on wifi" opt-in. Shown in both the empty
+// and populated states so the controls are always reachable.
+const StorageSettings: React.FC<{ persist: PersistState }> = ({ persist }) => {
+  const auto = useSyncExternalStore(
+    subscribeAutoDownload,
+    () => getAutoDownload().enabled,
+    () => false
+  );
+  return (
+    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-line/50 bg-surface/30 px-4 py-3">
+      {persist !== 'unsupported' && (
+        <p className="text-xs text-muted">
+          Storage:{' '}
+          {persist === 'persistent' ? (
+            <span className="font-medium text-emerald-300">persistent ✓</span>
+          ) : (
+            <span className="font-medium text-fg">best-effort</span>
+          )}
+          <span className="ml-1">
+            {persist === 'persistent'
+              ? 'The browser is keeping your downloads.'
+              : 'Downloads may be cleared if storage runs low.'}
+          </span>
+        </p>
+      )}
+      <label className="flex min-h-[44px] items-center justify-between gap-3">
+        <span className="text-sm text-fg">
+          Auto-save the next chapter as you read
+          <span className="mt-0.5 block text-xs text-muted">
+            On wifi only, so the next one is ready offline.
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(e) => setAutoDownloadEnabled(e.target.checked)}
+          className="h-5 w-5 shrink-0 accent-pink-500 [touch-action:manipulation]"
+        />
+      </label>
+    </div>
+  );
+};
+
 const DownloadsManager: React.FC = () => {
   const downloads = useSyncExternalStore(
     subscribeDownloads,
@@ -54,6 +123,7 @@ const DownloadsManager: React.FC = () => {
     () => DOWNLOADS_EMPTY
   );
   const storage = useStorageEstimate();
+  const persist = usePersistState();
 
   const onDelete = (chapterId: string, title: string): void => {
     if (!window.confirm(`Remove "${title}" from downloads?`)) return;
@@ -70,25 +140,29 @@ const DownloadsManager: React.FC = () => {
 
   if (!downloads.length) {
     return (
-      <div className="mx-4 flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center sm:mx-6 lg:mx-8">
-        <p className="font-display text-lg font-bold text-fg">
-          Nothing saved for the road yet
-        </p>
-        <p className="mt-2 max-w-sm text-sm text-muted">
-          Open a chapter, tap the reader settings, and hit Download. It lands
-          here, ready to read when the signal drops.
-        </p>
-        <Link href="/manga" passHref>
-          <a className="mt-6 inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110">
-            Find something to read
-          </a>
-        </Link>
+      <div className="px-4 sm:px-6 lg:px-8">
+        <StorageSettings persist={persist} />
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
+          <p className="font-display text-lg font-bold text-fg">
+            Nothing saved for the road yet
+          </p>
+          <p className="mt-2 max-w-sm text-sm text-muted">
+            Open a chapter, tap the reader settings, and hit Download. It lands
+            here, ready to read when the signal drops.
+          </p>
+          <Link href="/manga" passHref>
+            <a className="mt-6 inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110">
+              Find something to read
+            </a>
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="px-4 sm:px-6 lg:px-8">
+      <StorageSettings persist={persist} />
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/50 bg-surface/30 px-4 py-3">
         <div className="text-sm text-muted">
           <span className="font-semibold text-fg">{downloads.length}</span>{' '}

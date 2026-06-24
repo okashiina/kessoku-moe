@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import Link from 'next/link';
+
 import { AnimeInfoFragment } from '@animeflix/api/aniList';
 import { NextSeo } from 'next-seo';
 
@@ -75,12 +77,23 @@ const Watchlist = () => {
       <Header />
 
       <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        {/* Heading with accent tick */}
-        <div className="mb-6 flex items-center gap-2.5">
-          <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-          <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-            My List
-          </h1>
+        {/* Heading with accent tick + a link to the personal Wrapped page. */}
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
+            <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+              My List
+            </h1>
+          </div>
+          <Link href="/wrapped" passHref>
+            <a
+              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 text-sm font-semibold text-fg ring-1 ring-line/60 transition [touch-action:manipulation] hover:text-accent active:scale-95 motion-reduce:active:scale-100"
+              aria-label="See your reading and watching Wrapped"
+            >
+              <span aria-hidden>♪</span>
+              Wrapped
+            </a>
+          </Link>
         </div>
 
         {/* Signed-out nudge to sync with AniList (hides when logged in). */}
