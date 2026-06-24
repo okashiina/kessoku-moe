@@ -17,6 +17,7 @@ const CACHE_NAME = 'offline-manga-v1';
 const INDEX_KEY = 'kessoku.mangaDownloads.v1';
 const EVENT = 'kessoku:manga-downloads';
 const BATCH = 4; // ponytail: concurrent image fetches per batch
+export const DOWNLOAD_NEXT_MAX = 3; // "Download next N" ceiling
 
 export interface DownloadMeta {
   chapterId: string;
@@ -32,6 +33,44 @@ type Index = Record<string, DownloadMeta>;
 
 const hasWindow = typeof window !== 'undefined';
 const hasCaches = hasWindow && typeof caches !== 'undefined';
+
+// --- Persistent storage ---------------------------------------------------
+// Ask the browser to mark this origin's storage as persistent so iOS/Android are
+// less likely to evict our downloaded chapters under storage pressure. Both calls
+// are best-effort and feature-gated: if the API is missing (older Safari, private
+// mode) we just report 'unsupported' and never throw.
+export type PersistState = 'persistent' | 'best-effort' | 'unsupported';
+
+function storageApi(): StorageManager | undefined {
+  if (!hasWindow) return undefined;
+  const nav = navigator as Navigator & { storage?: StorageManager };
+  return nav.storage;
+}
+
+// Best-effort: request persistence. Safe to call repeatedly (idempotent in the
+// browser). Returns the resulting state. Never rejects.
+export async function ensurePersistentStorage(): Promise<PersistState> {
+  const api = storageApi();
+  if (!api?.persist || !api?.persisted) return 'unsupported';
+  try {
+    if (await api.persisted()) return 'persistent';
+    const granted = await api.persist();
+    return granted ? 'persistent' : 'best-effort';
+  } catch {
+    return 'unsupported';
+  }
+}
+
+// Read-only: current persistence state without requesting it.
+export async function getPersistState(): Promise<PersistState> {
+  const api = storageApi();
+  if (!api?.persisted) return 'unsupported';
+  try {
+    return (await api.persisted()) ? 'persistent' : 'best-effort';
+  } catch {
+    return 'unsupported';
+  }
+}
 
 function readIndex(): Index {
   if (!hasWindow) return {};
@@ -152,6 +191,10 @@ export async function downloadChapter(
     return { ok: false, partial: false, done: 0, total };
   }
 
+  // Best-effort: ask for persistent storage so this download is less evictable.
+  // Fire-and-forget; never blocks or fails the download.
+  ensurePersistentStorage().catch(() => {});
+
   const cache = await caches.open(CACHE_NAME);
 
   // Cache the pages-JSON so the reader can load the page list offline too.
@@ -202,4 +245,92 @@ export async function downloadChapter(
   writeIndex(index);
 
   return { ok: true, partial, done, total };
+}
+
+// --- Multi-chapter ("Download next N") ------------------------------------
+// Fetch a chapter's proxied page URLs for the chosen quality tier. Mirrors what
+// the reader does, so callers can download a chapter they're NOT currently
+// viewing. Returns [] on any failure (caller treats that as "skip this one").
+async function fetchPageUrls(
+  chapterId: string,
+  dataSaver: boolean
+): Promise<string[]> {
+  try {
+    const res = await fetch(pagesUrl(chapterId));
+    if (!res.ok) return [];
+    const json = (await res.json()) as {
+      pages?: string[];
+      pagesDataSaver?: string[];
+    };
+    const list = dataSaver ? json.pagesDataSaver : json.pages;
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+export interface NextChapter {
+  id: string;
+  title?: string;
+}
+
+export interface DownloadNextProgress {
+  index: number; // 1-based: which chapter of the batch we're on
+  count: number; // how many chapters we're attempting
+  done: number; // pages cached in the current chapter
+  total: number; // pages in the current chapter
+  title?: string;
+}
+
+// Download an explicit, ordered list of chapters (already-downloaded ones are
+// skipped). Sequential and rate-friendly: one chapter at a time, each chapter's
+// own image batching stays inside downloadChapter. Best-effort — a chapter whose
+// pages can't be fetched or cached is skipped, not fatal. Returns how many of the
+// attempted chapters ended up saved.
+export async function downloadNext(
+  chapters: NextChapter[],
+  dataSaver: boolean,
+  onProgress?: (p: DownloadNextProgress) => void
+): Promise<{ saved: number; attempted: number }> {
+  const pending = chapters.filter((c) => !isChapterDownloaded(c.id));
+  const count = pending.length;
+  if (!hasCaches || count === 0) return { saved: 0, attempted: 0 };
+
+  ensurePersistentStorage().catch(() => {});
+
+  // Sequence with reduce so the loop carries no closure over mutated state
+  // (no-loop-func / no for...of). Each step resolves to the running saved count.
+  const result = await pending.reduce<Promise<number>>(
+    (chain, chapter, i) =>
+      chain.then(async (saved) => {
+        const urls = await fetchPageUrls(chapter.id, dataSaver);
+        if (urls.length === 0) {
+          onProgress?.({
+            index: i + 1,
+            count,
+            done: 0,
+            total: 0,
+            title: chapter.title,
+          });
+          return saved;
+        }
+        const r = await downloadChapter(
+          chapter.id,
+          urls,
+          { title: chapter.title },
+          (done, total) =>
+            onProgress?.({
+              index: i + 1,
+              count,
+              done,
+              total,
+              title: chapter.title,
+            })
+        );
+        return r.ok ? saved + 1 : saved;
+      }),
+    Promise.resolve(0)
+  );
+
+  return { saved: result, attempted: count };
 }
