@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 import { NextSeo } from 'next-seo';
@@ -172,11 +173,16 @@ const MangaLibrary = ({
 
       <main className="mx-auto w-full max-w-screen-2xl pb-20 pt-6">
         <div className="mb-6 flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
             <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
               Manga &amp; Manhwa
             </h1>
+            <Link href="/manga/downloads" passHref>
+              <a className="ml-auto inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
+                Downloads
+              </a>
+            </Link>
           </div>
 
           {/* Search */}

@@ -61,6 +61,27 @@ export function listDownloads(): DownloadMeta[] {
   return Object.values(readIndex()).sort((a, b) => b.savedAt - a.savedAt);
 }
 
+// Referentially-stable snapshot for useSyncExternalStore: returns the same array
+// reference until the localStorage index actually changes, so the hook doesn't
+// loop ("getSnapshot should be cached"). Mirrors the lastMap/lastList trick in
+// mangaList.ts.
+let lastRaw: string | null = null;
+let lastList: DownloadMeta[] = [];
+export const DOWNLOADS_EMPTY: DownloadMeta[] = [];
+export function downloadsSnapshot(): DownloadMeta[] {
+  if (!hasWindow) return DOWNLOADS_EMPTY;
+  let raw: string | null = null;
+  try {
+    raw = window.localStorage.getItem(INDEX_KEY);
+  } catch {
+    raw = null;
+  }
+  if (raw === lastRaw) return lastList;
+  lastRaw = raw;
+  lastList = listDownloads();
+  return lastList;
+}
+
 export function isChapterDownloaded(chapterId: string): boolean {
   return Boolean(readIndex()[chapterId]);
 }
@@ -97,6 +118,17 @@ export async function deleteChapter(chapterId: string): Promise<void> {
   }
   delete index[chapterId];
   writeIndex(index);
+}
+
+// Delete every downloaded chapter (cache bytes + index). Used by the Downloads
+// manager's "Clear all". Deletes are sequenced so the loop carries no closure
+// over a mutated cache handle (no-loop-func / no for...of).
+export async function clearAll(): Promise<void> {
+  const ids = Object.keys(readIndex());
+  await ids.reduce<Promise<void>>(
+    (chain, id) => chain.then(() => deleteChapter(id)),
+    Promise.resolve()
+  );
 }
 
 export interface DownloadResult {
