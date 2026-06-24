@@ -2,6 +2,8 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import Link from 'next/link';
 
+import { BookOpenIcon, ChevronRightIcon } from '@heroicons/react/solid';
+
 import {
   getAutoDownload,
   setAutoDownloadEnabled,
@@ -15,6 +17,7 @@ import {
   ensurePersistentStorage,
   getPersistState,
   PersistState,
+  readUrlFor,
   subscribeDownloads,
 } from '@utility/mangaDownloads';
 
@@ -147,8 +150,8 @@ const DownloadsManager: React.FC = () => {
             Nothing saved for the road yet
           </p>
           <p className="mt-2 max-w-sm text-sm text-muted">
-            Open a chapter, tap the reader settings, and hit Download. It lands
-            here, ready to read when the signal drops.
+            Open a series, hit Save for offline (or Download in the reader), and
+            chapters land here. Tap one to read it with no connection.
           </p>
           <Link href="/manga" passHref>
             <a className="mt-6 inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110">
@@ -183,29 +186,48 @@ const DownloadsManager: React.FC = () => {
         </button>
       </div>
 
+      <p className="mb-2 text-xs text-muted">
+        Tap a chapter to read it offline.
+      </p>
       <ul className="flex flex-col gap-3">
         {downloads.map((d) => (
           <li
             key={d.chapterId}
-            className="flex items-center justify-between gap-3 rounded-2xl border border-line/50 bg-surface/40 px-4 py-3"
+            className="flex items-center gap-2 rounded-2xl border border-line/50 bg-surface/40 pr-2"
           >
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold text-fg">
-                {d.title || d.chapterId}
-              </p>
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
-                <span>
-                  {d.pageCount} {d.pageCount === 1 ? 'page' : 'pages'}
+            {/* Plain <a> (full navigation), not a Next <Link>: a client-side nav
+                fetches the page's data JSON, which isn't cached and fails offline.
+                A full nav hits the SW, which serves the cached read-page HTML. */}
+            <a
+              href={d.readUrl || readUrlFor(d.chapterId, d.anilistId)}
+              className="group flex min-h-[44px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-fg transition [touch-action:manipulation] hover:text-accent"
+            >
+              <BookOpenIcon
+                className="h-5 w-5 shrink-0 text-accent/70 transition group-hover:text-accent"
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-semibold">
+                  {d.title || d.chapterId}
                 </span>
-                <span aria-hidden>·</span>
-                <span>{fmtDate(d.savedAt)}</span>
-                {d.partial && (
-                  <span className="rounded-full border border-amber-400/50 bg-amber-400/10 px-2 py-0.5 font-medium text-amber-300">
-                    Partial
+                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                  <span>
+                    {d.pageCount} {d.pageCount === 1 ? 'page' : 'pages'}
                   </span>
-                )}
-              </p>
-            </div>
+                  <span aria-hidden>·</span>
+                  <span>{fmtDate(d.savedAt)}</span>
+                  {d.partial && (
+                    <span className="rounded-full border border-amber-400/50 bg-amber-400/10 px-2 py-0.5 font-medium text-amber-200">
+                      Partial
+                    </span>
+                  )}
+                </span>
+              </span>
+              <ChevronRightIcon
+                className="h-5 w-5 shrink-0 text-faint transition group-hover:text-accent"
+                aria-hidden
+              />
+            </a>
             <button
               type="button"
               onClick={() => onDelete(d.chapterId, d.title || d.chapterId)}

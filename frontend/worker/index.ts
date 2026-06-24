@@ -90,23 +90,57 @@ self.addEventListener('fetch', (event) => {
     return; // not a parseable URL — let Workbox handle it
   }
 
-  const isManga =
+  // Downloaded page images + the page-list JSON: cache-first (immutable bytes).
+  const isMangaAsset =
     pathname === '/api/manga/image' ||
     (/^\/api\/manga\/chapter\/[^/]+\/pages$/.test(pathname) &&
       event.request.method === 'GET');
-  if (!isManga) return; // not ours — Workbox handles it
+  if (isMangaAsset) {
+    event.respondWith(
+      (async () => {
+        try {
+          const cache = await caches.open('offline-manga-v1');
+          const hit = await cache.match(event.request, { ignoreSearch: false });
+          return hit || (await fetch(event.request));
+        } catch {
+          return fetch(event.request);
+        }
+      })()
+    );
+    return;
+  }
 
-  event.respondWith(
-    (async () => {
-      try {
-        const cache = await caches.open('offline-manga-v1');
-        const hit = await cache.match(event.request, { ignoreSearch: false });
-        return hit || (await fetch(event.request));
-      } catch {
-        return fetch(event.request);
-      }
-    })()
-  );
+  // Reader page (SSR): network-first so an online open is always fresh, but fall
+  // back to the read-page HTML cached at download time when offline. This is what
+  // lets a downloaded chapter open with no connection. All other navigations are
+  // left to Workbox (we never call respondWith for them).
+  const isReadNav =
+    event.request.mode === 'navigate' && pathname.startsWith('/read/');
+  if (isReadNav) {
+    event.respondWith(
+      (async () => {
+        // Exact match first, then ignore the query: the `?al=` is cosmetic SSR
+        // context and the page is identified by its /read/<chapterId> pathname,
+        // so an older download or a differing al still opens offline.
+        const fromCache = async (): Promise<Response | undefined> => {
+          const cache = await caches.open('offline-manga-v1');
+          return (
+            (await cache.match(event.request, { ignoreSearch: false })) ||
+            (await cache.match(event.request, { ignoreSearch: true }))
+          );
+        };
+        try {
+          const res = await fetch(event.request);
+          // A transient server error (deploy / 5xx) should still fall back to
+          // the saved page for a downloaded chapter.
+          if (res.ok) return res;
+          return (await fromCache()) || res;
+        } catch {
+          return (await fromCache()) || Response.error();
+        }
+      })()
+    );
+  }
 });
 
 export {};
