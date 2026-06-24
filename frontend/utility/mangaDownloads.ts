@@ -25,6 +25,8 @@ export interface DownloadMeta {
   pageCount: number;
   savedAt: number;
   partial?: boolean;
+  anilistId?: number | null; // series id, for the offline read link
+  readUrl?: string; // the /read/<id>?al=<id> page cached so it opens offline
   // Exact URLs we cached, so deleteChapter can remove precisely.
   urls: string[];
 }
@@ -94,6 +96,17 @@ function writeIndex(index: Index): void {
 
 function pagesUrl(chapterId: string): string {
   return `/api/manga/chapter/${chapterId}/pages`;
+}
+
+// The reader route for a chapter. Cached at download time (and served by the SW)
+// so a downloaded chapter opens with no connection — the read page is SSR, so
+// without this it would only open offline if it had been visited online first.
+export function readUrlFor(
+  chapterId: string,
+  anilistId?: number | null
+): string {
+  const al = anilistId && anilistId > 0 ? `?al=${anilistId}` : '';
+  return `/read/${chapterId}${al}`;
 }
 
 export function listDownloads(): DownloadMeta[] {
@@ -183,7 +196,7 @@ export interface DownloadResult {
 export async function downloadChapter(
   chapterId: string,
   pageUrls: string[],
-  meta?: { title?: string },
+  meta?: { title?: string; anilistId?: number | null },
   onProgress?: (done: number, total: number) => void
 ): Promise<DownloadResult> {
   const total = pageUrls.length;
@@ -233,6 +246,17 @@ export async function downloadChapter(
     }
   }
 
+  // Cache the reader page HTML too, so the chapter opens with no connection
+  // (the read route is SSR — see readUrlFor). Best-effort: a chapter is still
+  // useful if only its images cached (e.g. it was opened online before).
+  const readUrl = readUrlFor(chapterId, meta?.anilistId);
+  try {
+    await cache.add(readUrl);
+    cached.push(readUrl);
+  } catch {
+    // Read page not cached; offline open falls back to the network.
+  }
+
   const index = readIndex();
   index[chapterId] = {
     chapterId,
@@ -240,6 +264,8 @@ export async function downloadChapter(
     pageCount: total,
     savedAt: Date.now(),
     partial,
+    anilistId: meta?.anilistId ?? null,
+    readUrl,
     urls: cached,
   };
   writeIndex(index);
@@ -272,6 +298,7 @@ async function fetchPageUrls(
 export interface NextChapter {
   id: string;
   title?: string;
+  anilistId?: number | null;
 }
 
 export interface DownloadNextProgress {
@@ -290,7 +317,8 @@ export interface DownloadNextProgress {
 export async function downloadNext(
   chapters: NextChapter[],
   dataSaver: boolean,
-  onProgress?: (p: DownloadNextProgress) => void
+  onProgress?: (p: DownloadNextProgress) => void,
+  signal?: AbortSignal
 ): Promise<{ saved: number; attempted: number }> {
   const pending = chapters.filter((c) => !isChapterDownloaded(c.id));
   const count = pending.length;
@@ -300,9 +328,12 @@ export async function downloadNext(
 
   // Sequence with reduce so the loop carries no closure over mutated state
   // (no-loop-func / no for...of). Each step resolves to the running saved count.
+  // `signal` lets a long batch stop between chapters (the chapter in flight
+  // finishes; remaining ones are skipped).
   const result = await pending.reduce<Promise<number>>(
     (chain, chapter, i) =>
       chain.then(async (saved) => {
+        if (signal?.aborted) return saved;
         const urls = await fetchPageUrls(chapter.id, dataSaver);
         if (urls.length === 0) {
           onProgress?.({
@@ -317,7 +348,7 @@ export async function downloadNext(
         const r = await downloadChapter(
           chapter.id,
           urls,
-          { title: chapter.title },
+          { title: chapter.title, anilistId: chapter.anilistId },
           (done, total) =>
             onProgress?.({
               index: i + 1,

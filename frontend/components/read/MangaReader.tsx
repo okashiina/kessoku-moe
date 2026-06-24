@@ -184,13 +184,13 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     if (eligible && nextChapter) {
       autoSavedRef.current = nextId as string;
       downloadNext(
-        [{ id: nextChapter.id, title: nextChapter.label }],
+        [{ id: nextChapter.id, title: nextChapter.label, anilistId }],
         prefs.dataSaver
       ).catch(() => {
         if (autoSavedRef.current === nextId) autoSavedRef.current = null;
       });
     }
-  }, [nextChapter, nearEnd, prefs.dataSaver]);
+  }, [nextChapter, nearEnd, prefs.dataSaver, anilistId]);
 
   // Fetch page list on chapter change (and on Retry). `reloadKey` bumps to
   // re-run the effect without changing the chapter. A 404 means this chapter has
@@ -263,13 +263,13 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       await downloadChapter(
         chapterId,
         pages,
-        { title: `${seriesTitle} · ${chapterLabel}` },
+        { title: `${seriesTitle} · ${chapterLabel}`, anilistId },
         (done, total) => setDl({ done, total })
       );
     } finally {
       setDl(null);
     }
-  }, [dl, downloaded, pages, chapterId, seriesTitle, chapterLabel]);
+  }, [dl, downloaded, pages, chapterId, seriesTitle, chapterLabel, anilistId]);
 
   // The up-to-N chapters after the current one, for "download next N".
   const upcoming = useMemo(() => {
@@ -288,6 +288,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         upcoming.map((s) => ({
           id: s.id,
           title: `${seriesTitle} · ${s.label}`,
+          anilistId,
         })),
         prefs.dataSaver,
         (p) => setBulk({ index: p.index, count: p.count })
@@ -295,7 +296,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     } finally {
       setBulk(null);
     }
-  }, [bulk, upcoming, seriesTitle, prefs.dataSaver]);
+  }, [bulk, upcoming, seriesTitle, prefs.dataSaver, anilistId]);
 
   const handleDeleteDownload = useCallback(() => {
     deleteOfflineChapter(chapterId).catch(() => {});

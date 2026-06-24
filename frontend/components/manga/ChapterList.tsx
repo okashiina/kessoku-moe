@@ -14,6 +14,7 @@ import {
   XCircleIcon,
 } from '@heroicons/react/solid';
 
+import BulkDownload from '@components/manga/BulkDownload';
 import {
   getMangaEntry,
   markChaptersRead,
@@ -214,6 +215,10 @@ const ChapterList: React.FC<ChapterListProps> = ({
           {asc ? 'Oldest first' : 'Newest first'}
         </button>
       </div>
+
+      {/* Bulk offline download (all / range). Keyed by lang so the range resets
+          when you switch language. */}
+      <BulkDownload key={lang} anilistId={anilistId} chapters={ascending} />
 
       {sorted.length > 0 && (
         <p className="mb-2 text-xs text-muted">
