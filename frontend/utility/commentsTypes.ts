@@ -3,7 +3,8 @@
 // replies inlined. Soft-deleted or auto-hidden rows are kept for thread shape
 // with `deleted: true` and a blanked body, so a reply never loses its parent.
 
-export type CommentTarget = 'anime' | 'episode';
+// 'manga_chapter' reuses the per-target episode field as the chapter number.
+export type CommentTarget = 'anime' | 'episode' | 'manga_chapter';
 
 // Listing order: newest-first, or highest-voted-first ("Top").
 export type CommentSort = 'new' | 'top';

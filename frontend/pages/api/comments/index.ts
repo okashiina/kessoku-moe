@@ -34,9 +34,14 @@ const posInt = (v: unknown): number | null => {
 };
 
 const targetOf = (v: unknown): CommentTarget | null => {
-  if (v === 'anime' || v === 'episode') return v;
+  if (v === 'anime' || v === 'episode' || v === 'manga_chapter') return v;
   return null;
 };
+
+// Episode- and manga_chapter-level both require an integer in the `episode`
+// column (the absolute episode number, or the chapter number for manga).
+const needsEpisode = (t: CommentTarget): boolean =>
+  t === 'episode' || t === 'manga_chapter';
 
 interface TargetKey {
   anilistId: number;
@@ -45,7 +50,8 @@ interface TargetKey {
 }
 
 // Validate + normalise the (anilistId, targetType, episode) triple from a query
-// or a body. Anime-level ignores any episode; episode-level requires a pos int.
+// or a body. Anime-level ignores any episode; episode- and manga_chapter-level
+// require a pos int (the chapter number for manga).
 const parseTarget = (src: {
   anilistId?: unknown;
   targetType?: unknown;
@@ -54,7 +60,7 @@ const parseTarget = (src: {
   const anilistId = posInt(src.anilistId);
   const targetType = targetOf(src.targetType);
   if (anilistId === null || targetType === null) return null;
-  if (targetType === 'episode') {
+  if (needsEpisode(targetType)) {
     const episode = posInt(src.episode);
     if (episode === null) return null;
     return { anilistId, targetType, episode };
@@ -396,7 +402,14 @@ const handlePost = async (
   // Notify the parent author (in-app inbox + best-effort push). Fire-and-forget
   // so the reply response isn't held up by the push fan-out; notifyReply
   // swallows its own errors and skips a self-reply.
-  if (parentId !== null && parentAuthorId !== null) {
+  // ponytail: notifyReply (out of scope here) only models anime/episode deep
+  // links, so manga_chapter replies skip the notification rather than emit a
+  // wrong /anime link. Upgrade path: teach notifyReply a /read deep link.
+  if (
+    parentId !== null &&
+    parentAuthorId !== null &&
+    target.targetType !== 'manga_chapter'
+  ) {
     notifyReply(db, {
       recipientId: parentAuthorId,
       actorId: viewer.id,

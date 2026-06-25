@@ -21,8 +21,13 @@ import {
 export interface CommentTargetInput {
   anilistId: number;
   targetType: CommentTarget;
-  episode?: number;
+  episode?: number; // absolute episode number, or chapter number for manga
 }
+
+// Episode- and manga_chapter-level both carry an `episode` value (the chapter
+// number for manga); anime-level does not.
+const carriesEpisode = (t: CommentTarget): boolean =>
+  t === 'episode' || t === 'manga_chapter';
 
 export interface UseComments {
   comments: CommentNode[];
@@ -49,7 +54,7 @@ const buildUrl = (
   const p = new URLSearchParams();
   p.set('anilistId', String(t.anilistId));
   p.set('targetType', t.targetType);
-  if (t.targetType === 'episode' && t.episode) {
+  if (carriesEpisode(t.targetType) && t.episode) {
     p.set('episode', String(t.episode));
   }
   p.set('sort', sort);
@@ -90,7 +95,7 @@ const useComments = (
 
   const enabled =
     target.anilistId > 0 &&
-    (target.targetType !== 'episode' || Boolean(target.episode));
+    (!carriesEpisode(target.targetType) || Boolean(target.episode));
 
   const getKey = (index: number, prev: CommentsPage | null): string | null => {
     if (!enabled) return null;
@@ -145,7 +150,7 @@ const useComments = (
       write('POST', '/api/comments', {
         anilistId: target.anilistId,
         targetType: target.targetType,
-        ...(target.targetType === 'episode' && target.episode
+        ...(carriesEpisode(target.targetType) && target.episode
           ? { episode: target.episode }
           : {}),
         ...(parentId ? { parentId } : {}),
