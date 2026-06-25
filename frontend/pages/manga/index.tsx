@@ -7,6 +7,7 @@ import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
 
 import Header from '@components/Header';
+import BecauseYouRead from '@components/manga/BecauseYouRead';
 import MangaCard from '@components/manga/Card';
 import ContinueReading from '@components/manga/ContinueReading';
 import ForYouRail from '@components/manga/ForYouRail';
@@ -178,8 +179,13 @@ const MangaLibrary = ({
             <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
               Manga &amp; Manhwa
             </h1>
-            <Link href="/manga/downloads" passHref>
+            <Link href="/manga/browse" passHref>
               <a className="ml-auto inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
+                Browse
+              </a>
+            </Link>
+            <Link href="/manga/downloads" passHref>
+              <a className="inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
                 Downloads
               </a>
             </Link>
@@ -261,6 +267,7 @@ const MangaLibrary = ({
             <ContinueReading />
             <SavedRail />
             <ForYouRail nsfw={nsfw} />
+            <BecauseYouRead nsfw={nsfw} />
             <MangaSection title="Trending now" mangaList={home.trending} />
             <MangaSection title="Popular manhwa" mangaList={home.manhwa} />
             <MangaSection title="All-time popular" mangaList={home.popular} />

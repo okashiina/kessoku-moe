@@ -202,6 +202,7 @@ const browseQuery = (nsfw: boolean): string => {
     $sort: [MediaSort]
     $search: String
     $genre_in: [String]
+    $tag_in: [String]
     $countryOfOrigin: CountryCode
     $format: MediaFormat
     $status: MediaStatus
@@ -213,6 +214,7 @@ const browseQuery = (nsfw: boolean): string => {
         sort: $sort
         search: $search
         genre_in: $genre_in
+        tag_in: $tag_in
         countryOfOrigin: $countryOfOrigin
         format: $format
         status: $status${adult}

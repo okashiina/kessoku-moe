@@ -9,6 +9,7 @@ import MangaBookmarkButton from '@components/manga/BookmarkButton';
 import ChapterList, { ChapterLite } from '@components/manga/ChapterList';
 import MangaNotifyBell from '@components/manga/NotifyBell';
 import MangaRatingSelect from '@components/manga/RatingSelect';
+import SeriesCatchUp from '@components/manga/SeriesCatchUp';
 import MangaStatusSelect from '@components/manga/StatusSelect';
 import progressBar from '@components/Progress';
 import {
@@ -338,6 +339,9 @@ const MangaDetailPage = ({
                   country={detail.countryOfOrigin}
                 />
               </div>
+              {Number.isFinite(detail.id) && detail.id > 0 && (
+                <SeriesCatchUp anilistId={detail.id} title={title} />
+              )}
             </div>
           </div>
 

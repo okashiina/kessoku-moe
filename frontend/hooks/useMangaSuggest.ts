@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+
+import { getNsfwClient, subscribeNsfw } from '@utility/nsfw';
 
 // Client-side manga suggestions from AniList's public GraphQL endpoint
 // (CORS-open, no key). Mirrors useSearchSuggest.ts for anime: debounced and
-// abortable so fast typing only ever shows the latest results.
+// abortable so fast typing only ever shows the latest results. Respects the
+// NSFW toggle — when it's OFF we pin `isAdult: false`, matching how /manga
+// browse and the home rails gate adult titles.
 
 export interface MangaSuggestion {
   id: number;
@@ -17,10 +21,14 @@ const DEBOUNCE_MS = 300;
 const MIN_CHARS = 2;
 const PER_PAGE = 5;
 
-const SUGGEST_QUERY = /* GraphQL */ `
+// AniList treats `isAdult: null` as "match nothing", so we omit the arg entirely
+// when NSFW is on (returns adult + SFW) and pin `isAdult: false` when it's off.
+const suggestQuery = (nsfw: boolean): string => {
+  const adult = nsfw ? '' : ', isAdult: false';
+  return /* GraphQL */ `
   query MangaSuggest($search: String!, $perPage: Int!) {
     Page(perPage: $perPage) {
-      media(search: $search, type: MANGA, isAdult: false, sort: SEARCH_MATCH) {
+      media(search: $search, type: MANGA${adult}, sort: SEARCH_MATCH) {
         id
         title {
           romaji
@@ -36,6 +44,7 @@ const SUGGEST_QUERY = /* GraphQL */ `
     }
   }
 `;
+};
 
 interface SuggestState {
   results: MangaSuggestion[];
@@ -48,6 +57,9 @@ const useMangaSuggest = (term: string): SuggestState => {
     loading: false,
   });
   const abortRef = useRef<AbortController>();
+  // SSR renders SFW (false); the store hydrates the real pref on the client, and
+  // flipping the toggle refetches the suggestions so adult titles appear/vanish.
+  const nsfw = useSyncExternalStore(subscribeNsfw, getNsfwClient, () => false);
 
   useEffect(() => {
     const query = term.trim();
@@ -73,7 +85,7 @@ const useMangaSuggest = (term: string): SuggestState => {
             Accept: 'application/json',
           },
           body: JSON.stringify({
-            query: SUGGEST_QUERY,
+            query: suggestQuery(nsfw),
             variables: { search: query, perPage: PER_PAGE },
           }),
           signal: controller.signal,
@@ -92,7 +104,7 @@ const useMangaSuggest = (term: string): SuggestState => {
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(handle);
-  }, [term]);
+  }, [term, nsfw]);
 
   // Abort any in-flight request on unmount.
   useEffect(() => () => abortRef.current?.abort(), []);

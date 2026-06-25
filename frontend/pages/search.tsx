@@ -17,6 +17,7 @@ import Header from '@components/Header';
 import MangaCard from '@components/manga/Card';
 import progressBar from '@components/Progress';
 import { fetchMangaBrowse, MangaInfo } from '@utility/manga';
+import { nsfwFromCookie } from '@utility/nsfw';
 
 // The lenses search supports. "anime" is the default and keeps the original
 // title-grid behavior untouched.
@@ -57,12 +58,18 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
 
   // Only fetch the active lens — keeps each search a single AniList round-trip.
   if (tab === 'manga') {
-    const result = await fetchMangaBrowse({
-      page: 1,
-      perPage: 20,
-      search: keyword || undefined,
-      sort: keyword ? ['SEARCH_MATCH'] : ['POPULARITY_DESC'],
-    });
+    // Gate adult titles on the manga lens to match /manga browse: SFW unless the
+    // reader's NSFW cookie is set.
+    const nsfw = nsfwFromCookie(context.req.headers.cookie);
+    const result = await fetchMangaBrowse(
+      {
+        page: 1,
+        perPage: 20,
+        search: keyword || undefined,
+        sort: keyword ? ['SEARCH_MATCH'] : ['POPULARITY_DESC'],
+      },
+      nsfw
+    );
     manga = result.media;
   } else if (tab === 'studios') {
     studios = await searchStudios({ keyword, page: 1, perPage: 20 });

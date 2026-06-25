@@ -1,28 +1,37 @@
 import { authHeader, type AniListSession } from './anilistAuth';
 import { getAniListWrite } from './anilistWrite';
+import {
+  getMangaStatus,
+  getMangaScore,
+  listSavedManga,
+  type MangaStatus as ShelfStatus,
+} from './mangaList';
 import { getMangaEntry, type MangaProgressEntry } from './mangaProgress';
 
-// One-way AniList sync for manga READING PROGRESS — the manga twin of
-// anilistSync.ts (anime). When the user marks chapters read locally, the
-// chapter count is pushed up to their AniList list as a MANGA entry.
+// One-way AniList sync for the manga shelf — the manga twin of anilistSync.ts
+// (anime). Pushes, local → remote:
+//   • READING PROGRESS — chapters read (from mangaProgress), and
+//   • SHELF STATUS + SCORE — the local READING/COMPLETED/PLAN_TO_READ status and
+//     personal score (scoreRaw 0-100) the user set on the shelf (from mangaList).
 //
-// ponytail: PUSH-only mirror. Unlike the anime sync this does NOT pull, manage
-// status/score, handle deletes, or carry tombstone/dirty intent — a sibling
-// feature owns local manga status. AniList stays a one-way mirror of progress
-// for now (local → remote only). Upgrade path: add a pullMangaProgress() that
-// runs LIST_Q and merges remote progress/status into mangaProgress, mirroring
-// anilistSync.pullAndMerge, plus the persisted intent layer if two-way edits
-// are ever needed. For now a single localStorage Map of last-pushed progress is
-// enough to avoid redundant writes.
+// ponytail: still PUSH-only (no pull, no deletes, no tombstone/dirty intent). We
+// mirror local intent up; we never read AniList back or fight a value the user
+// set there directly — two independent localStorage baselines (last-pushed
+// progress, and last-pushed status+score) gate writes so we only call when a
+// LOCAL value actually changed. Upgrade path: add a pullMangaProgress() that runs
+// LIST_Q and merges remote state down, mirroring anilistSync.pullAndMerge, plus a
+// persisted intent layer if two-way edits are ever needed.
 //
-// We DO send status (CURRENT / COMPLETED) alongside progress because AniList
-// expects a status and it materially improves the list UX — but only the two
-// progress-implied states, never PAUSED / DROPPED / REPEATING (those belong to
-// whatever owns local status, not here).
+// Status we send is the shelf's local status mapped to AniList
+// (READING→CURRENT, PLAN_TO_READ→PLANNING, COMPLETED→COMPLETED); when there's no
+// shelf status we fall back to the progress-implied state (CURRENT, or COMPLETED
+// once progress reaches the chapter total). We NEVER send DROPPED / PAUSED /
+// REPEATING — we don't model those locally — and clearing a local status does not
+// delete the AniList entry (out of scope).
 
 const ENDPOINT = 'https://graphql.anilist.co';
 
-type MangaStatus = 'CURRENT' | 'COMPLETED';
+type MangaStatus = 'CURRENT' | 'COMPLETED' | 'PLANNING';
 
 // Pull query kept for the optional future pull (see ponytail note above). Unused
 // today; type: MANGA is the one difference from the anime LIST_Q.
@@ -36,6 +45,7 @@ export const LIST_Q = /* GraphQL */ `
           mediaId
           status
           progress
+          score
           media {
             chapters
           }
@@ -46,11 +56,17 @@ export const LIST_Q = /* GraphQL */ `
 `;
 
 const SAVE_M = /* GraphQL */ `
-  mutation ($mediaId: Int, $status: MediaListStatus, $progress: Int) {
+  mutation (
+    $mediaId: Int
+    $status: MediaListStatus
+    $progress: Int
+    $scoreRaw: Int
+  ) {
     SaveMediaListEntry(
       mediaId: $mediaId
       status: $status
       progress: $progress
+      scoreRaw: $scoreRaw
     ) {
       id
       mediaId
@@ -88,14 +104,32 @@ const gql = async <T>(
   }
 };
 
+// Map the local shelf status to AniList's MediaListStatus. Only the three states
+// we model locally — never DROPPED / PAUSED / REPEATING.
+const STATUS_MAP: Record<ShelfStatus, MangaStatus> = {
+  READING: 'CURRENT',
+  COMPLETED: 'COMPLETED',
+  PLAN_TO_READ: 'PLANNING',
+};
+
 // ---------------------------------------------------------------------------
-// Baseline: last progress we pushed per mediaId, persisted so a refresh doesn't
-// re-push everything. ponytail: a plain Map mirrored to localStorage, no diff
-// engine — we only push when local progress is strictly AHEAD of this baseline.
+// Baselines: the last values we pushed per mediaId, persisted so a refresh
+// doesn't re-push everything. ponytail: plain Maps mirrored to localStorage, no
+// diff engine — progress only pushes when strictly AHEAD; status/score push when
+// the local value DIFFERS from what we last sent (so we don't fight a value the
+// user changed on AniList itself, and never spam identical writes).
 // ---------------------------------------------------------------------------
 
 const BASELINE_KEY = 'kessoku.anilist.mangaSync.v1';
+const SHELF_BASELINE_KEY = 'kessoku.anilist.mangaShelfSync.v1';
 const lastPushed = new Map<number, number>();
+// Last status+score we sent per mediaId. status '' = none sent yet; score is the
+// scoreRaw we last pushed (0 = none/unscored).
+interface ShelfBaseline {
+  status: MangaStatus | '';
+  score: number;
+}
+const lastShelf = new Map<number, ShelfBaseline>();
 let baselineLoaded = false;
 
 const loadBaseline = (): void => {
@@ -108,6 +142,23 @@ const loadBaseline = (): void => {
       Object.keys(parsed).forEach((k) => {
         const n = Number(parsed[k]);
         if (Number.isFinite(n)) lastPushed.set(Number(k), n);
+      });
+    }
+  } catch {
+    /* ignore a corrupt blob */
+  }
+  try {
+    const raw = window.localStorage.getItem(SHELF_BASELINE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Record<string, ShelfBaseline>;
+      Object.keys(parsed).forEach((k) => {
+        const v = parsed[k];
+        if (v && typeof v === 'object') {
+          lastShelf.set(Number(k), {
+            status: v.status ?? '',
+            score: Number(v.score) || 0,
+          });
+        }
       });
     }
   } catch {
@@ -126,6 +177,15 @@ const saveBaseline = (): void => {
   } catch {
     /* ignore quota / private-mode failures */
   }
+  try {
+    const obj: Record<number, ShelfBaseline> = {};
+    lastShelf.forEach((v, k) => {
+      obj[k] = v;
+    });
+    window.localStorage.setItem(SHELF_BASELINE_KEY, JSON.stringify(obj));
+  } catch {
+    /* ignore quota / private-mode failures */
+  }
 };
 
 /** AniList "progress" = chapters read. Highest read chapter, else the pointer. */
@@ -137,23 +197,23 @@ const aniListMangaProgress = (e?: MangaProgressEntry): number => {
   return Math.floor(Math.max(maxRead, e.ch || 0));
 };
 
-const mangaStatus = (progress: number, total: number): MangaStatus =>
+const progressStatus = (progress: number, total: number): MangaStatus =>
   total > 0 && progress >= total ? 'COMPLETED' : 'CURRENT';
 
 /**
- * Seed the baseline on mount. ponytail: we only load the persisted last-pushed
- * map — there's no remote pull, so "baseline" is purely the local push history.
+ * Seed the baselines on mount. ponytail: we only load the persisted last-pushed
+ * maps — there's no remote pull, so "baseline" is purely the local push history.
  */
 export const initMangaBaseline = (): void => {
   loadBaseline();
 };
 
 /**
- * Push any local manga progress that is ahead of what we last sent. No-op when
- * logged out or when AniList writing is disabled (mirrors the anime sync: local
- * progress is still recorded by the reader, so flipping write back on flushes it
- * on the next change). Best-effort: a failed save leaves the baseline so it
- * retries.
+ * Push any local manga changes (progress, shelf status, score) that differ from
+ * what we last sent. No-op when logged out or when AniList writing is disabled
+ * (local intent is still recorded by the reader / shelf, so flipping write back
+ * on flushes it on the next change). Best-effort: a failed save leaves the
+ * baseline so it retries.
  */
 export const pushMangaChanges = async (
   session: AniListSession
@@ -162,49 +222,77 @@ export const pushMangaChanges = async (
   loadBaseline();
   const { token } = session;
 
-  // Only ids the reader has touched are candidates. ponytail: we don't keep a
-  // separate id index — mangaProgress is the source, so read every id off it via
-  // its localStorage map. Reusing getMangaEntry keeps the import surface tiny.
-  let ids: number[] = [];
+  // Candidate ids = everything the reader has touched (mangaProgress) ∪
+  // everything on the shelf (mangaList). ponytail: no separate id index — read
+  // both source maps directly and union their keys.
+  const ids = new Set<number>();
   if (typeof window !== 'undefined') {
     try {
       const raw = window.localStorage.getItem('kessoku.mangaProgress.v1');
       if (raw) {
         const map = JSON.parse(raw) as Record<string, unknown>;
-        ids = Object.keys(map).map(Number);
+        Object.keys(map).forEach((k) => ids.add(Number(k)));
       }
     } catch {
       /* ignore */
     }
   }
-  if (!ids.length) return;
+  listSavedManga().forEach((m) => ids.add(m.id));
+  if (!ids.size) return;
 
   let changed = false;
+  // ponytail: a sequential await loop (no concurrency) so we stay one request at
+  // a time — the existing best-effort throttle. eslint forbids for...of here.
+  const idList = Array.from(ids);
   // eslint-disable-next-line no-restricted-syntax
-  for (const id of ids) {
+  for (const id of idList) {
     const entry = getMangaEntry(id);
     const progress = aniListMangaProgress(entry);
-    const baseline = lastPushed.get(id) ?? 0;
-    // Push only when local progress is strictly ahead of the last push. ponytail:
-    // never lowers progress (no rewind path on the manga side yet).
-    // eslint-disable-next-line no-continue
-    if (progress <= 0 || progress <= baseline) continue;
+    const progressBase = lastPushed.get(id) ?? 0;
+    // Push progress only when strictly ahead of the last push. ponytail: never
+    // lowers progress (no rewind path on the manga side yet).
+    const sendProgress = progress > 0 && progress > progressBase;
 
-    const total = entry?.total ?? 0;
+    const shelfStatus = getMangaStatus(id);
+    const shelfScore = getMangaScore(id);
+    const base = lastShelf.get(id) ?? { status: '', score: 0 };
+
+    // Status precedence: an explicit shelf status wins; otherwise, only when we
+    // are sending progress, fall back to the progress-implied state so a brand
+    // new entry still lands with a sensible status. ponytail: clearing the shelf
+    // status does NOT push DROPPED/none — we just stop asserting a status.
+    let status: MangaStatus | undefined;
+    if (shelfStatus) status = STATUS_MAP[shelfStatus];
+    else if (sendProgress) status = progressStatus(progress, entry?.total ?? 0);
+
+    const sendStatus = status !== undefined && status !== base.status;
+    const sendScore = shelfScore > 0 && shelfScore !== base.score;
+
+    // eslint-disable-next-line no-continue
+    if (!sendProgress && !sendStatus && !sendScore) continue;
+
+    // One SaveMediaListEntry carries every changed field for this id.
+    const variables: Record<string, unknown> = { mediaId: id };
+    if (sendProgress) variables.progress = progress;
+    if (sendStatus) variables.status = status;
+    if (sendScore) variables.scoreRaw = shelfScore;
+
     // eslint-disable-next-line no-await-in-loop
     const res = await gql<{
       SaveMediaListEntry?: { id: number; mediaId: number };
-    }>(
-      SAVE_M,
-      { mediaId: id, status: mangaStatus(progress, total), progress },
-      token
-    );
+    }>(SAVE_M, variables, token);
     const saved = res?.SaveMediaListEntry;
     if (saved?.id && saved.mediaId) {
-      lastPushed.set(id, progress);
+      if (sendProgress) lastPushed.set(id, progress);
+      // Record the status/score we just asserted. Keep prior baseline values for
+      // the fields we didn't send this round.
+      lastShelf.set(id, {
+        status: sendStatus ? (status as MangaStatus) : base.status,
+        score: sendScore ? shelfScore : base.score,
+      });
       changed = true;
     }
-    // On failure: leave the baseline so the next debounce retries this id.
+    // On failure: leave the baselines so the next debounce retries this id.
   }
 
   if (changed) saveBaseline();
