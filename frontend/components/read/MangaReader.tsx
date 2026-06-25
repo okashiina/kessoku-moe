@@ -11,14 +11,17 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 
 import {
+  AnnotationIcon,
   ArrowLeftIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CogIcon,
   DownloadIcon,
   PhotographIcon,
+  XIcon,
 } from '@heroicons/react/solid';
 
+import CommentsSection from '@components/comments/CommentsSection';
 import ReadingCompanion from '@components/manga/ReadingCompanion';
 import type { CompanionRosterEntry } from '@utility/companion/types';
 import {
@@ -104,6 +107,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const [page, setPage] = useState(0);
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
   // Offline download state. `downloaded` is reactive via the external store;
   // `dl` tracks an in-flight download's progress (null when idle).
@@ -218,6 +222,17 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       alive = false;
     };
   }, [chapterId, reloadKey]);
+
+  // Lock body scroll while a sheet (settings / comments) is open, so the page
+  // behind doesn't scroll under the overlay on iOS, and restore on close.
+  useEffect(() => {
+    if (!showSettings && !showComments) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showSettings, showComments]);
 
   // Persist progress (chapter open + page moves). Only when we know the series.
   const persist = useCallback(
@@ -344,6 +359,16 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [showSettings]);
 
+  // Escape closes the comments sheet.
+  useEffect(() => {
+    if (!showComments) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowComments(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showComments]);
+
   // Keyboard (paged only).
   useEffect(() => {
     if (continuous) return undefined;
@@ -426,6 +451,16 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             {group ? ` · ${group}` : ''} · {lang.toUpperCase()}
           </p>
         </div>
+        {anilistId != null && (
+          <button
+            type="button"
+            aria-label="Chapter comments"
+            onClick={() => setShowComments(true)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition [touch-action:manipulation] hover:bg-white/10"
+          >
+            <AnnotationIcon className="h-5 w-5" />
+          </button>
+        )}
         <button
           type="button"
           aria-label="Reader settings"
@@ -564,6 +599,59 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                   : `Download next ${upcoming.length}`}
               </button>
             )}
+          </div>
+        </>
+      )}
+
+      {/* Comments sheet — the current chapter's discussion. Reuses the anime
+          comment system via target_type 'manga_chapter' (chapter number stored
+          in the episode field). Only mounted when we know the AniList id. */}
+      {showComments && anilistId != null && (
+        <>
+          <button
+            type="button"
+            aria-label="Close comments"
+            onClick={() => setShowComments(false)}
+            className="absolute inset-0 z-40 bg-black/60"
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-2xl flex-col rounded-t-2xl border border-white/10 bg-zinc-900/95 shadow-xl backdrop-blur"
+            style={{
+              maxHeight: '85svh',
+              height: '85svh',
+            }}
+            role="dialog"
+            aria-label="Chapter comments"
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
+              <p className="truncate text-sm font-semibold text-white">
+                {chapterLabel} discussion
+              </p>
+              <button
+                type="button"
+                aria-label="Close comments"
+                onClick={() => setShowComments(false)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/80 transition [touch-action:manipulation] hover:bg-white/10"
+              >
+                <XIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
+              style={{
+                paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+              }}
+            >
+              {/* CommentsSection bakes in a top margin; trim it inside the sheet. */}
+              <div className="[&>section]:mt-4">
+                <CommentsSection
+                  anilistId={anilistId}
+                  targetType="manga_chapter"
+                  episode={chapterNum}
+                  title={`Chapter ${chapterNum} discussion`}
+                />
+              </div>
+            </div>
           </div>
         </>
       )}

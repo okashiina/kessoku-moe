@@ -139,8 +139,10 @@ export const notifyLog = pgTable(
   (t) => [uniqueIndex('notify_log_anime_ep_unq').on(t.anilistId, t.episode)]
 );
 
-// Community comments on a show (target_type 'anime') or a single episode
-// ('episode', keyed by ABSOLUTE episode number). Posting requires AniList login
+// Community comments on a show (target_type 'anime'), a single episode
+// ('episode', keyed by ABSOLUTE episode number), or a single manga chapter
+// ('manga_chapter', keyed by CHAPTER NUMBER reusing the episode column).
+// Posting requires AniList login
 // (author id/name/avatar are SERVER-resolved snapshots, never client-claimed);
 // reads are public. One level of replies: parent_id points at a top-level
 // comment, and depth is enforced in the route. Soft-deleted (deleted_at) so a
@@ -149,9 +151,9 @@ export const comments = pgTable(
   'comments',
   {
     id: serial('id').primaryKey(),
-    targetType: text('target_type').notNull(), // 'anime' | 'episode'
+    targetType: text('target_type').notNull(), // 'anime' | 'episode' | 'manga_chapter'
     anilistId: integer('anilist_id').notNull(),
-    episode: integer('episode'), // null for anime-level
+    episode: integer('episode'), // null for anime-level; chapter number for manga_chapter
     parentId: integer('parent_id'), // null = top-level; else a top-level id
     anilistUserId: integer('anilist_user_id').notNull(),
     authorName: text('author_name').notNull(),
@@ -178,16 +180,17 @@ export const comments = pgTable(
     index('comments_parent_idx').on(t.parentId),
     check(
       'comments_target_type_chk',
-      sql`${t.targetType} in ('anime', 'episode')`
+      sql`${t.targetType} in ('anime', 'episode', 'manga_chapter')`
     ),
     check(
       'comments_body_len_chk',
       sql`char_length(${t.body}) between 1 and 2000`
     ),
-    // anime-level has no episode; episode-level must carry one.
+    // anime-level has no episode; episode- and manga_chapter-level must carry
+    // one (the episode column doubles as the chapter number for manga).
     check(
       'comments_episode_shape_chk',
-      sql`(${t.targetType} = 'episode') = (${t.episode} is not null)`
+      sql`(${t.targetType} in ('episode', 'manga_chapter')) = (${t.episode} is not null)`
     ),
   ]
 );
