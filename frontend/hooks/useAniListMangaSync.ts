@@ -3,14 +3,16 @@ import { useEffect } from 'react';
 import { getSession, subscribeAuth } from '@utility/anilistAuth';
 import { initMangaBaseline, pushMangaChanges } from '@utility/anilistMangaSync';
 import { getAniListWrite, subscribeAniListWrite } from '@utility/anilistWrite';
+import { subscribeMangaList } from '@utility/mangaList';
 import { subscribeMangaProgress } from '@utility/mangaProgress';
 
 const PUSH_DEBOUNCE_MS = 800;
 
-// App-wide AniList manga-progress sync driver, mounted once in _app right after
-// useAniListSync. When the user marks chapters read it debounce-pushes the
-// chapter count up as a MANGA entry. ponytail: PUSH-only (no pull) — see
-// anilistMangaSync.ts. Entirely best-effort and no-op when logged out.
+// App-wide AniList manga sync driver, mounted once in _app right after
+// useAniListSync. When the user marks chapters read OR changes a series' shelf
+// status / personal score, it debounce-pushes those up as a MANGA entry.
+// ponytail: PUSH-only (no pull) — see anilistMangaSync.ts. Entirely best-effort
+// and no-op when logged out.
 const useAniListMangaSync = (): void => {
   useEffect(() => {
     // SSR guard: stores read localStorage, so only run in the browser.
@@ -46,12 +48,14 @@ const useAniListMangaSync = (): void => {
 
     const unsubAuth = subscribeAuth(flush);
     const unsubProgress = subscribeMangaProgress(onLocalChange);
+    const unsubShelf = subscribeMangaList(onLocalChange);
     const unsubWrite = subscribeAniListWrite(onWriteToggle);
 
     return () => {
       if (timer) clearTimeout(timer);
       unsubAuth();
       unsubProgress();
+      unsubShelf();
       unsubWrite();
     };
   }, []);
