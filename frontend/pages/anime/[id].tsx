@@ -23,6 +23,7 @@ import RelatedSection, {
   type RelationItem,
 } from '@components/anime/RelatedSection';
 import Section from '@components/anime/Section';
+import SeriesCatchUp from '@components/anime/SeriesCatchUp';
 import StatusSelect from '@components/anime/StatusSelect';
 import CommentsSection from '@components/comments/CommentsSection';
 import Header from '@components/Header';
@@ -59,15 +60,28 @@ export const getServerSideProps: GetServerSideProps<AnimeProps> = async (
     episodes: null,
   };
 
+  // Kitsu is nice-to-have episode metadata, but long-runners can make it drag.
+  // Never let it block the whole detail page; AniList still gives the aired count.
+  const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+    Promise.race([
+      p,
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), ms);
+      }),
+    ]);
+
   // dont fetch episodes if the anime hasn't released
   if (data.Media.status !== MediaStatus.NotYetReleased) {
     // fetch episode list
     const { title, startDate, season } = data.Media;
     const english = getKitsuEpisodes(title.english, season, startDate.year);
     const romaji = getKitsuEpisodes(title.romaji, season, startDate.year);
-    episodes = await Promise.all([english, romaji]).then((r) => {
-      return r[0].episodeCount > 0 ? r[0] : r[1];
-    });
+    const resolved = await withTimeout(Promise.all([english, romaji]), 4500);
+    if (resolved) {
+      episodes = resolved[0].episodeCount > 0 ? resolved[0] : resolved[1];
+    } else {
+      episodes = { episodeCount: 0, episodes: { nodes: [] } };
+    }
 
     // Kitsu lag fallback: Kitsu often trails AniList for currently-airing
     // titles — it may not list the show at all, or miss its newest episodes.
@@ -369,6 +383,11 @@ const Anime = ({
         <RatingSelect id={anime.id} />
         <NotifyBell animeId={anime.id} />
       </div>
+
+      <SeriesCatchUp
+        anilistId={anime.id}
+        title={anime.title.english || anime.title.romaji || 'this anime'}
+      />
 
       <main className="mx-auto w-full max-w-screen-2xl pb-20">
         {/* Don't show episode section if format is movie */}

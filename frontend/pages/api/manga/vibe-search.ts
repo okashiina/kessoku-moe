@@ -21,7 +21,10 @@ const API_BASE = (
   'https://generativelanguage.googleapis.com/v1beta/openai'
 ).replace(/\/$/, '');
 const API_KEY = process.env.COMPANION_API_KEY || '';
-const MODEL = process.env.COMPANION_MODEL || 'gemini-2.5-flash';
+const MODEL =
+  process.env.VIBE_SEARCH_MODEL ||
+  process.env.COMPANION_CHEAP_MODEL ||
+  'gemini-2.5-flash-lite';
 
 // AniList's standard manga genre set (the whitelist — only these survive).
 const KNOWN_GENRES = [

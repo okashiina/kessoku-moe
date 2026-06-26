@@ -124,7 +124,8 @@ const NotifyBell: React.FC<{ animeId: number }> = ({ animeId }) => {
         disabled={busy}
         aria-pressed={on}
         aria-label={on ? 'Stop notifying' : 'Notify me about new episodes'}
-        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:scale-95 disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+        style={{ touchAction: 'manipulation' }}
+        className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:scale-95 disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100 ${
           on
             ? 'border-accent/60 bg-surface/70 text-fg hover:border-accent'
             : 'border-line/70 bg-surface/70 text-fg hover:border-accent/60'
@@ -139,7 +140,7 @@ const NotifyBell: React.FC<{ animeId: number }> = ({ animeId }) => {
       {hintText && (
         <p
           role="status"
-          className="absolute left-0 top-full mt-1.5 w-56 text-xs leading-relaxed text-muted"
+          className="absolute left-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] text-xs leading-relaxed text-muted"
         >
           {hintText}
         </p>
