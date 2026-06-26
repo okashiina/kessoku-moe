@@ -1,7 +1,8 @@
 import type { ResolveResult, WatchParams } from './types.js';
-import { orderedProviders } from './providers/index.js';
+import { getProvider, orderedProviders } from './providers/index.js';
 import { isOpen, recordFailure, recordSuccess } from './circuitBreaker.js';
 import { sourceCache, sourceKey } from './cache.js';
+import { config } from './config.js';
 
 // Fallback chain (SOP #1 + #2): try providers in priority order, skipping any with
 // an open breaker. First playable result wins and is cached. If none succeed the
@@ -18,9 +19,8 @@ export async function resolve(
   const cached = sourceCache.get(key);
   if (cached) return cached;
 
-  const providers = only
-    ? orderedProviders.filter((p) => p.id === only)
-    : orderedProviders;
+  const forced = getProvider(only);
+  const providers = only ? (forced ? [forced] : []) : orderedProviders;
   for (const provider of providers) {
     if (isOpen(provider.id)) continue;
     try {
@@ -34,9 +34,11 @@ export async function resolve(
       // eslint-disable-next-line no-console
       else console.warn(`[resolver] ${provider.id}: no sources`);
     } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
-      console.error(`[resolver] ${provider.id} failed:`, err instanceof Error ? err.message : err);
-      recordFailure(provider.id);
+      console.error(`[resolver] ${provider.id} failed:`, message);
+      const hardBlocked = /captcha|blocked|cloudflare/i.test(message);
+      recordFailure(provider.id, hardBlocked ? config.breakerThreshold : 1);
     }
   }
   return null;

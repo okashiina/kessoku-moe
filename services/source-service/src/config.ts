@@ -1,11 +1,33 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 // Central config, all from env with safe defaults. Config-as-data (SOP #7):
 // providers / proxy / TTLs / breaker tuning are swappable without code changes.
 
+// Local `npm run dev` does not load `.env` by itself. Docker already injects the
+// same file via env_file, but this keeps the laptop/dev path aligned with the
+// frontend's NEXT_PUBLIC_SOURCE_SERVICE_URL=http://localhost:8088.
+const loadLocalEnv = (): void => {
+  const path = resolve(process.cwd(), '.env');
+  if (!existsSync(path)) return;
+  const lines = readFileSync(path, 'utf8').split(/\r?\n/);
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return;
+    const eq = trimmed.indexOf('=');
+    if (eq <= 0) return;
+    const key = trimmed.slice(0, eq).trim();
+    const raw = trimmed.slice(eq + 1).trim();
+    const value = raw.replace(/^(['"])(.*)\1$/, '$2');
+    if (process.env[key] === undefined) process.env[key] = value;
+  });
+};
+
+loadLocalEnv();
 const num = (v: string | undefined, d: number) => (v ? Number(v) : d);
 
 export const config = {
   port: num(process.env.PORT, 8080),
-  providers: (process.env.PROVIDERS || 'allanime,animepahe')
+  providers: (process.env.PROVIDERS || 'kaa,animepahe,allanime')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),

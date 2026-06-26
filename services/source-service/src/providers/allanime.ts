@@ -237,6 +237,19 @@ function parseSources(text: string): SourceEntry[] {
   }));
 }
 
+function readGraphQLError(text: string): string | null {
+  try {
+    const errors = JSON.parse(text)?.errors;
+    if (!Array.isArray(errors)) return null;
+    return errors.map((e) => e?.message).filter(Boolean).join('; ') || null;
+  } catch {
+    return null;
+  }
+}
+
+function isCaptchaError(message: string | null): boolean {
+  return /NEED_CAPTCHA|captcha/i.test(message || '');
+}
 export const allanime: Provider = {
   id: 'allanime',
   async resolve(params: WatchParams): Promise<ResolveResult | null> {
@@ -278,13 +291,21 @@ export const allanime: Provider = {
     // 2) Episode source list (persisted-query hash → AES-decrypt tobeparsed).
     const epVars = { showId: show._id, translationType, episodeString: String(params.episode) };
     let er = await apiGet(persistedUrl(epVars, EPISODE_HASH), apiClr);
-    let sourceUrls = parseSources(er.text);
+    let episodeError = readGraphQLError(er.text);
+    let sourceUrls = isCaptchaError(episodeError) ? [] : parseSources(er.text);
     if (!sourceUrls.length) {
       er = await apiGet(gqlUrl(EPISODE_GQL, epVars), apiClr);
-      sourceUrls = parseSources(er.text);
+      const fallbackError = readGraphQLError(er.text);
+      episodeError = fallbackError || episodeError;
+      sourceUrls = isCaptchaError(fallbackError) ? [] : parseSources(er.text);
     }
-    dbg('sourceUrls', sourceUrls.length, sourceUrls.map((s) => s.sourceName));
-    if (!sourceUrls.length) return null;
+    dbg('sourceUrls', sourceUrls.length, sourceUrls.map((s) => s.sourceName), episodeError || '');
+    if (!sourceUrls.length) {
+      if (isCaptchaError(episodeError)) {
+        throw new Error('allanime episode source query blocked by captcha');
+      }
+      return null;
+    }
 
     const decoded = sourceUrls.map((s) => ({
       name: s.sourceName || '?',

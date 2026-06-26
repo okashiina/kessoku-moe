@@ -38,6 +38,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      - PORT=8080
       - FLARESOLVERR_URL=http://flaresolverr:8191/v1
     ports:
       - "8088:8080"

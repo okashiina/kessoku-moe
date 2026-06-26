@@ -87,6 +87,10 @@ const PREFS_KEY = 'kessoku.player.v2';
 const HINT_KEY = 'kessoku.player.hint.v1';
 const HIDE_MS = 2600;
 
+// Providers whose video has NO burned-in subtitles, so our own captions are turned
+// ON by default (raw / soft-sub sources). Hardsub providers stay off by default.
+const NO_HARDSUB = new Set(['kaa', 'hianime']);
+
 type CapColor = 'white' | 'yellow';
 type CapBg = 'solid' | 'semi' | 'none';
 const CAP_BG: Record<CapBg, string> = {
@@ -105,6 +109,8 @@ interface Prefs {
   subOffset: number; // subtitle delay in seconds (+ = subs later)
   capPos: { x: number; y: number } | null; // drag position (% of stage); null = default bottom-centre
   autoNext: boolean; // auto-play the next episode at the end
+  pinnedSubLangs: string[]; // starred subtitle langs, pinned to the top of the picker
+  subDefaultLang: string | null; // remembered subtitle choice: a lang code, 'off', or null
 }
 
 const loadPrefs = (): Prefs => {
@@ -119,6 +125,8 @@ const loadPrefs = (): Prefs => {
     subOffset: 0,
     capPos: null,
     autoNext: true,
+    pinnedSubLangs: [],
+    subDefaultLang: null,
   };
   if (typeof window === 'undefined') return base;
   try {
@@ -397,6 +405,12 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   const [subOffset, setSubOffset] = useState(initial.current.subOffset);
   const [capPos, setCapPos] = useState(initial.current.capPos);
   const [autoNext, setAutoNext] = useState(initial.current.autoNext);
+  const [pinnedSubLangs, setPinnedSubLangs] = useState<string[]>(
+    initial.current.pinnedSubLangs
+  );
+  const [subDefaultLang, setSubDefaultLang] = useState<string | null>(
+    initial.current.subDefaultLang
+  );
   const [capDragging, setCapDragging] = useState(false);
   const capDrag = useRef<{
     px: number;
@@ -415,6 +429,9 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   const [isFs, setIsFs] = useState(false);
   const [showUi, setShowUi] = useState(true);
   const [settings, setSettings] = useState(false);
+  // Subtitle picker is its own sub-page inside the settings sheet (the language list
+  // can be long), so the main settings view stays uncluttered.
+  const [subPanel, setSubPanel] = useState(false);
   const [help, setHelp] = useState(false);
   // Fullscreen companion dock (YouTube-theater). Only meaningful while
   // fullscreen; the toggle button is hidden otherwise.
@@ -424,6 +441,17 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   const hintFired = useRef(false);
   const [subIdx, setSubIdx] = useState(-1);
   const [cueText, setCueText] = useState('');
+  // Quality levels parsed from the HLS master (KAA returns ONE multi-rendition
+  // master, so manual quality lives here, not in the parent's sources[]). manualLevel
+  // -1 = Auto (hls.js ABR); hlsApiRef lets the picker switch level live.
+  const [levels, setLevels] = useState<{ i: number; height: number }[]>([]);
+  const [manualLevel, setManualLevel] = useState(-1);
+  const hlsApiRef = useRef<{ setLevel: (i: number) => void } | null>(null);
+  // The settings sheet always opens on its main view; close the subtitle sub-page
+  // whenever the sheet itself closes.
+  useEffect(() => {
+    if (!settings) setSubPanel(false);
+  }, [settings]);
   // Auto-next: dismissed for THIS episode, and a guard so we only advance once.
   const [autoNextDismissed, setAutoNextDismissed] = useState(false);
   const autoFiredRef = useRef(false);
@@ -442,6 +470,8 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
         subOffset,
         capPos,
         autoNext,
+        pinnedSubLangs,
+        subDefaultLang,
       };
       window.localStorage.setItem(PREFS_KEY, JSON.stringify(prefs));
     } catch {
@@ -458,6 +488,8 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
     subOffset,
     capPos,
     autoNext,
+    pinnedSubLangs,
+    subDefaultLang,
   ]);
 
   // Auto-next: reset the per-episode guards whenever the episode changes.
@@ -533,7 +565,21 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
             audio: data.audio?.codec,
           });
         });
-        inst.on(Hls.Events.MANIFEST_PARSED, resume);
+        inst.on(Hls.Events.MANIFEST_PARSED, () => {
+          resume();
+          // Surface the master's renditions for the manual quality picker (KAA's
+          // single source is a multi-quality master; ABR runs until a manual pick).
+          setLevels(inst.levels.map((l, i) => ({ i, height: l.height || 0 })));
+          setManualLevel(inst.autoLevelEnabled ? -1 : inst.currentLevel);
+        });
+        inst.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => {
+          setManualLevel(inst.autoLevelEnabled ? -1 : data.level);
+        });
+        hlsApiRef.current = {
+          setLevel: (i: number) => {
+            inst.currentLevel = i;
+          },
+        };
         inst.on(Hls.Events.ERROR, (_e, data) => {
           // eslint-disable-next-line no-console
           console.error(
@@ -581,6 +627,9 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
         resumeTime.current = v.currentTime;
         wasPlaying.current = !v.paused;
       }
+      hlsApiRef.current = null;
+      setLevels([]);
+      setManualLevel(-1);
       if (hls) hls.destroy();
     };
   }, [src]);
@@ -648,6 +697,29 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   useEffect(() => {
     if (subIdx >= subtitles.length) setSubIdx(-1);
   }, [subtitles.length, subIdx]);
+
+  // Auto-pick a subtitle once per source. Honors the remembered choice
+  // (subDefaultLang) first, then a starred language; for raw / soft-sub providers
+  // (KAA) with no burned-in subs it falls back to the first track so the viewer
+  // isn't stuck with silent raw video. An explicit "Off" choice is respected.
+  const subAutoSrc = useRef<string | null>(null);
+  useEffect(() => {
+    if (!src || subAutoSrc.current === src || !subtitles.length) return;
+    subAutoSrc.current = src;
+    if (subDefaultLang === 'off') return;
+    const findLang = (lang: string): number =>
+      subtitles.findIndex((s) => s.lang === lang);
+    let target = -1;
+    if (subDefaultLang) target = findLang(subDefaultLang);
+    if (target < 0) {
+      const pinned = pinnedSubLangs
+        .map((lang) => findLang(lang))
+        .find((idx) => idx >= 0);
+      if (pinned !== undefined) target = pinned;
+    }
+    if (target < 0 && NO_HARDSUB.has(provider)) target = 0;
+    if (target >= 0) setSubIdx(target);
+  }, [src, subtitles, provider, subDefaultLang, pinnedSubLangs]);
 
   // Mirror subIdx into a ref so the identity-stable toggleFs (deps []) can read
   // the current selection when handing subtitles to the native iOS player.
@@ -1006,10 +1078,43 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
     const v = videoRef.current;
     if (v) v.muted = !v.muted;
   }, []);
+  // The preferred track when turning captions on: remembered lang, else a starred
+  // lang, else the first track.
+  const preferredSubIdx = useCallback((): number => {
+    if (!subtitles.length) return -1;
+    const findLang = (lang: string): number =>
+      subtitles.findIndex((s) => s.lang === lang);
+    if (subDefaultLang && subDefaultLang !== 'off') {
+      const d = findLang(subDefaultLang);
+      if (d >= 0) return d;
+    }
+    const pinned = pinnedSubLangs
+      .map((lang) => findLang(lang))
+      .find((idx) => idx >= 0);
+    return pinned !== undefined ? pinned : 0;
+  }, [subtitles, subDefaultLang, pinnedSubLangs]);
+
+  // Picking a track from the menu also remembers it as the default, so the accurate
+  // track the viewer chooses becomes the auto-pick on later episodes.
+  const chooseSub = useCallback(
+    (i: number) => {
+      setSubIdx(i);
+      setSubDefaultLang(i < 0 ? 'off' : subtitles[i]?.lang ?? null);
+    },
+    [subtitles]
+  );
+
+  // Star / unstar a subtitle language: starred langs sort to the top of the picker.
+  const togglePin = useCallback((lang: string) => {
+    setPinnedSubLangs((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  }, []);
+
   const toggleCaptions = useCallback(() => {
     if (!subtitles.length) return;
-    setSubIdx((i) => (i >= 0 ? -1 : 0));
-  }, [subtitles.length]);
+    setSubIdx((i) => (i >= 0 ? -1 : preferredSubIdx()));
+  }, [subtitles.length, preferredSubIdx]);
 
   // Auto-hide chrome after inactivity while playing.
   const poke = useCallback(() => {
@@ -1103,13 +1208,23 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
   const bufPct = duration ? (buffered / duration) * 100 : 0;
   const hasSubs = subtitles.length > 0;
 
+  // Subtitle list ordered with starred languages first (stable within each group),
+  // keeping each track's real index for selection.
+  const orderedSubs = subtitles
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => {
+      const ra = pinnedSubLangs.indexOf(a.s.lang);
+      const rb = pinnedSubLangs.indexOf(b.s.lang);
+      return (ra < 0 ? 99 : ra) - (rb < 0 ? 99 : rb);
+    });
+
   const menuChip = (label: string, on: boolean, onClick: () => void) => (
     <button
       key={label}
       type="button"
       onClick={onClick}
       aria-pressed={on}
-      className={`rounded-full px-2.5 py-1 text-xs font-semibold transition ${
+      className={`inline-flex min-h-[40px] items-center justify-center rounded-full px-3 text-xs font-semibold transition [touch-action:manipulation] ${
         on
           ? 'bg-aurora text-accent-ink shadow-glow'
           : 'text-muted hover:bg-surface-2 hover:text-fg'
@@ -1645,171 +1760,289 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
                         onClick={() => setSettings(false)}
                         className="fixed inset-0 z-10 cursor-default"
                       />
-                      <div className="absolute bottom-full right-0 z-20 mb-2 max-h-[60vh] w-60 space-y-3 overflow-y-auto rounded-xl border border-line/60 bg-canvas-2/95 p-3 shadow-lift backdrop-blur-md">
-                        {sources.length > 1 && (
-                          <div>
-                            <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                              Quality
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {sources.map((s, i) =>
-                                menuChip(s.quality || 'auto', i === qIdx, () =>
-                                  onQuality(i)
-                                )
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                            Speed
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {SPEEDS.map((sp) =>
-                              menuChip(
-                                sp === 1 ? '1x' : `${sp}x`,
-                                sp === rate,
-                                () => setRate(sp)
-                              )
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                            Skip interval
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {SKIPS.map((sk) =>
-                              menuChip(`${sk}s`, sk === skip, () => setSkip(sk))
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                            Autoplay next
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {menuChip('On', autoNext, () => setAutoNext(true))}
-                            {menuChip('Off', !autoNext, () =>
-                              setAutoNext(false)
-                            )}
-                          </div>
-                        </div>
-                        {hasSubs ? (
-                          <div className="space-y-2 border-t border-line/40 pt-2.5">
-                            <div>
-                              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                Subtitles
-                              </p>
-                              <div className="flex flex-wrap gap-1">
-                                {menuChip('Off', subIdx < 0, () =>
-                                  setSubIdx(-1)
-                                )}
-                                {subtitles.map((s, i) =>
-                                  menuChip(
-                                    s.label || s.lang,
-                                    subIdx === i,
-                                    () => setSubIdx(i)
-                                  )
-                                )}
-                              </div>
-                            </div>
-                            {subIdx >= 0 && (
+                      <div className="absolute bottom-full right-0 z-20 mb-2 max-h-[60svh] w-60 max-w-[calc(100vw-1.5rem)] space-y-3 overflow-y-auto rounded-xl border border-line/60 bg-canvas-2/95 p-3 shadow-lift backdrop-blur-md">
+                        {!subPanel && (
+                          <>
+                            {sources.length > 1 && (
                               <div>
                                 <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                  Subtitle delay
+                                  Quality
                                 </p>
-                                <div className="flex items-center gap-1.5">
-                                  {menuChip('-0.5s', false, () =>
-                                    setSubOffset((o) =>
-                                      Math.max(
-                                        -60,
-                                        Math.round((o - 0.5) * 10) / 10
-                                      )
+                                <div className="flex flex-wrap gap-1">
+                                  {sources.map((s, i) =>
+                                    menuChip(
+                                      s.quality || 'auto',
+                                      i === qIdx,
+                                      () => onQuality(i)
                                     )
                                   )}
-                                  <span className="min-w-[3.25rem] text-center text-xs font-semibold tabular-nums text-fg">
-                                    {subOffset > 0 ? '+' : ''}
-                                    {subOffset.toFixed(1)}s
-                                  </span>
-                                  {menuChip('+0.5s', false, () =>
-                                    setSubOffset((o) =>
-                                      Math.min(
-                                        60,
-                                        Math.round((o + 0.5) * 10) / 10
+                                </div>
+                              </div>
+                            )}
+                            {sources.length <= 1 && levels.length > 1 && (
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                  Quality
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {menuChip('Auto', manualLevel < 0, () => {
+                                    setManualLevel(-1);
+                                    hlsApiRef.current?.setLevel(-1);
+                                  })}
+                                  {[...levels]
+                                    .sort((a, b) => b.height - a.height)
+                                    .map((l) =>
+                                      menuChip(
+                                        l.height
+                                          ? `${l.height}p`
+                                          : `#${l.i + 1}`,
+                                        manualLevel === l.i,
+                                        () => {
+                                          setManualLevel(l.i);
+                                          hlsApiRef.current?.setLevel(l.i);
+                                        }
                                       )
-                                    )
-                                  )}
-                                  {subOffset !== 0 &&
-                                    menuChip('Reset', false, () =>
-                                      setSubOffset(0)
                                     )}
                                 </div>
                               </div>
                             )}
                             <div>
                               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                Caption size
+                                Speed
                               </p>
                               <div className="flex flex-wrap gap-1">
-                                {CAP_SIZES.map((c) =>
-                                  menuChip(c.k, capSize === c.k, () =>
-                                    setCapSize(c.k)
+                                {SPEEDS.map((sp) =>
+                                  menuChip(
+                                    sp === 1 ? '1x' : `${sp}x`,
+                                    sp === rate,
+                                    () => setRate(sp)
                                   )
                                 )}
                               </div>
                             </div>
                             <div>
                               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                Caption colour
+                                Skip interval
                               </p>
                               <div className="flex flex-wrap gap-1">
-                                {menuChip('White', capColor === 'white', () =>
-                                  setCapColor('white')
-                                )}
-                                {menuChip('Yellow', capColor === 'yellow', () =>
-                                  setCapColor('yellow')
+                                {SKIPS.map((sk) =>
+                                  menuChip(`${sk}s`, sk === skip, () =>
+                                    setSkip(sk)
+                                  )
                                 )}
                               </div>
                             </div>
                             <div>
                               <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                Caption background
+                                Autoplay next
                               </p>
                               <div className="flex flex-wrap gap-1">
-                                {menuChip('Solid', capBg === 'solid', () =>
-                                  setCapBg('solid')
+                                {menuChip('On', autoNext, () =>
+                                  setAutoNext(true)
                                 )}
-                                {menuChip('Dim', capBg === 'semi', () =>
-                                  setCapBg('semi')
-                                )}
-                                {menuChip('None', capBg === 'none', () =>
-                                  setCapBg('none')
+                                {menuChip('Off', !autoNext, () =>
+                                  setAutoNext(false)
                                 )}
                               </div>
                             </div>
-                            <div>
-                              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                                Caption position
-                              </p>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {capPos
-                                  ? menuChip('Reset to bottom', false, () =>
-                                      setCapPos(null)
-                                    )
-                                  : null}
-                                <span className="text-[11px] text-faint">
-                                  Drag the caption to move it
+                            {hasSubs ? (
+                              <button
+                                type="button"
+                                onClick={() => setSubPanel(true)}
+                                className="flex w-full items-center justify-between gap-2 rounded-lg border border-line/50 px-2.5 py-2 text-left transition hover:bg-surface-2"
+                              >
+                                <span className="flex flex-col">
+                                  <span className="text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                    Subtitles
+                                  </span>
+                                  <span className="text-xs font-semibold text-fg">
+                                    {subIdx >= 0
+                                      ? subtitles[subIdx]?.label ||
+                                        subtitles[subIdx]?.lang
+                                      : 'Off'}
+                                  </span>
                                 </span>
+                                <span
+                                  aria-hidden
+                                  className="text-base text-faint"
+                                >
+                                  ›
+                                </span>
+                              </button>
+                            ) : (
+                              <p className="border-t border-line/40 pt-2.5 text-[11px] leading-relaxed text-faint">
+                                No subtitles for this source yet.
+                              </p>
+                            )}
+                          </>
+                        )}
+                        {subPanel && hasSubs && (
+                          <div className="space-y-2">
+                            <button
+                              type="button"
+                              onClick={() => setSubPanel(false)}
+                              className="-ml-1 flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-semibold text-muted transition hover:text-fg"
+                            >
+                              <span aria-hidden className="text-base">
+                                ‹
+                              </span>
+                              Subtitles
+                            </button>
+                            <div className="space-y-2 border-t border-line/40 pt-2.5">
+                              <div>
+                                <div className="flex flex-col gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => chooseSub(-1)}
+                                    aria-pressed={subIdx < 0}
+                                    className={`flex min-h-[44px] items-center rounded-lg px-2.5 text-left text-xs font-semibold transition [touch-action:manipulation] ${
+                                      subIdx < 0
+                                        ? 'bg-aurora text-accent-ink shadow-glow'
+                                        : 'text-muted hover:bg-surface-2 hover:text-fg'
+                                    }`}
+                                  >
+                                    Off
+                                  </button>
+                                  {orderedSubs.map(({ s, i }) => {
+                                    const pinned = pinnedSubLangs.includes(
+                                      s.lang
+                                    );
+                                    const name = s.label || s.lang;
+                                    return (
+                                      <div
+                                        key={i}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <button
+                                          type="button"
+                                          onClick={() => chooseSub(i)}
+                                          aria-pressed={subIdx === i}
+                                          className={`flex min-h-[44px] flex-1 items-center rounded-lg px-2.5 text-left text-xs font-semibold transition [touch-action:manipulation] ${
+                                            subIdx === i
+                                              ? 'bg-aurora text-accent-ink shadow-glow'
+                                              : 'text-muted hover:bg-surface-2 hover:text-fg'
+                                          }`}
+                                        >
+                                          {name}
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => togglePin(s.lang)}
+                                          aria-pressed={pinned}
+                                          aria-label={`${
+                                            pinned ? 'Unstar' : 'Star'
+                                          } ${name}`}
+                                          title={
+                                            pinned
+                                              ? 'Unstar (unpin from top)'
+                                              : 'Star (pin to top)'
+                                          }
+                                          className={`grid min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-md text-base leading-none transition [touch-action:manipulation] ${
+                                            pinned
+                                              ? 'text-amber-300'
+                                              : 'text-muted hover:text-fg'
+                                          }`}
+                                        >
+                                          {pinned ? '★' : '☆'}
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              {subIdx >= 0 && (
+                                <div>
+                                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                    Subtitle delay
+                                  </p>
+                                  <div className="flex items-center gap-1.5">
+                                    {menuChip('-0.5s', false, () =>
+                                      setSubOffset((o) =>
+                                        Math.max(
+                                          -60,
+                                          Math.round((o - 0.5) * 10) / 10
+                                        )
+                                      )
+                                    )}
+                                    <span className="min-w-[3.25rem] text-center text-xs font-semibold tabular-nums text-fg">
+                                      {subOffset > 0 ? '+' : ''}
+                                      {subOffset.toFixed(1)}s
+                                    </span>
+                                    {menuChip('+0.5s', false, () =>
+                                      setSubOffset((o) =>
+                                        Math.min(
+                                          60,
+                                          Math.round((o + 0.5) * 10) / 10
+                                        )
+                                      )
+                                    )}
+                                    {subOffset !== 0 &&
+                                      menuChip('Reset', false, () =>
+                                        setSubOffset(0)
+                                      )}
+                                  </div>
+                                </div>
+                              )}
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                  Caption size
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {CAP_SIZES.map((c) =>
+                                    menuChip(c.k, capSize === c.k, () =>
+                                      setCapSize(c.k)
+                                    )
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                  Caption colour
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {menuChip('White', capColor === 'white', () =>
+                                    setCapColor('white')
+                                  )}
+                                  {menuChip(
+                                    'Yellow',
+                                    capColor === 'yellow',
+                                    () => setCapColor('yellow')
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                  Caption background
+                                </p>
+                                <div className="flex flex-wrap gap-1">
+                                  {menuChip('Solid', capBg === 'solid', () =>
+                                    setCapBg('solid')
+                                  )}
+                                  {menuChip('Dim', capBg === 'semi', () =>
+                                    setCapBg('semi')
+                                  )}
+                                  {menuChip('None', capBg === 'none', () =>
+                                    setCapBg('none')
+                                  )}
+                                </div>
+                              </div>
+                              <div>
+                                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                                  Caption position
+                                </p>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {capPos
+                                    ? menuChip('Reset to bottom', false, () =>
+                                        setCapPos(null)
+                                      )
+                                    : null}
+                                  <span className="text-[11px] text-faint">
+                                    Drag the caption to move it
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <p className="border-t border-line/40 pt-2.5 text-[11px] leading-relaxed text-faint">
-                            No subtitles for this source yet. Indonesian /
-                            English subs are coming, and the styling controls
-                            will appear here.
-                          </p>
                         )}
                       </div>
                     </>
