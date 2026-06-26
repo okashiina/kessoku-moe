@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import { useRouter } from 'next/router';
 
-import { watchPage } from '@animeflix/api';
+import { animePage, watchPage } from '@animeflix/api';
 import {
   AnimeBannerFragment,
   AnimeInfoFragment,
@@ -79,6 +79,24 @@ const fetchWatch = async (
   }
 };
 
+// Lighter fallback fetch. Shares the `anime:<id>` cache the detail/browse pages
+// already warm, so when the heavy watch query is rate-limited we can still get the
+// anime (and the title the player needs) without another AniList round-trip.
+const fetchAnime = async (
+  id: number,
+  tries: number
+): Promise<Awaited<ReturnType<typeof animePage>>> => {
+  try {
+    return await animePage({ id, perPage: 12 });
+  } catch (err) {
+    if (tries <= 1) throw err;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 600);
+    });
+    return fetchAnime(id, tries - 1);
+  }
+};
+
 export const getServerSideProps: GetServerSideProps<WatchProps> = async (
   context
 ) => {
@@ -100,11 +118,26 @@ export const getServerSideProps: GetServerSideProps<WatchProps> = async (
   // retry transient failures; on a hard failure return notFound (404), not a 500.
   let data: Awaited<ReturnType<typeof watchPage>>;
   try {
-    data = await cached(`watch:${animeId}`, 5 * 60_000, () =>
+    data = await cached(`watch:${animeId}`, 15 * 60_000, () =>
       fetchWatch(animeId, 3)
     );
   } catch {
-    return { notFound: true };
+    // The heavy watch query got rate-limited (AniList 429s our shared Railway IP).
+    // Fall back to the lighter anime-detail data, which shares the `anime:<id>` cache
+    // the detail/browse pages already warmed -- so clicking play on a title you just
+    // opened still renders + gives the player its title, instead of a hard 404.
+    try {
+      const fallback = await cached(`anime:${animeId}`, 15 * 60_000, () =>
+        fetchAnime(animeId, 3)
+      );
+      if (!fallback.Media) return { notFound: true };
+      data = {
+        anime: fallback.Media,
+        recommended: { recommendations: [] },
+      } as Awaited<ReturnType<typeof watchPage>>;
+    } catch {
+      return { notFound: true };
+    }
   }
 
   const recommended = data.recommended.recommendations.map(
