@@ -40,6 +40,7 @@ import { initialiseStore, useDispatch, useSelector } from '@store/store';
 import { getResumeEpisode } from '@utility/progress';
 import { useRoom } from '@utility/room';
 import { useRoomUnread } from '@utility/roomChatStore';
+import { cached } from '@utility/ssrCache';
 import { convertToDate, convertToTime } from '@utility/time';
 import { pickTitle, useTitleLang } from '@utility/titleLang';
 import { arrayToString } from '@utility/utils';
@@ -61,6 +62,23 @@ const readRoomParam = (): string | undefined => {
   }
 };
 
+// Retry the AniList watch query with backoff so a transient rate limit / network
+// blip clears within the request instead of 500-ing the page.
+const fetchWatch = async (
+  id: number,
+  tries: number
+): Promise<Awaited<ReturnType<typeof watchPage>>> => {
+  try {
+    return await watchPage({ id, perPage: 20 });
+  } catch (err) {
+    if (tries <= 1) throw err;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 600);
+    });
+    return fetchWatch(id, tries - 1);
+  }
+};
+
 export const getServerSideProps: GetServerSideProps<WatchProps> = async (
   context
 ) => {
@@ -69,16 +87,25 @@ export const getServerSideProps: GetServerSideProps<WatchProps> = async (
   const { id } = context.params;
   const { episode } = context.query;
 
-  store.dispatch(setAnime(parseInt(arrayToString(id), 10)));
+  const animeId = parseInt(arrayToString(id), 10);
+  store.dispatch(setAnime(animeId));
 
   if (episode) {
     store.dispatch(setEpisode(parseInt(arrayToString(episode), 10)));
   }
 
-  const data = await watchPage({
-    id: parseInt(arrayToString(id), 10),
-    perPage: 20,
-  });
+  // AniList intermittently 429s an SSR fetch from the shared Railway datacenter IP,
+  // which used to throw straight out of getServerSideProps and 500 the whole watch
+  // page. Cache the result per instance (short TTL, cuts repeat AniList hits) and
+  // retry transient failures; on a hard failure return notFound (404), not a 500.
+  let data: Awaited<ReturnType<typeof watchPage>>;
+  try {
+    data = await cached(`watch:${animeId}`, 5 * 60_000, () =>
+      fetchWatch(animeId, 3)
+    );
+  } catch {
+    return { notFound: true };
+  }
 
   const recommended = data.recommended.recommendations.map(
     (anime) => anime.mediaRecommendation
