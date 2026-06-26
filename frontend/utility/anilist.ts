@@ -49,8 +49,12 @@ export const requestWithRetry = async <T>(
       return await request<T>(endpoint, query, variables);
     } catch (err) {
       if (!isRateLimited(err) || attempt >= retries) throw err;
+      // Bound the wait: AniList can send a long Retry-After (its window is ~60s),
+      // and an SSR request must not block that long. Cap each backoff at 2.5s so a
+      // rate-limited fetch fails fast and degrades to a cached/empty result instead
+      // of hanging the page for many seconds.
       // eslint-disable-next-line no-await-in-loop
-      await sleep(retryAfterMs(err) ?? 1500 * (attempt + 1));
+      await sleep(Math.min(retryAfterMs(err) ?? 800 * (attempt + 1), 2500));
     }
   }
 };
@@ -269,6 +273,15 @@ const DEMO_ANIME_ID = 154587;
 const DEMO_COVER_FALLBACK =
   'https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx154587-qQTzQnEJJ3oB.jpg';
 
+// The graceful empty splash — rails blank but the page renders. Exported so the
+// landing's SSR cache can return it on a rate-limited miss without re-querying.
+export const EMPTY_SPLASH: SplashData = {
+  trending: [],
+  airing: [],
+  featured: [],
+  demoCover: DEMO_COVER_FALLBACK,
+};
+
 interface RawSplash {
   trending: RawPage<MediaInfo> | null;
   popular: RawPage<MediaInfo> | null;
@@ -391,12 +404,7 @@ export const fetchSplashData = async (): Promise<SplashData> => {
         DEMO_COVER_FALLBACK,
     };
   } catch {
-    return {
-      trending: [],
-      airing: [],
-      featured: [],
-      demoCover: DEMO_COVER_FALLBACK,
-    };
+    return EMPTY_SPLASH;
   }
 };
 

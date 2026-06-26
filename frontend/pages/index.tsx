@@ -35,11 +35,26 @@ import Reveal, {
 } from '@components/motion/Reveal';
 import progressBar from '@components/Progress';
 import useMediaQuery from '@hooks/useMediaQuery';
-import { AiringEntry, fetchSplashData, MediaInfo } from '@utility/anilist';
+import {
+  AiringEntry,
+  EMPTY_SPLASH,
+  fetchSplashData,
+  MediaInfo,
+} from '@utility/anilist';
 import { base64SolidImage } from '@utility/image';
+import { cached } from '@utility/ssrCache';
 
 export const getServerSideProps = async () => {
-  const data = await fetchSplashData();
+  // Cache the splash so the landing doesn't re-hit AniList on every visit. AniList
+  // runs a degraded ~30 req/min limit and these SSR calls come from Railway's shared
+  // datacenter IP, so an uncached landing stalled for ~18s during a rate-limit window.
+  // Only a real (non-empty) splash is cached; a rate-limited miss returns empty rails
+  // and retries next visit (fetchSplashData itself never throws).
+  const data = await cached('home:splash', 10 * 60_000, async () => {
+    const d = await fetchSplashData();
+    if (!d.trending.length) throw new Error('splash empty (rate-limited)');
+    return d;
+  }).catch(() => EMPTY_SPLASH);
   return { props: { ...data } };
 };
 

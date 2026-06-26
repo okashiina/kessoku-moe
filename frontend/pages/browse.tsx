@@ -8,6 +8,7 @@ import AnimeVibeSearch from '@components/anime/VibeSearch';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
 import { ANILIST_ENDPOINT, requestWithRetry } from '@utility/anilist';
+import { cached } from '@utility/ssrCache';
 
 // ---------------------------------------------------------------------------
 // AniList GraphQL (fetched directly in getServerSideProps — no auth needed).
@@ -173,11 +174,14 @@ export const getServerSideProps: GetServerSideProps<BrowseProps> = async (
 
   try {
     // graphql-request (not global fetch) so this works on the Node 16 runtime;
-    // retry on AniList 429 so a transient rate-limit doesn't blank the grid.
-    const json = await requestWithRetry<BrowseData>(
-      ANILIST_ENDPOINT,
-      BROWSE_QUERY,
-      variables
+    // retry on AniList 429 so a transient rate-limit doesn't blank the grid, and
+    // cache per filter-combo so repeat browsing doesn't re-hit the degraded
+    // ~30/min AniList limit from Railway's datacenter IP.
+    const json = await cached(
+      `browse:${JSON.stringify(variables)}`,
+      5 * 60_000,
+      () =>
+        requestWithRetry<BrowseData>(ANILIST_ENDPOINT, BROWSE_QUERY, variables)
     );
 
     if (json?.Page) {

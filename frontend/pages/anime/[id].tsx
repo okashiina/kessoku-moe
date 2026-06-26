@@ -27,6 +27,7 @@ import SeriesCatchUp from '@components/anime/SeriesCatchUp';
 import StatusSelect from '@components/anime/StatusSelect';
 import CommentsSection from '@components/comments/CommentsSection';
 import Header from '@components/Header';
+import { cached } from '@utility/ssrCache';
 
 interface AnimeProps {
   anime: AnimeInfoFragment & AnimeBannerFragment & AnimeCastFragment;
@@ -37,17 +38,45 @@ interface AnimeProps {
   startDate: { year: number | null; month: number | null; day: number | null };
 }
 
+// AniList rate-limits SSR from Railway's shared datacenter IP (a degraded
+// ~30 req/min), which used to throw straight out of getServerSideProps -> a 500 on
+// every anime page during a limit window. Retry a few times, then cache the result
+// so revisits are instant + stable; a total failure degrades to a (temporary)
+// notFound instead of a 500 and self-heals on the next visit once the limit clears.
+const fetchAnimePage = async (
+  animeId: number,
+  tries: number
+): Promise<Awaited<ReturnType<typeof animePage>>> => {
+  try {
+    return await animePage({ id: animeId, perPage: 12 });
+  } catch (err) {
+    if (tries <= 1) throw err;
+    await new Promise((resolve) => {
+      setTimeout(resolve, 600);
+    });
+    return fetchAnimePage(animeId, tries - 1);
+  }
+};
+
 export const getServerSideProps: GetServerSideProps<AnimeProps> = async (
   context
 ) => {
   let { id } = context.params;
 
   id = typeof id === 'string' ? id : id.join(' ');
+  // const so the closure below keeps the narrowed `number` (a captured `let` would
+  // widen back to string | string[] and fail typecheck).
+  const animeId = parseInt(id, 10);
 
-  const data = await animePage({
-    id: parseInt(id, 10),
-    perPage: 12,
-  });
+  let data: Awaited<ReturnType<typeof animePage>>;
+  try {
+    data = await cached(`anime:${id}`, 15 * 60_000, () =>
+      fetchAnimePage(animeId, 3)
+    );
+  } catch {
+    // AniList exhausted right now — temporary, not a real 404. Self-heals next visit.
+    return { notFound: true };
+  }
 
   if (!data.Media) {
     return {
