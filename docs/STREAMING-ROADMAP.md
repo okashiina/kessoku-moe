@@ -161,6 +161,22 @@ Railway datacenter IPs are heavily challenged. Options, cheapest→most robust:
   BCP-47 `srclang` fix so iOS native captions aren't dropped). iOS native-player caption path
   (cross-origin VTT via `/track` + `crossOrigin` on the `<video>` + `showing`-flip in native
   fullscreen) verified by code-read; still wants a real-iPhone confirmation.
+
+  **KAA iPhone playback fix — SHIPPED (2026-06-26, PR #50).** Over the Cloudflare
+  Tunnel bridge, animepahe played on iOS but KAA fell back to embed. Root cause: on
+  iPhone, Safari uses the native AVPlayer (hls.js is skipped so `webkitEnterFullscreen`
+  + native captions work), and KAA's stream is a **demuxed master** (separate JP/EN
+  `#EXT-X-MEDIA:TYPE=AUDIO` renditions) whose MPEG-TS segments hide behind `.jpg` URLs
+  that krussdomi serves as `Content-Type: image/jpeg`. hls.js ignores the MIME and
+  parses the bytes (desktop/Android fine), but native AVPlayer trusts the MIME for
+  alternate-audio renditions and refuses an "image" as audio. Muxed animepahe was
+  unaffected (AVPlayer byte-sniffs the primary stream). Fix: the `/hls` proxy now
+  sniffs the real container (MPEG-TS `0x47` sync / fMP4 box) and serves `video/mp2t`
+  or `video/mp4` instead of the bogus `image/jpeg` (playlists + AES keys untouched);
+  `HlsPlayer` adds an iPhone-only safety net (native error → retry once via hls.js
+  before embed). Verified: KAA video+audio segments now return `video/mp2t` through
+  the tunnel; tsc + eslint clean. The proxy fix is live on the laptop (no redeploy);
+  on-device iOS native playback still wants a real-iPhone confirmation.
 - **Phase 3 — Subtitles — BUILT & VERIFIED (2026-06-03).** Indonesian (subdl) +
   Japanese (Jimaku) external WebVTT tracks: `source-service/src/subtitles/*`
   resolves + episode-matches, downloads, unzips, converts ASS/SRT→VTT (LRU-cached,
