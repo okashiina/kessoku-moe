@@ -16,6 +16,7 @@ import {
   getManga,
 } from '@utility/server/mangadex';
 import { getWeebChapters } from '@utility/server/weebcentral';
+import { cached } from '@utility/ssrCache';
 
 const num = (raw: string | null): number => {
   if (!raw) return 0;
@@ -56,7 +57,9 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
   let webtoonDefault = false;
   let roster: CompanionRosterEntry[] = [];
   if (hasAniList) {
-    const detail = await fetchMangaDetail(anilistId);
+    const detail = await cached(`md:detail:${anilistId}`, 30 * 60_000, () =>
+      fetchMangaDetail(anilistId)
+    );
     if (detail) {
       seriesTitle =
         detail.title.english ||
@@ -120,14 +123,23 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
     group = 'manhwatop';
   } else {
     // MangaDex.
-    const chapter = await getChapter(ref.chapterId);
+    const chapter = await cached(
+      `md:chapter:${ref.chapterId}`,
+      10 * 60_000,
+      () => getChapter(ref.chapterId)
+    );
     if (!chapter) return { notFound: true };
     lang = chapter.attributes.translatedLanguage;
     group = chapterGroupName(chapter);
     const mangaId = chapterMangaId(chapter);
     if (mangaId) {
       try {
-        const feed = await getChapterFeed(mangaId, [lang], nsfw);
+        const mid = mangaId;
+        const feed = await cached(
+          `md:feed:${mid}:${lang}:${nsfw}`,
+          10 * 60_000,
+          () => getChapterFeed(mid, [lang], nsfw)
+        );
         const seen = new Map<number, ReaderSibling>();
         feed
           .filter((c) => !c.attributes.externalUrl)
@@ -154,7 +166,10 @@ export const getServerSideProps: GetServerSideProps<ReadProps> = async ({
       : 'Oneshot';
 
     if (!seriesTitle && mangaId) {
-      const md = await getManga(mangaId);
+      const mid = mangaId;
+      const md = await cached(`md:manga:${mid}`, 30 * 60_000, () =>
+        getManga(mid)
+      );
       if (md) {
         const t = md.attributes.title;
         seriesTitle = t.en || t['ja-ro'] || Object.values(t)[0] || 'Manga';

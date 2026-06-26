@@ -1,41 +1,36 @@
 # animeflix source-service (Option B)
 
-Self-hosted anime source resolver: **multi-provider scraper → HLS proxy → (later)
-subtitles**, the same shape Miruro uses. It is deployed **separately on a VPS**
-(see [`../../docs/VPS-SETUP.md`](../../docs/VPS-SETUP.md)) — it is intentionally
-outside the `frontend`/`packages` workspaces so it never touches the Railway build.
+Self-hosted anime source resolver: **multi-provider scraper -> HLS proxy -> subtitles**, the same shape Miruro uses. It is deployed **separately on a VPS** (see [`../../docs/VPS-SETUP.md`](../../docs/VPS-SETUP.md)) so it never touches the Railway frontend build.
 
-Plan, phases and the anti-fragility SOP live in
-[`../../docs/STREAMING-ROADMAP.md`](../../docs/STREAMING-ROADMAP.md).
+Plan, phases, and the anti-fragility SOP live in [`../../docs/STREAMING-ROADMAP.md`](../../docs/STREAMING-ROADMAP.md).
 
-## What works now (skeleton)
+## What works now
 
-- Fastify server with `/health`, `/status`, `/watch`, `/hls`, `/subs`.
-- Resolver with **provider fallback chain + circuit breaker + cache** (SOP #1/#3/#6).
-- **HLS proxy** that rewrites playlists/segments and injects Referer/Origin.
-- **FlareSolverr** wired in (`fetcher.ts`, `solver: true`) for Cloudflare hosts.
-- **Embed fallback**: `/watch` returns `{ mode: 'embed' }` when no provider yields a
-  source, so the frontend keeps using its embed switcher (SOP #2). The site never
-  goes dark.
-- Providers (`allanime`, `animepahe`) are **stubs** — real extractors land in Phase 1.
+- Fastify server with `/health`, `/status`, `/watch`, `/hls`, `/file`, `/track`, and `/subs`.
+- Resolver with provider fallback chain, circuit breaker, and cache.
+- HLS proxy that rewrites playlists/segments and injects Referer/Origin.
+- FlareSolverr wired in (`fetcher.ts`, `solver: true`) for Cloudflare hosts.
+- Embed fallback: `/watch` returns `{ mode: 'embed' }` when no provider yields a source, so the frontend keeps using its embed switcher.
+- Working public direct providers: `animepahe` baseline HLS, `allanime` wired but currently captcha-blocked at source query, and `hianime` wired for soft-sub trials but network/VPS-gated.
+- `aniliberty` is research-only/rejected for the normal player because verified streams are Russian audio, not JP audio.
 
 ## Run locally
 
 ```bash
 npm install
 cp .env.example .env
-npm run dev          # http://localhost:8080
+npm run dev          # http://localhost:8088
 npm run typecheck    # tsc --noEmit
 ```
-FlareSolverr isn't required to boot; providers needing it just fail soft until you
-run the full Docker stack.
+
+FlareSolverr is not required to boot; providers needing it fail soft until you run the full Docker stack.
 
 ## Run the full stack (VPS / Docker)
 
 ```bash
 cp .env.example .env
 docker compose up -d --build
-curl http://localhost:8080/health     # {"ok":true}
+curl http://localhost:8088/health     # {"ok":true}
 ```
 
 ## Endpoints
@@ -43,20 +38,20 @@ curl http://localhost:8080/health     # {"ok":true}
 | Route | Purpose |
 | --- | --- |
 | `GET /health` | liveness |
-| `GET /status` | uptime, provider list, circuit-breaker state |
-| `GET /watch?anilistId=&episode=&category=sub\|dub&titles=` | resolve → `{mode:'direct',sources,subtitles}` or `{mode:'embed'}` |
+| `GET /status` | uptime, Auto provider list, public forced providers, circuit-breaker state |
+| `GET /watch?anilistId=&episode=&category=sub\|dub&titles=` | resolve -> `{mode:'direct',sources,subtitles}` or `{mode:'embed'}` |
 | `GET /hls?url=&ref=` | HLS playlist/segment proxy |
-| `GET /subs` | subtitles (Phase 3, not implemented) |
+| `GET /file?url=&ref=` | non-HLS file proxy |
+| `GET /track?url=&ref=` | provider subtitle proxy for external VTT tracks |
+| `GET /subs` | external subtitle resolver/proxy (Jimaku/subdl) |
 
-## Frontend wiring (Phase 1)
+## Frontend wiring
 
-The Next.js watch page calls `/watch` first; on `mode:'direct'` it feeds the sources
-to the player (vidstack/artplayer); on `mode:'embed'` it renders the existing
-`EmbedPlayer`. Set `NEXT_PUBLIC_SOURCE_SERVICE_URL` to this service's public URL.
+The Next.js watch page calls `/watch` first; on `mode:'direct'` it feeds the sources to `HlsPlayer`; on `mode:'embed'` it renders the existing `EmbedPlayer`. Set `NEXT_PUBLIC_SOURCE_SERVICE_URL` to this service's public URL.
 
-## Next (Phase 1)
+## Next
 
-1. Implement `providers/allanime.ts` (use `/playwright-cli` + `/web-scraping`; test
-   live; route through FlareSolverr).
-2. Add a canary (`/status` already exposes breaker state) + Discord/Telegram alert.
-3. Wire the frontend `mode:'direct'` path + player.
+1. Add canary probes for `animepahe`, `allanime`, and `hianime`.
+2. Keep AniLiberty out of public player choices unless a JP-audio track is proven per release.
+3. Revisit AllAnime only if its `NEED_CAPTCHA` source-query block gets a new bypass.
+4. Validate HiAnime from a clean VPS before putting it in the Auto chain.

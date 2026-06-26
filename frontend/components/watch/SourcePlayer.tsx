@@ -14,15 +14,17 @@ import HlsPlayer, { type Subtitle } from './HlsPlayer';
 
 const SOURCE_SERVICE = process.env.NEXT_PUBLIC_SOURCE_SERVICE_URL;
 
-// Direct-pipeline server choice. 'auto' = resolver's fallback chain (AllAnime first,
-// AnimePahe as the automatic fallback); the others force one provider. AllAnime is the
-// primary pick (sharpest picture) but CF-solves, so it starts a beat slower; AnimePahe
-// (HLS) is faster if you want an instant start.
+// Direct-pipeline server choice. 'auto' = resolver's fallback chain (KAA first, then
+// AnimePahe); the others force one provider. KAA is the primary pick: clean/RAW video
+// with JP audio + soft subtitles, but it CF-solves so it starts a beat slower on a cold
+// title. AnimePahe (HLS, hardsub) is faster if you want an instant start.
 const PROVIDER_PREF_KEY = 'kessoku.source.provider';
 const DIRECT_PROVIDERS = [
   { id: 'auto', label: 'Auto' },
-  { id: 'allanime', label: 'AllAnime' },
+  { id: 'kaa', label: 'KAA' },
   { id: 'animepahe', label: 'AnimePahe' },
+  { id: 'allanime', label: 'AllAnime' },
+  { id: 'hianime', label: 'HiAnime' },
 ] as const;
 
 interface Source {
@@ -76,7 +78,7 @@ const SourcePlayer: React.FC<{
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [provider, setProvider] = useState('');
   const [qIdx, setQIdx] = useState(0);
-  // Our HLS pipeline resolved, but the browser couldn't decode it (codec) —
+  // Our HLS pipeline resolved, but the browser couldn't decode it (codec) --
   // we auto-dropped to embed and tell the user why.
   const [decodeFailed, setDecodeFailed] = useState(false);
   // Which direct provider to resolve with: 'auto' = fallback chain, else forced.
@@ -91,7 +93,8 @@ const SourcePlayer: React.FC<{
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(PROVIDER_PREF_KEY);
-      if (v) setPref(v);
+      if (v && DIRECT_PROVIDERS.some((p) => p.id === v)) setPref(v);
+      else if (v) window.localStorage.setItem(PROVIDER_PREF_KEY, 'auto');
     } catch {
       /* localStorage unavailable */
     }
@@ -124,7 +127,7 @@ const SourcePlayer: React.FC<{
     // Set when a newer resolve supersedes this one (episode/dub/server changed,
     // or the saved server pref hydrates right after mount and re-runs the
     // effect). A superseded attempt must not touch state: its abort lands in
-    // .catch, which used to stomp the new attempt's 'loading' with 'embed' —
+    // .catch, which used to stomp the new attempt's 'loading' with 'embed' --
     // the page looked like it gave up on our server the instant it opened.
     let superseded = false;
     const category = useDub ? 'dub' : 'sub';
@@ -143,6 +146,12 @@ const SourcePlayer: React.FC<{
           setSubtitles(data.subtitles || []);
           setProvider(data.provider || '');
           setPhase('direct');
+        } else if (pref !== 'auto') {
+          // A FORCED provider couldn't resolve (e.g. AllAnime is captcha-blocked
+          // right now) -- don't drop straight to an embed server: fall through to
+          // the Auto chain (AnimePahe) so our player still plays. In-memory only,
+          // so the saved preference returns if that provider recovers later.
+          setPref('auto');
         } else {
           setPhase('embed');
         }
@@ -186,7 +195,7 @@ const SourcePlayer: React.FC<{
             key={p.id}
             type="button"
             onClick={() => choosePref(p.id)}
-            className={`px-3 py-1 font-semibold transition ${
+            className={`inline-flex min-h-[40px] items-center px-3 font-semibold transition [touch-action:manipulation] ${
               pref === p.id
                 ? 'bg-aurora text-accent-ink shadow-glow'
                 : 'text-muted hover:bg-fg/5 hover:text-fg'
@@ -207,6 +216,12 @@ const SourcePlayer: React.FC<{
           (~30 to 60s on the first load)
         </span>
       )}
+      {pref === 'hianime' && (
+        <span className="text-faint">
+          HiAnime is soft-sub capable, but may fail on this network without a
+          clean VPS
+        </span>
+      )}
     </div>
   ) : null;
 
@@ -214,12 +229,12 @@ const SourcePlayer: React.FC<{
   if (phase === 'embed') {
     // decodeFailed: re-showing 'direct' would just hit the same undecodable
     // source, so the retry re-runs the resolver from scratch instead.
-    let switchLabel = '↺ Try our server';
-    if (decodeFailed) switchLabel = '↺ Retry our player';
-    else if (hasOurPlayer) switchLabel = '↺ Switch to our player (HD)';
+    let switchLabel = 'Try our server';
+    if (decodeFailed) switchLabel = 'Retry our player';
+    else if (hasOurPlayer) switchLabel = 'Switch to our player (HD)';
 
     const switchHint = decodeFailed
-      ? "our player couldn't decode this episode here — using an embed server"
+      ? "our player couldn't decode this episode here -- using an embed server"
       : 'or pick a third-party server above';
 
     const onSwitch = () => {
@@ -252,7 +267,7 @@ const SourcePlayer: React.FC<{
         <Frame>
           <div className="flex flex-col items-center justify-center gap-3 text-center">
             <span className="h-9 w-9 animate-spin rounded-full border-2 border-line border-t-accent" />
-            <p className="text-sm text-muted">Finding the best source…</p>
+            <p className="text-sm text-muted">Finding the best source...</p>
             <p className="text-xs text-faint">resolving via our server</p>
           </div>
         </Frame>

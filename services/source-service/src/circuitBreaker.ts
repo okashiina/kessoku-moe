@@ -27,9 +27,9 @@ export function recordSuccess(key: string): void {
   states.set(key, { failures: 0, openedAt: null });
 }
 
-export function recordFailure(key: string): void {
+export function recordFailure(key: string, weight = 1): void {
   const s = get(key);
-  s.failures += 1;
+  s.failures += weight;
   if (s.failures >= config.breakerThreshold) s.openedAt = Date.now();
 }
 

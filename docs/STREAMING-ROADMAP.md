@@ -132,6 +132,35 @@ Railway datacenter IPs are heavily challenged. Options, cheapest→most robust:
   15 min) and a full ~400 MB MP4 (no ABR); swap back to `animepahe,allanime` for the
   faster default. The frontend server picker lists AllAnime first; Auto resolves the
   chain in this order.
+  **Update 2026-06-25:** local Docker probes show AllAnime search still clears CF, but the episode/source GraphQL endpoint now returns `NEED_CAPTCHA` for One Piece and Frieren. The resolver treats that as a hard provider failure so the circuit breaker opens immediately and Auto falls through to AnimePahe instead of spending ~15s on every request. Forced AllAnime correctly degrades to embed while the breaker is open.
+  **Update 2026-06-25 later:** `hianime` is registered as a forced direct-player provider without changing the Auto chain. `aniliberty` was implemented and did resolve direct HLS for Frieren ep1, but was removed from public player choices because the returned streams are Russian audio, not JP audio. HiAnime remains wired for soft-sub trials but still fails on this Indonesian network with the known `aniwatch` fetch error, so it needs a clean VPS/live probe before Auto.
+  **KAA (KickAssAnime) — DONE & VERIFIED LIVE, now PRIMARY (2026-06-26).** `providers/kaa.ts`,
+  host `kaa.lt` (was kickass-anime.ro / kaa.mx). This is the AllAnime-class source we wanted,
+  and better: **clean/RAW video — JP audio (DEFAULT in the master) + separate soft `.vtt`
+  subtitle tracks**, the ideal for our own-caption player. Pipeline: FlareSolverr mints a
+  cf_clearance for kaa.lt once (cached, sliding) → `POST /api/fsearch {query}` → `GET
+  /api/show/<slug>/episodes?lang=ja-JP|en-US` → `GET /api/show/<slug>/episode/ep-<n>-<slug>`
+  for the `servers` list → pick the cat-player "vidstream" server → the master HLS is derived
+  DIRECTLY from the server's `id` (NO decryption, unlike the legacy vidstreaming server):
+  `https://hls.krussdomi.com/manifest/<id>/master.m3u8` (multi-audio, JP default). Soft subs
+  come from the player page's inline `props` JSON (best-effort; our subdl/Jimaku tracks fill in
+  langs KAA lacks). The krussdomi CDN is NOT Cloudflare-gated — it only needs
+  `Origin/Referer: https://krussdomi.com`, injected by `/hls` + `/track`. Verified live: Frieren
+  ep1 (m3u8 200, JP-default master, soft subs) and HxH ep1, both `mode:direct provider:kaa`.
+  **Auto order is now `kaa,animepahe,allanime`** (`config.ts` default + local `.env`); reorder to
+  `animepahe,kaa,allanime` if KAA's cold-start (FlareSolverr solve) feels slow. Reachable from an
+  Indonesian residential IP; runs through the same laptop/Tailscale-funnel bridge as the rest of
+  Option B (laptop must be up, else the player falls back to embed). Extraction recipe + sources:
+  the npm `animob` / `consumet` KAA extractors (corrected from the dead `.ro` host to `kaa.lt`).
+  **Subtitle assembly hardened (2026-06-26):** `/watch` now de-dups subtitles to one track per
+  language — the provider's own (correctly timed to ITS video) wins over external
+  Crunchyroll-timed tracks, which removed the duplicate / off-timing second English on KAA. The
+  player got a subtitle sub-page (star/pin a language to the top, the chosen track is remembered
+  as the default, captions auto-enable for no-hardsub providers like KAA), manual HLS quality
+  from the master's renditions, and a mobile-PWA audit pass (≥44px tap targets, `60svh` popover,
+  BCP-47 `srclang` fix so iOS native captions aren't dropped). iOS native-player caption path
+  (cross-origin VTT via `/track` + `crossOrigin` on the `<video>` + `showing`-flip in native
+  fullscreen) verified by code-read; still wants a real-iPhone confirmation.
 - **Phase 3 — Subtitles — BUILT & VERIFIED (2026-06-03).** Indonesian (subdl) +
   Japanese (Jimaku) external WebVTT tracks: `source-service/src/subtitles/*`
   resolves + episode-matches, downloads, unzips, converts ASS/SRT→VTT (LRU-cached,

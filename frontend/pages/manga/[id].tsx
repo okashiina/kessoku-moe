@@ -29,6 +29,7 @@ import {
   resolveByAniList,
 } from '@utility/server/mangadex';
 import { getWeebChapters, searchWeeb } from '@utility/server/weebcentral';
+import { cached } from '@utility/ssrCache';
 
 const stripHtml = (s: string | null): string =>
   s
@@ -92,7 +93,9 @@ export const getServerSideProps: GetServerSideProps<DetailProps> = async ({
   if (!Number.isFinite(id)) return { notFound: true };
   const nsfw = nsfwFromCookie(req.headers.cookie);
 
-  const detail = await fetchMangaDetail(id);
+  const detail = await cached(`md:detail:${id}`, 30 * 60_000, () =>
+    fetchMangaDetail(id)
+  );
   if (!detail) return { notFound: true };
 
   const titles = mangaSearchTitles(detail);
@@ -112,9 +115,15 @@ export const getServerSideProps: GetServerSideProps<DetailProps> = async ({
 
   const resolveMd = async (): Promise<Record<string, ChapterLite[]> | null> => {
     try {
-      const md = await resolveByAniList(id, titles, nsfw);
-      if (!md) return null;
-      return groupByLang(await getChapterFeed(md.id, langs, nsfw));
+      return await cached(
+        `md:ch:${id}:${langs.join(',')}:${nsfw}`,
+        10 * 60_000,
+        async () => {
+          const md = await resolveByAniList(id, titles, nsfw);
+          if (!md) return null;
+          return groupByLang(await getChapterFeed(md.id, langs, nsfw));
+        }
+      );
     } catch {
       return null;
     }
@@ -168,18 +177,23 @@ export const getServerSideProps: GetServerSideProps<DetailProps> = async ({
     }
   };
 
-  // MangaDex + Weebcentral first (the fast sources), each capped.
-  const [mdChapters, weeb] = await Promise.all([
-    withTimeout(resolveMd(), 12000),
-    withTimeout(resolveWeeb(), 12000),
-  ]);
+  // MangaDex is the primary + cached source: resolve it first. Only pay the slow,
+  // Cloudflare-gated scraped fallbacks when MangaDex is thin/empty — so a title MD
+  // already covers (e.g. Hunter x Hunter) never waits on a scraper round-trip, which
+  // is what stalled manga navigation on the datacenter-IP deploy (localhost fetches
+  // from a residential IP, so it never felt this). Tradeoff: for an MD-covered title
+  // we skip Weebcentral's English gap-fill; MD is authoritative enough for those.
+  const mdChapters = await withTimeout(resolveMd(), 12000);
+  const mdCovers =
+    (mdChapters?.en?.length ?? 0) > 0 || (mdChapters?.id?.length ?? 0) > 0;
+  const weeb = mdCovers ? null : await withTimeout(resolveWeeb(), 8000);
 
-  // manhwatop is the SLOW path (a residential relay round-trip) and only carries
+  // manhwatop is the SLOWEST path (a residential relay round-trip) and only carries
   // licensed BL/adult the others lack. So only pay it when md + weeb produced no
   // English at all — every MangaDex/Weebcentral-covered title skips the relay.
   const hasEnglish =
     (mdChapters?.en?.length ?? 0) > 0 || (weeb?.length ?? 0) > 0;
-  const madara = hasEnglish ? null : await withTimeout(resolveMadara(), 15000);
+  const madara = hasEnglish ? null : await withTimeout(resolveMadara(), 10000);
 
   const chaptersByLang: Record<string, ChapterLite[]> = {
     ...(mdChapters ?? {}),

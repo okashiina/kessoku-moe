@@ -4,9 +4,10 @@ import { config } from './config.js';
 import { resolve } from './resolver.js';
 import { handleHls } from './hlsProxy.js';
 import { handleFile } from './fileProxy.js';
+import { handleTrack } from './subtitleProxy.js';
 import { watchRateLimit } from './rateLimit.js';
 import { snapshot } from './circuitBreaker.js';
-import { orderedProviders } from './providers/index.js';
+import { orderedProviders, publicProviderIds } from './providers/index.js';
 import {
   resolveSubtitleTracks,
   fetchSubtitleVtt,
@@ -28,6 +29,7 @@ app.get('/status', async () => ({
   ok: true,
   uptimeMs: Date.now() - startedAt,
   providers: orderedProviders.map((p) => p.id),
+  availableProviders: publicProviderIds,
   breakers: snapshot(),
 }));
 
@@ -48,8 +50,8 @@ app.get('/watch', { preHandler: watchRateLimit }, async (req) => {
   const params: WatchParams = { anilistId, episode, category, titles };
   // Optional forced provider (frontend "Server" picker): resolve only that one so the
   // user can test e.g. AllAnime directly. Unknown/absent => normal fallback chain.
-  const only = ['animepahe', 'allanime'].includes(q.provider) ? q.provider : undefined;
-  // Resolve sources and external subtitle tracks together — subtitle lookup is
+  const only = publicProviderIds.includes(q.provider) ? q.provider : undefined;
+  // Resolve sources and external subtitle tracks together -- subtitle lookup is
   // independent of the video source, so it adds no latency and degrades to [].
   const [result, subTracks] = await Promise.all([
     resolve(params, only),
@@ -92,13 +94,29 @@ app.get('/watch', { preHandler: watchRateLimit }, async (req) => {
       `${base}/subs?src=${t.source}` +
       `&ref=${encodeURIComponent(t.ref)}`,
   }));
-  const subtitles = [...result.subtitles, ...external];
+  const providerSubtitleRef = result.headers?.Referer || '';
+  const providerSubtitles = result.subtitles.map((t) => ({
+    ...t,
+    url:
+      `${base}/track?url=${encodeURIComponent(t.url)}` +
+      `&ref=${encodeURIComponent(providerSubtitleRef)}`,
+  }));
+  // One track per language: the provider's own subs (listed first, and correctly
+  // timed to ITS video) win over the external Crunchyroll-timed tracks, which drops
+  // duplicate / off-timing entries (e.g. a second English on KAA).
+  const seenSubLang = new Set<string>();
+  const subtitles = [...providerSubtitles, ...external].filter((t) => {
+    if (seenSubLang.has(t.lang)) return false;
+    seenSubLang.add(t.lang);
+    return true;
+  });
 
   return { mode: 'direct', provider: result.provider, sources, subtitles };
 });
 
 app.get('/hls', handleHls);
 app.get('/file', handleFile);
+app.get('/track', handleTrack);
 
 // Subtitles (Phase 3): fetch the upstream file (subdl zip / Jimaku file), convert
 // to WebVTT, and serve from our own domain. `ref` is host-restricted (SSRF guard).
