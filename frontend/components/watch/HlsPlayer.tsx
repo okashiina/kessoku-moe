@@ -556,7 +556,12 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
       // keep hls.js (videoFsOnly is false there, native HLS unsupported anyway).
       const canNativeHls = !!v.canPlayType('application/vnd.apple.mpegurl');
       const preferNative = canNativeHls && videoFsOnly();
-      if (Hls.isSupported() && !preferNative) {
+
+      // Attach hls.js (MSE / ManagedMediaSource). The primary path on
+      // desktop + Android, and the iPhone fallback when the native player chokes
+      // on a stream hls.js can still decode (see nativeFallback below).
+      const startHls = () => {
+        if (destroyed || !videoRef.current) return;
         const inst = new Hls({ enableWorker: true });
         inst.on(Hls.Events.BUFFER_CODECS, (_e, data) => {
           // eslint-disable-next-line no-console
@@ -611,12 +616,30 @@ const HlsPlayer: React.FC<HlsPlayerProps> = ({
         inst.loadSource(src);
         inst.attachMedia(v);
         hls = inst;
+      };
+
+      if (Hls.isSupported() && !preferNative) {
+        startHls();
       } else if (canNativeHls) {
+        // iPhone: play through the native AVPlayer (the only path that supports
+        // webkitEnterFullscreen + native captions). If it errors on a stream
+        // hls.js can still decode (e.g. some demuxed multi-audio HLS), retry
+        // once with hls.js before dropping to the embed fallback, so KAA still
+        // plays (windowed; native fullscreen is unavailable under hls.js).
+        let nativeRetried = false;
+        const nativeFallback = () => {
+          if (!nativeRetried && Hls.isSupported()) {
+            nativeRetried = true;
+            v.removeAttribute('src');
+            v.load();
+            startHls();
+          } else {
+            onUnplayableRef.current();
+          }
+        };
         v.src = src;
         v.addEventListener('loadedmetadata', resume, { once: true });
-        v.addEventListener('error', () => onUnplayableRef.current(), {
-          once: true,
-        });
+        v.addEventListener('error', nativeFallback, { once: true });
       }
     });
 

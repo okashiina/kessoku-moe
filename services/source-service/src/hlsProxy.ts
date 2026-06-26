@@ -81,7 +81,21 @@ export async function handleHls(req: FastifyRequest, reply: FastifyReply): Promi
   // Binary segment / key: buffer + send. (Streaming via Readable.fromWeb returned
   // an empty body here; segments are small ~200KB so buffering is fine + robust.)
   const buf = Buffer.from(await upstream.arrayBuffer());
-  reply.header('content-type', ct || 'application/octet-stream');
+  // Some providers hide media segments behind .jpg URLs and the CDN echoes a bogus
+  // `image/jpeg` content-type. hls.js ignores the MIME and parses the bytes, but
+  // iOS native AVPlayer trusts it for DEMUXED alternate-audio renditions (KAA's
+  // separate Japanese/English audio playlists) and refuses an "image" as an audio
+  // track -- so KAA played everywhere except the iPhone native player. Sniff the
+  // real container and label it honestly. A short AES-128 key (<=188 bytes) is left
+  // untouched (players read the key bytes regardless of its content-type).
+  let segType = ct || 'application/octet-stream';
+  const box = buf.length >= 8 ? buf.toString('ascii', 4, 8) : '';
+  if (buf.length > 188 && buf[0] === 0x47 && buf[188] === 0x47) {
+    segType = 'video/mp2t'; // MPEG-TS: sync byte 0x47 every 188 bytes
+  } else if (box === 'ftyp' || box === 'styp' || box === 'moof' || box === 'sidx') {
+    segType = 'video/mp4'; // fragmented MP4 (fMP4 / CMAF)
+  }
+  reply.header('content-type', segType);
   // Let the browser + a CDN cache segments/keys so repeats don't re-hit this box
   // (STREAMING-ROADMAP §13 wall 1), but respect the upstream's own directive when
   // it set one, and avoid `immutable` so a rotated upstream URL can still
