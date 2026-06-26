@@ -82,7 +82,9 @@ const SourcePlayer: React.FC<{
   // we auto-dropped to embed and tell the user why.
   const [decodeFailed, setDecodeFailed] = useState(false);
   // Which direct provider to resolve with: 'auto' = fallback chain, else forced.
-  const [pref, setPref] = useState<string>('auto');
+  // Default to KAA (clean/RAW JP + soft subs); a forced-KAA miss self-heals to the
+  // Auto chain below, so this is safe even when KAA is cold or unavailable.
+  const [pref, setPref] = useState<string>('kaa');
   // Intro/outro skip markers (AniSkip), fetched per MAL id + episode.
   const [skipMarkers, setSkipMarkers] = useState<SkipMarkers>({});
 

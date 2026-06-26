@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
+import AnimeVibeSearch from '@components/anime/VibeSearch';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
 import { ANILIST_ENDPOINT, requestWithRetry } from '@utility/anilist';
@@ -330,6 +331,8 @@ const Browse = ({
           aria-label="Filters"
           className="mb-8 space-y-5 rounded-2xl border border-line/50 bg-surface/40 p-4 backdrop-blur-sm sm:p-5"
         >
+          <AnimeVibeSearch />
+
           {/* Genre chips */}
           <fieldset>
             <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
