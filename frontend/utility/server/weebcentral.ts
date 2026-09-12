@@ -111,8 +111,9 @@ async function runWeebSearch(query: string): Promise<WeebSeries[]> {
   });
   if (!html) return [];
   const results: WeebSeries[] = [];
+  // Absolute or relative series links (same relative-href flip as chapters).
   const re =
-    /href="https:\/\/weebcentral\.com\/series\/([A-Z0-9]+)\/[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+    /href="(?:https:\/\/weebcentral\.com)?\/series\/([A-Z0-9]+)\/[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign
   while ((m = re.exec(html)) !== null) {
@@ -191,9 +192,11 @@ export async function getWeebChapters(
 
   const out: WeebChapter[] = [];
   const seen = new Set<string>();
-  // <a href="https://weebcentral.com/chapters/{ID}"> ... <span ...>Chapter 12</span>
+  // Relative or absolute chapter hrefs (Weeb flipped to /chapters/{ID} sometime
+  // after the 2026-06 absolute-URL scrape). Label lives in a nested span:
+  //   <a href="/chapters/{ID}">...<span class="">Episode 78</span>...
   const re =
-    /href="https:\/\/weebcentral\.com\/chapters\/([A-Z0-9]+)"[\s\S]*?<span[^>]*>([^<]*?(?:Chapter|Episode|Vol)[^<]*?)<\/span>/gi;
+    /href="(?:https:\/\/weebcentral\.com)?\/chapters\/([A-Z0-9]+)"[\s\S]*?<span[^>]*>\s*([^<]*?(?:Chapter|Episode|Vol)[^<]*?)\s*<\/span>/gi;
   let m: RegExpExecArray | null;
   // eslint-disable-next-line no-cond-assign
   while ((m = re.exec(html)) !== null) {
@@ -204,17 +207,23 @@ export async function getWeebChapters(
     out.push({ id, num: chapNum(label), label });
   }
   // Fallback: if the span pattern misses, at least grab the chapter ids in order.
+  // Prefer descending list order (newest first on Weeb) → assign nums from count
+  // down so sort ascending still lands Episode 1 first.
   if (!out.length) {
-    const idRe = /\/chapters\/([A-Z0-9]+)/g;
+    const ids: string[] = [];
+    const idRe = /(?:https:\/\/weebcentral\.com)?\/chapters\/([A-Z0-9]+)/g;
     let mm: RegExpExecArray | null;
-    let i = 0;
     // eslint-disable-next-line no-cond-assign
     while ((mm = idRe.exec(html)) !== null) {
       if (seen.has(mm[1])) continue; // eslint-disable-line no-continue
       seen.add(mm[1]);
-      i += 1;
-      out.push({ id: mm[1], num: i, label: `Chapter ${mm[1]}` });
+      ids.push(mm[1]);
     }
+    const total = ids.length;
+    ids.forEach((id, i) => {
+      const n = total - i;
+      out.push({ id, num: n, label: `Chapter ${n}` });
+    });
   }
 
   out.sort((a, b) => a.num - b.num);
