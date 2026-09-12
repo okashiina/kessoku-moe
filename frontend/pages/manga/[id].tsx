@@ -177,31 +177,54 @@ export const getServerSideProps: GetServerSideProps<DetailProps> = async ({
     }
   };
 
-  // MangaDex is the primary + cached source: resolve it first. Only pay the slow,
-  // Cloudflare-gated scraped fallbacks when MangaDex is thin/empty — so a title MD
-  // already covers (e.g. Hunter x Hunter) never waits on a scraper round-trip, which
-  // is what stalled manga navigation on the datacenter-IP deploy (localhost fetches
-  // from a residential IP, so it never felt this). Tradeoff: for an MD-covered title
-  // we skip Weebcentral's English gap-fill; MD is authoritative enough for those.
+  // MangaDex is the primary + cached source. Scraped English fallbacks (Weeb /
+  // manhwatop) are slow and Cloudflare-gated, so we only pay them when MD English
+  // is thin — not merely "non-empty". Old gate was `en|id.length > 0`, which left
+  // official-WEBTOON manhwa stuck at 1–2 MD uploads (e.g. I'm Not a Soccer Genius)
+  // while Weeb/Madara had the rest. Well-covered MD titles (HxH, etc.) still skip.
   const mdChapters = await withTimeout(resolveMd(), 12000);
-  const mdCovers =
-    (mdChapters?.en?.length ?? 0) > 0 || (mdChapters?.id?.length ?? 0) > 0;
-  const weeb = mdCovers ? null : await withTimeout(resolveWeeb(), 8000);
+  const mdEnCount = mdChapters?.en?.length ?? 0;
+  // Absolute floor: a handful of EN uploads almost always means incomplete feed.
+  // Relative: if AniList knows ~N chapters and MD has < half, gap-fill.
+  const mdEnThin = (enCount: number): boolean => {
+    if (enCount === 0) return true;
+    if (enCount < 8) return true;
+    const expected = detail.chapters;
+    if (
+      expected != null &&
+      expected > 0 &&
+      enCount < Math.ceil(expected * 0.5)
+    ) {
+      return true;
+    }
+    return false;
+  };
 
-  // manhwatop is the SLOWEST path (a residential relay round-trip) and only carries
-  // licensed BL/adult the others lack. So only pay it when md + weeb produced no
-  // English at all — every MangaDex/Weebcentral-covered title skips the relay.
-  const hasEnglish =
-    (mdChapters?.en?.length ?? 0) > 0 || (weeb?.length ?? 0) > 0;
-  const madara = hasEnglish ? null : await withTimeout(resolveMadara(), 10000);
+  const weeb = mdEnThin(mdEnCount)
+    ? await withTimeout(resolveWeeb(), 8000)
+    : null;
+
+  // Estimate unique EN chapter count after Weeb merge without building the map twice.
+  const enAfterWeeb = (() => {
+    if (!weeb?.length) return mdEnCount;
+    const nums = new Set((mdChapters?.en ?? []).map((c) => c.chapterNum));
+    weeb.forEach((c) => nums.add(c.chapterNum));
+    return nums.size;
+  })();
+
+  // manhwatop is the slowest path (residential relay). Still only when English
+  // remains thin after MD + Weeb — covers licensed BL/adult MD lacks entirely,
+  // and thin manhwa Weeb didn't match.
+  const madara = mdEnThin(enAfterWeeb)
+    ? await withTimeout(resolveMadara(), 10000)
+    : null;
 
   const chaptersByLang: Record<string, ChapterLite[]> = {
     ...(mdChapters ?? {}),
   };
 
-  // Merge the English-only providers, filling chapter numbers MangaDex is missing
-  // (licensed/adult titles are sparse or empty there). Priority md > wc > mh: the
-  // first provider that has a given chapter number wins.
+  // Merge English-only providers into gaps. Priority md > wc > mh: first provider
+  // that has a given chapter number wins (keeps MD page counts when present).
   const enExtra = [...(weeb ?? []), ...(madara ?? [])];
   if (enExtra.length) {
     const byNum = new Map<number, ChapterLite>();
