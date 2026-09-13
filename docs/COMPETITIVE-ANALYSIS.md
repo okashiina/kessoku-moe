@@ -164,5 +164,7 @@ built-in skip markers/PiP/keyboard/speed/theater, and it's what the UI benchmark
 The manga/manhwa reader now closes a common long-strip usability gap with
 opt-in, adjustable auto-scroll (20–180 px/s) and a single top-edge progress
 indicator shared by continuous and paged navigation. Manual input pauses motion,
-and reduced-motion preferences disable auto-scroll. The change keeps the current
-layout intact and adds no dependency.
+and reduced-motion preferences disable auto-scroll. Continuous progress mirrors
+the clamped native scrollbar position in both directions and resyncs as lazy images
+change the document height. The change keeps the current layout intact and adds no
+dependency.
