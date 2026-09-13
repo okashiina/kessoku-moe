@@ -522,7 +522,8 @@ Cloudflare) and returns the bytes; the container never speaks TLS to manhwatop.
   20–180 px/s speed setting. Manual pointer, touch, or wheel input pauses it;
   reduced-motion users never get forced motion.
 - The existing top accent line is now an accessible reading-progress indicator.
-  It follows exact scroll depth in continuous modes and the current page in paged
-  modes, including tap and keyboard navigation.
+  It follows the native scrollbar's clamped position in continuous modes and the
+  current page in paged modes, including upward scrolling, tap, and keyboard
+  navigation. Content-height changes from lazy images resync it immediately.
 - This is a reader-behavior update only. The existing layout and Midnight Aurora
   visual direction are unchanged.

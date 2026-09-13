@@ -462,11 +462,15 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         const allImagesLoaded =
           pages.length > 0 && Array.from(imgs).every((image) => image.complete);
         const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
-        let nextProgress = 0;
-        if (maxScroll > 0) nextProgress = el.scrollTop / maxScroll;
-        else if (allImagesLoaded) nextProgress = 1;
-        updateReadingProgress(nextProgress);
-        const mid = el.scrollTop + el.clientHeight / 2;
+        // Match the browser scrollbar's normalized thumb position. iOS can
+        // report a negative or over-bound scrollTop during rubber-banding, so
+        // clamp it before deriving progress and the current page.
+        const scrollTop = Math.min(maxScroll, Math.max(0, el.scrollTop));
+        let scrollProgress = 0;
+        if (maxScroll > 0) scrollProgress = scrollTop / maxScroll;
+        else if (allImagesLoaded) scrollProgress = 1;
+        updateReadingProgress(scrollProgress);
+        const mid = scrollTop + el.clientHeight / 2;
         let current = 0;
         imgs.forEach((img) => {
           const node = img as HTMLElement;
@@ -479,7 +483,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         }
         if (
           allImagesLoaded &&
-          el.scrollTop + el.clientHeight >= el.scrollHeight - 80
+          scrollTop + el.clientHeight >= el.scrollHeight - 80
         ) {
           markDone();
         }
@@ -487,6 +491,8 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     };
     const resizeObserver = new ResizeObserver(update);
     resizeObserver.observe(el);
+    const content = el.firstElementChild;
+    if (content) resizeObserver.observe(content);
     el.querySelectorAll('[data-page]').forEach((img) =>
       resizeObserver.observe(img)
     );

@@ -984,6 +984,8 @@ OR co-watch is dependable at any real scale. This is operational, not a code cha
 The manga/manhwa reader now supports opt-in, speed-adjustable auto-scroll for
 continuous reading and turns the existing top accent line into exact reading
 progress. Paged tap/keyboard navigation updates the same indicator. Manual input
-pauses auto-scroll and `prefers-reduced-motion` disables it. This is isolated to
-reader behavior; no layout redesign or video-pipeline behavior changed. The manga
-source of truth remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md).
+pauses auto-scroll and `prefers-reduced-motion` disables it. Continuous progress is
+clamped to the native scrollbar position, moves backward on upward scrolling, and
+resyncs when lazy content changes height. This is isolated to reader behavior; no
+layout redesign or video-pipeline behavior changed. The manga source of truth
+remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md).
