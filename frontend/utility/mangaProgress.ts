@@ -2,9 +2,9 @@ import { createStore } from './externalStore';
 
 // Manga reading progress, keyed by AniList manga id, in localStorage
 // (`kessoku.mangaProgress.v1`). Mirrors utility/progress.ts (watch progress) but
-// tracks chapters/pages instead of episodes/seconds. Reader-only writes; powers
-// the "Continue reading" rail + resume. AniList MediaList sync (progress =
-// chapters read, type: MANGA) is a later phase — this is the local layer.
+// tracks chapters/pages instead of episodes/seconds and powers the "Continue
+// reading" rail + resume. AniList sync mirrors whole-chapter progress between
+// devices; provider chapter ids and exact page positions remain device-local.
 
 export interface MangaProgressEntry {
   ch: number; // last-read chapter number (supports 12.5)
@@ -31,6 +31,59 @@ export const MANGA_CONTINUE_EMPTY: MangaContinueItem[] = [];
 
 export function getMangaEntry(id: number): MangaProgressEntry | undefined {
   return store.get()[id];
+}
+
+/** Ids with locally cached manga reading state (for AniList sync). */
+export function listMangaProgressIds(): number[] {
+  return Object.keys(store.get()).map(Number);
+}
+
+/**
+ * Merge chapter progress received from AniList. AniList has no provider chapter
+ * or page identity, so a newly materialised remote entry deliberately resumes
+ * at the title page rather than pretending it can open a specific chapter.
+ */
+export function mergeRemoteMangaProgress(
+  id: number,
+  progress: number,
+  info: {
+    total?: number;
+    title?: string;
+    cover?: string | null;
+    updatedAt?: number;
+  }
+): void {
+  const wholeProgress = Math.max(0, Math.floor(progress));
+  if (!wholeProgress) return;
+  store.update((prev) => {
+    const cur = prev[id];
+    const localProgress = cur
+      ? Math.floor(Math.max(cur.ch, ...(cur.read.length ? cur.read : [0])))
+      : 0;
+    const read = Array.from(
+      new Set([
+        ...(cur?.read ?? []),
+        ...Array.from({ length: wholeProgress }, (_, index) => index + 1),
+      ])
+    ).sort((a, b) => a - b);
+    const remoteAdvanced = wholeProgress > localProgress;
+    const updatedAt = info.updatedAt ?? 0;
+    return {
+      ...prev,
+      [id]: {
+        ch: Math.max(cur?.ch ?? 0, wholeProgress),
+        chapterId: remoteAdvanced ? '' : cur?.chapterId ?? '',
+        page: remoteAdvanced ? 0 : cur?.page ?? 0,
+        pages: remoteAdvanced ? 0 : cur?.pages ?? 0,
+        total: info.total || cur?.total || 0,
+        lang: cur?.lang ?? 'en',
+        read,
+        title: info.title || cur?.title || '',
+        cover: info.cover ?? cur?.cover ?? null,
+        updatedAt: Math.max(cur?.updatedAt ?? 0, updatedAt),
+      },
+    };
+  });
 }
 
 export function saveMangaPosition(
