@@ -156,3 +156,13 @@ built-in skip markers/PiP/keyboard/speed/theater, and it's what the UI benchmark
   (search → episodes → server) — the cleanest anti-fragility model; AniList as the only
   catalog source of truth; AniSkip markers.
 - **Anti-takedown (all):** multi-domain mirrors + public status page + Discord.
+
+---
+
+## Shipped reader usability (2026-09-13)
+
+The manga/manhwa reader now closes a common long-strip usability gap with
+opt-in, adjustable auto-scroll (20–180 px/s) and a single top-edge progress
+indicator shared by continuous and paged navigation. Manual input pauses motion,
+and reduced-motion preferences disable auto-scroll. The change keeps the current
+layout intact and adds no dependency.

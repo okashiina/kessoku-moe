@@ -17,7 +17,9 @@ import {
   ChevronRightIcon,
   CogIcon,
   DownloadIcon,
+  PauseIcon,
   PhotographIcon,
+  PlayIcon,
   XIcon,
 } from '@heroicons/react/solid';
 
@@ -39,10 +41,14 @@ import {
 } from '@utility/mangaDownloads';
 import { markChapterRead, saveMangaPosition } from '@utility/mangaProgress';
 import {
+  AUTO_SCROLL_SPEED_MAX,
+  AUTO_SCROLL_SPEED_MIN,
+  AUTO_SCROLL_SPEED_STEP,
   getReaderPrefs,
   MODE_LABEL,
   READER_PREFS_DEFAULT,
   ReaderMode,
+  setAutoScrollSpeed,
   setDataSaver,
   setReaderFit,
   setReaderMode,
@@ -108,6 +114,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const [chromeVisible, setChromeVisible] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [autoScrolling, setAutoScrolling] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
 
   // Offline download state. `downloaded` is reactive via the external store;
   // `dl` tracks an in-flight download's progress (null when idle).
@@ -123,6 +132,27 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   );
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const progressFillRef = useRef<HTMLDivElement>(null);
+  const announcedProgressRef = useRef(0);
+  const persistedContinuousPageRef = useRef<number | null>(null);
+
+  // Keep the visual fill smooth without rerendering the image list on every
+  // scroll frame. React state only changes when the announced whole percent does.
+  const updateReadingProgress = useCallback((progress: number) => {
+    const clamped = Math.min(1, Math.max(0, progress));
+    if (progressFillRef.current) {
+      progressFillRef.current.style.transform = `scaleX(${clamped})`;
+    }
+    const nextPercent = Math.round(clamped * 100);
+    if (announcedProgressRef.current !== nextPercent) {
+      announcedProgressRef.current = nextPercent;
+      setProgressPercent(nextPercent);
+    }
+  }, []);
+
+  const pauseAutoScroll = useCallback(() => {
+    setAutoScrolling(false);
+  }, []);
 
   const pages = useMemo(() => {
     if (!data) return [];
@@ -203,6 +233,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const retry = useCallback(() => setReloadKey((k) => k + 1), []);
   useEffect(() => {
     let alive = true;
+    setAutoScrolling(false);
+    updateReadingProgress(0);
+    persistedContinuousPageRef.current = null;
     setStatus('loading');
     setData(null);
     setPage(0);
@@ -221,7 +254,26 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     return () => {
       alive = false;
     };
-  }, [chapterId, reloadKey]);
+  }, [chapterId, reloadKey, updateReadingProgress]);
+
+  // Auto-scroll is always opt-in for the current reader session. A system
+  // reduced-motion preference keeps it unavailable, including live changes.
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => {
+      setReducedMotion(query.matches);
+      if (query.matches) setAutoScrolling(false);
+    };
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
+  // Changing reading mode or opening either sheet ends the active run. Closing
+  // a sheet never resumes it implicitly.
+  useEffect(() => {
+    setAutoScrolling(false);
+  }, [mode, showSettings, showComments]);
 
   // Lock body scroll while a sheet (settings / comments) is open, so the page
   // behind doesn't scroll under the overlay on iOS, and restore on close.
@@ -261,7 +313,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   );
 
   useEffect(() => {
-    if (status === 'ready' && pages.length) persist(0, pages.length);
+    if (status === 'ready' && pages.length) {
+      persistedContinuousPageRef.current = 0;
+      persist(0, pages.length);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, pages.length]);
 
@@ -319,6 +374,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
 
   const goChapter = (s: ReaderSibling | null) => {
     if (!s) return;
+    setAutoScrolling(false);
     const al = anilistId != null ? `?al=${anilistId}` : '';
     router.push(`/read/${s.id}${al}`);
   };
@@ -391,17 +447,25 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [continuous, mode, advance]);
 
-  // Continuous: track which page is in view + mark read at the bottom.
+  // Continuous: track exact scroll progress and the page currently in view.
+  // ResizeObserver keeps the value accurate while lazy images settle.
   useEffect(() => {
     if (!continuous || status !== 'ready') return undefined;
     const el = scrollRef.current;
     if (!el) return undefined;
     let raf = 0;
-    const onScroll = () => {
+    const update = () => {
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
         raf = 0;
-        const imgs = el.querySelectorAll('[data-page]');
+        const imgs = el.querySelectorAll<HTMLImageElement>('[data-page]');
+        const allImagesLoaded =
+          pages.length > 0 && Array.from(imgs).every((image) => image.complete);
+        const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+        let nextProgress = 0;
+        if (maxScroll > 0) nextProgress = el.scrollTop / maxScroll;
+        else if (allImagesLoaded) nextProgress = 1;
+        updateReadingProgress(nextProgress);
         const mid = el.scrollTop + el.clientHeight / 2;
         let current = 0;
         imgs.forEach((img) => {
@@ -409,13 +473,136 @@ const MangaReader: React.FC<MangaReaderProps> = ({
           if (node.offsetTop <= mid) current = Number(node.dataset.page);
         });
         setPage(current);
-        persist(current, pages.length);
-        if (el.scrollTop + el.clientHeight >= el.scrollHeight - 80) markDone();
+        if (persistedContinuousPageRef.current !== current) {
+          persistedContinuousPageRef.current = current;
+          persist(current, pages.length);
+        }
+        if (
+          allImagesLoaded &&
+          el.scrollTop + el.clientHeight >= el.scrollHeight - 80
+        ) {
+          markDone();
+        }
       });
     };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, [continuous, status, pages.length, persist, markDone]);
+    const resizeObserver = new ResizeObserver(update);
+    resizeObserver.observe(el);
+    el.querySelectorAll('[data-page]').forEach((img) =>
+      resizeObserver.observe(img)
+    );
+    el.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      resizeObserver.disconnect();
+      el.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [
+    continuous,
+    status,
+    pages.length,
+    persist,
+    markDone,
+    updateReadingProgress,
+  ]);
+
+  // Paged progress follows the visible page and therefore updates for tap and
+  // keyboard navigation without coupling it to continuous scroll state.
+  useEffect(() => {
+    if (continuous) return;
+    updateReadingProgress(pages.length > 0 ? (page + 1) / pages.length : 0);
+  }, [continuous, page, pages.length, updateReadingProgress]);
+
+  // Time-based RAF scrolling stays consistent across display refresh rates.
+  // Large elapsed gaps are capped so a backgrounded tab cannot jump ahead.
+  useEffect(() => {
+    if (
+      !autoScrolling ||
+      !continuous ||
+      reducedMotion ||
+      status !== 'ready' ||
+      showSettings ||
+      showComments
+    ) {
+      return undefined;
+    }
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    let raf = 0;
+    let previousTime: number | null = null;
+    let targetScrollTop = el.scrollTop;
+    const stopAtEnd = () => {
+      setAutoScrolling(false);
+      markDone();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') setAutoScrolling(false);
+    };
+    const tick = (time: number) => {
+      if (document.visibilityState !== 'visible') {
+        setAutoScrolling(false);
+        return;
+      }
+      const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+      if (maxScroll === 0) {
+        const imagesPending = Array.from(
+          el.querySelectorAll<HTMLImageElement>('[data-page]')
+        ).some((image) => !image.complete);
+        if (imagesPending) {
+          previousTime = time;
+          raf = window.requestAnimationFrame(tick);
+          return;
+        }
+        stopAtEnd();
+        return;
+      }
+      const actualScrollTop = Math.min(maxScroll, Math.max(0, el.scrollTop));
+      // Preserve sub-pixel deltas that scrollTop rounds away. Reconcile only a
+      // meaningful external shift, such as scroll anchoring after an image resize.
+      if (Math.abs(actualScrollTop - targetScrollTop) > 2) {
+        targetScrollTop = actualScrollTop;
+      } else {
+        targetScrollTop = Math.min(maxScroll, Math.max(0, targetScrollTop));
+      }
+      if (targetScrollTop >= maxScroll - 0.5) {
+        el.scrollTop = maxScroll;
+        stopAtEnd();
+        return;
+      }
+      if (previousTime != null) {
+        const elapsed = Math.min(100, time - previousTime);
+        targetScrollTop = Math.min(
+          maxScroll,
+          targetScrollTop + (prefs.autoScrollSpeed * elapsed) / 1000
+        );
+        el.scrollTop = targetScrollTop;
+        if (targetScrollTop >= maxScroll - 0.5) {
+          el.scrollTop = maxScroll;
+          stopAtEnd();
+          return;
+        }
+      }
+      previousTime = time;
+      raf = window.requestAnimationFrame(tick);
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    raf = window.requestAnimationFrame(tick);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [
+    autoScrolling,
+    continuous,
+    markDone,
+    prefs.autoScrollSpeed,
+    reducedMotion,
+    showComments,
+    showSettings,
+    status,
+  ]);
 
   // Fit classes for paged images.
   const FIT_CLASS: Record<typeof prefs.fit, string> = {
@@ -426,9 +613,33 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const fitClass = FIT_CLASS[prefs.fit];
 
   const detailHref = anilistId != null ? `/manga/${anilistId}` : '/manga';
+  let progressValueText = `${progressPercent}%`;
+  if (!continuous && pages.length > 0) {
+    progressValueText = `Page ${page + 1} of ${pages.length}`;
+  }
+  let autoScrollLabel = 'Start auto-scroll';
+  if (reducedMotion) {
+    autoScrollLabel = 'Auto-scroll unavailable while reduced motion is enabled';
+  } else if (autoScrolling) {
+    autoScrollLabel = 'Pause auto-scroll';
+  }
 
   return (
     <div className="fixed inset-0 z-[60] flex h-[100dvh] flex-col bg-black text-white [touch-action:manipulation]">
+      <div
+        role="progressbar"
+        aria-label="Reading progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progressPercent}
+        aria-valuetext={progressValueText}
+        className="pointer-events-none absolute inset-x-0 top-0 z-[70] h-1 overflow-hidden"
+      >
+        <div
+          ref={progressFillRef}
+          className="h-full origin-left scale-x-0 bg-accent will-change-transform"
+        />
+      </div>
       {/* Top chrome */}
       <header
         className={`absolute inset-x-0 top-0 z-30 flex items-center gap-3 bg-gradient-to-b from-black/80 to-transparent px-3 py-2 transition-opacity duration-300 motion-reduce:transition-none ${
@@ -540,6 +751,36 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                   ))}
                 </div>
               </>
+            )}
+
+            {continuous && (
+              <div className="mb-4">
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <label
+                    htmlFor="auto-scroll-speed"
+                    className="text-xs font-semibold uppercase tracking-wide text-white/50"
+                  >
+                    Auto-scroll speed
+                  </label>
+                  <output
+                    htmlFor="auto-scroll-speed"
+                    className="text-xs tabular-nums text-white/70"
+                  >
+                    {prefs.autoScrollSpeed} px/s
+                  </output>
+                </div>
+                <input
+                  id="auto-scroll-speed"
+                  type="range"
+                  min={AUTO_SCROLL_SPEED_MIN}
+                  max={AUTO_SCROLL_SPEED_MAX}
+                  step={AUTO_SCROLL_SPEED_STEP}
+                  value={prefs.autoScrollSpeed}
+                  aria-valuetext={`${prefs.autoScrollSpeed} pixels per second`}
+                  onChange={(e) => setAutoScrollSpeed(Number(e.target.value))}
+                  className="h-11 w-full cursor-pointer accent-pink-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                />
+              </div>
             )}
 
             <label className="flex min-h-[44px] items-center justify-between rounded-lg bg-white/5 px-3 py-2.5">
@@ -699,6 +940,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
           <div
             ref={scrollRef}
             onClick={() => setChromeVisible((v) => !v)}
+            onPointerDown={pauseAutoScroll}
+            onTouchStart={pauseAutoScroll}
+            onWheel={pauseAutoScroll}
             className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
           >
             <div
@@ -798,7 +1042,25 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             <ChevronLeftIcon className="h-4 w-4" /> Prev
           </button>
           <span className="text-xs font-medium text-white/70">
-            {continuous ? chapterLabel : `${page + 1} / ${pages.length || '…'}`}
+            {continuous ? (
+              <button
+                type="button"
+                aria-label={autoScrollLabel}
+                aria-pressed={autoScrolling}
+                disabled={reducedMotion || pages.length === 0}
+                onClick={() => setAutoScrolling((value) => !value)}
+                className="flex min-h-[44px] items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-medium text-white/90 transition [touch-action:manipulation] hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:bg-white/25 disabled:opacity-40 motion-reduce:transition-none"
+              >
+                {autoScrolling ? (
+                  <PauseIcon className="h-4 w-4" aria-hidden="true" />
+                ) : (
+                  <PlayIcon className="h-4 w-4" aria-hidden="true" />
+                )}
+                {autoScrolling ? 'Pause' : 'Auto'}
+              </button>
+            ) : (
+              `${page + 1} / ${pages.length || '…'}`
+            )}
           </span>
           <button
             type="button"
