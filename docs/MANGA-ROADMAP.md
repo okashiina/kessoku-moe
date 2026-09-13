@@ -525,5 +525,7 @@ Cloudflare) and returns the bytes; the container never speaks TLS to manhwatop.
   It follows the native scrollbar's clamped position in continuous modes and the
   current page in paged modes, including upward scrolling, tap, and keyboard
   navigation. Content-height changes from lazy images resync it immediately.
+- Route/data loading feedback is disabled on reader routes so this pink line never
+  doubles as a chapter or episode loader; it is reserved for scroll progress.
 - This is a reader-behavior update only. The existing layout and Midnight Aurora
   visual direction are unchanged.

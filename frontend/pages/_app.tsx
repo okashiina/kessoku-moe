@@ -10,10 +10,19 @@ import useAniListMangaSync from '@hooks/useAniListMangaSync';
 import useAniListSync from '@hooks/useAniListSync';
 import { useStore } from '@store/store';
 
-// start progress bar when the route starts to change
-Router.events.on('routeChangeStart', progressBar.start);
+// The reader owns the pink top bar: it reflects scroll position, not route/data
+// loading. Keep the app-wide loader off reader routes so chapter changes cannot
+// compete with the reading-progress indicator.
+const isReaderRoute = (url: string) =>
+  url.split(/[?#]/, 1)[0].startsWith('/read/');
 
-// finish the progress bar if there is an error while route change
+Router.events.on('routeChangeStart', (url) => {
+  if (!isReaderRoute(url)) progressBar.start();
+});
+
+// Always clear the app-wide loader when navigation settles. This also removes
+// any loader that was active before entering the reader.
+Router.events.on('routeChangeComplete', progressBar.finish);
 Router.events.on('routeChangeError', progressBar.finish);
 
 function MyApp({ Component, pageProps }: AppProps) {

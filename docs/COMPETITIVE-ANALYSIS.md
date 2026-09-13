@@ -168,3 +168,5 @@ and reduced-motion preferences disable auto-scroll. Continuous progress mirrors
 the clamped native scrollbar position in both directions and resyncs as lazy images
 change the document height. The change keeps the current layout intact and adds no
 dependency.
+Reader navigation does not start the app-wide route loader, keeping the pink line
+an unambiguous scroll-progress indicator during chapter changes.
