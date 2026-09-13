@@ -5,11 +5,9 @@ import { createStore } from './externalStore';
 // from its detail page; it shows in the Manga section of /watchlist alongside
 // whatever you're mid-read on (from mangaProgress).
 //
-// Also carries a LOCAL reading status + personal score per series. These are
-// localStorage-only for now (no AniList wiring — a sibling feature owns that),
-// but the shapes are AniList-compatible on purpose: status maps onto AniList's
-// manga MediaListStatus and score is stored as scoreRaw 0-100, so a future sync
-// is a diff, not a migration.
+// Also carries the locally cached reading status + personal score per series.
+// The AniList manga sync imports and exports these values, while localStorage
+// keeps the UI responsive and usable when the viewer is offline.
 
 // Local reading status. Names match the three states the manga shelf exposes;
 // they map 1:1 onto AniList (READING→CURRENT, PLAN_TO_READ→PLANNING) when sync
@@ -50,6 +48,44 @@ export function toggleMangaSaved(entry: Omit<MangaListEntry, 'addedAt'>): void {
     const next = { ...prev };
     if (next[entry.id]) delete next[entry.id];
     else next[entry.id] = { ...entry, addedAt: Date.now() };
+    return next;
+  });
+}
+
+/** Add a remote/local shelf entry without changing its local status or score. */
+export function upsertMangaSaved(
+  entry: Omit<MangaListEntry, 'addedAt' | 'status' | 'score'>
+): void {
+  store.update((prev) => {
+    const existing = prev[entry.id];
+    const nextEntry: MangaListEntry = existing
+      ? {
+          ...existing,
+          // AniList is the best source for these display fields. Avoid replacing
+          // useful cached local data with an empty optional API value.
+          title: entry.title || existing.title,
+          cover: entry.cover ?? existing.cover,
+          country: entry.country ?? existing.country,
+        }
+      : { ...entry, addedAt: Date.now() };
+    if (
+      existing &&
+      nextEntry.title === existing.title &&
+      nextEntry.cover === existing.cover &&
+      nextEntry.country === existing.country
+    ) {
+      return prev;
+    }
+    return { ...prev, [entry.id]: nextEntry };
+  });
+}
+
+/** Remove a shelf entry entirely (used by an AniList remote deletion). */
+export function removeMangaSaved(id: number): void {
+  store.update((prev) => {
+    if (!prev[id]) return prev;
+    const next = { ...prev };
+    delete next[id];
     return next;
   });
 }
