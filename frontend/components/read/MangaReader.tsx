@@ -141,7 +141,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const updateReadingProgress = useCallback((progress: number) => {
     const clamped = Math.min(1, Math.max(0, progress));
     if (progressFillRef.current) {
-      progressFillRef.current.style.transform = `scaleX(${clamped})`;
+      progressFillRef.current.style.width = `${clamped * 100}%`;
     }
     const nextPercent = Math.round(clamped * 100);
     if (announcedProgressRef.current !== nextPercent) {
@@ -634,16 +634,18 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     <div className="fixed inset-0 z-[60] flex h-[100dvh] flex-col bg-black text-white [touch-action:manipulation]">
       <div
         role="progressbar"
+        dir="ltr"
         aria-label="Reading progress"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progressPercent}
         aria-valuetext={progressValueText}
-        className="pointer-events-none absolute inset-x-0 top-0 z-[70] h-1 overflow-hidden"
+        className="pointer-events-none absolute inset-x-0 top-0 z-[70] h-1 overflow-hidden [direction:ltr]"
       >
         <div
           ref={progressFillRef}
-          className="h-full origin-left scale-x-0 bg-accent will-change-transform"
+          className="absolute inset-y-0 left-0 h-full bg-accent"
+          style={{ width: '0%', minWidth: 0 }}
         />
       </div>
       {/* Top chrome */}
