@@ -11,11 +11,57 @@ export interface ReaderPrefs {
   mode: ReaderMode | null; // null = follow the series default (paged vs webtoon)
   fit: ReaderFit;
   dataSaver: boolean;
+  autoScrollSpeed: number; // CSS pixels per second; auto-scroll itself is session-only
 }
 
-const DEFAULT: ReaderPrefs = { mode: null, fit: 'width', dataSaver: false };
+export const AUTO_SCROLL_SPEED_MIN = 20;
+export const AUTO_SCROLL_SPEED_MAX = 180;
+export const AUTO_SCROLL_SPEED_STEP = 10;
 
-const store = createStore<ReaderPrefs>('kessoku.readerPrefs.v1', DEFAULT);
+const DEFAULT: ReaderPrefs = {
+  mode: null,
+  fit: 'width',
+  dataSaver: false,
+  autoScrollSpeed: 60,
+};
+
+const READER_MODES: ReaderMode[] = ['rtl', 'ltr', 'vertical', 'webtoon'];
+const READER_FITS: ReaderFit[] = ['width', 'height', 'original'];
+
+function clampAutoScrollSpeed(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT.autoScrollSpeed;
+  }
+  return Math.min(
+    AUTO_SCROLL_SPEED_MAX,
+    Math.max(AUTO_SCROLL_SPEED_MIN, value)
+  );
+}
+
+function parseReaderPrefs(raw: string): ReaderPrefs {
+  const parsed = JSON.parse(raw) as Partial<ReaderPrefs> | null;
+  return {
+    mode:
+      parsed?.mode != null && READER_MODES.includes(parsed.mode)
+        ? parsed.mode
+        : null,
+    fit:
+      parsed?.fit != null && READER_FITS.includes(parsed.fit)
+        ? parsed.fit
+        : DEFAULT.fit,
+    dataSaver:
+      typeof parsed?.dataSaver === 'boolean'
+        ? parsed.dataSaver
+        : DEFAULT.dataSaver,
+    autoScrollSpeed: clampAutoScrollSpeed(parsed?.autoScrollSpeed),
+  };
+}
+
+const store = createStore<ReaderPrefs>(
+  'kessoku.readerPrefs.v1',
+  DEFAULT,
+  parseReaderPrefs
+);
 export const subscribeReaderPrefs = store.subscribe;
 export const getReaderPrefs = (): ReaderPrefs => store.get();
 export const READER_PREFS_DEFAULT = DEFAULT;
@@ -28,6 +74,12 @@ export function setReaderFit(fit: ReaderFit): void {
 }
 export function setDataSaver(dataSaver: boolean): void {
   store.update((p) => ({ ...p, dataSaver }));
+}
+export function setAutoScrollSpeed(autoScrollSpeed: number): void {
+  store.update((p) => ({
+    ...p,
+    autoScrollSpeed: clampAutoScrollSpeed(autoScrollSpeed),
+  }));
 }
 
 export const MODE_LABEL: Record<ReaderMode, string> = {

@@ -976,3 +976,14 @@ OR co-watch is dependable at any real scale. This is operational, not a code cha
 4. CDN for segments / prefer ABR-HLS / proxy pool (when bandwidth actually bites).
 5. Co-watch on managed pub/sub (feature-driven, §12).
 6. Paid LLM tier or self-hosted GPU (only once usage justifies it — §10 D/E).
+
+---
+
+## 14. Manga reader UX note (shipped 2026-09-13)
+
+The manga/manhwa reader now supports opt-in, speed-adjustable auto-scroll for
+continuous reading and turns the existing top accent line into exact reading
+progress. Paged tap/keyboard navigation updates the same indicator. Manual input
+pauses auto-scroll and `prefers-reduced-motion` disables it. This is isolated to
+reader behavior; no layout redesign or video-pipeline behavior changed. The manga
+source of truth remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md).

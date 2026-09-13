@@ -515,3 +515,14 @@ Cloudflare) and returns the bytes; the container never speaks TLS to manhwatop.
   datacenter. For true 24/7 hands-off, a paid residential proxy + a
   browser-fingerprint client (e.g. curl-impersonate) would be needed; the relay
   is the free route.
+
+## Update 2026-09-13 — reader auto-scroll and exact progress
+
+- Continuous Vertical/Webtoon reading now has opt-in auto-scroll with a persisted
+  20–180 px/s speed setting. Manual pointer, touch, or wheel input pauses it;
+  reduced-motion users never get forced motion.
+- The existing top accent line is now an accessible reading-progress indicator.
+  It follows exact scroll depth in continuous modes and the current page in paged
+  modes, including tap and keyboard navigation.
+- This is a reader-behavior update only. The existing layout and Midnight Aurora
+  visual direction are unchanged.
