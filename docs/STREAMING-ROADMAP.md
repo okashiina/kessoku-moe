@@ -988,4 +988,5 @@ pauses auto-scroll and `prefers-reduced-motion` disables it. Continuous progress
 clamped to the native scrollbar position, moves backward on upward scrolling, and
 resyncs when lazy content changes height. This is isolated to reader behavior; no
 layout redesign or video-pipeline behavior changed. The manga source of truth
-remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md).
+remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md). Reader navigation does not start
+the app-wide route loader, keeping the pink line unambiguous during chapter changes.
