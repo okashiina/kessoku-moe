@@ -53,3 +53,9 @@ docs/kessoku moe brand guide/
 # scratch: PoC + screenshot artifacts
 services/source-service/scripts/*.png
 services/source-service/scripts/kwik-*
+
+# private agent instruction files (keep local, never commit)
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+**/CLAUDE.local.md

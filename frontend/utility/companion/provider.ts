@@ -35,9 +35,33 @@ interface BaseArgs {
   extraHeaders?: Record<string, string>;
 }
 
-// Gemini's OpenAI-compatible endpoint. Only it takes `reasoning_effort` and only
-// it does vision here; Groq would 400 on the extra field, so we gate on the base.
+// Provider-specific compatibility gates. Gemini and native OpenAI GPT-5 models
+// accept `reasoning_effort`; Groq would 400 on the extra field, so we gate on
+// the provider/model combination.
 const isGemini = (base: string): boolean => base.includes('generativelanguage');
+
+const isOpenAI = (base: string): boolean => base.includes('api.openai.com');
+
+// GPT-5 chat models reject `max_tokens` / `temperature` and want
+// `max_completion_tokens` (+ optional reasoning_effort). Without this gate,
+// companion + vibe-search 400 and silently fall back to empty results.
+const isOpenAIReasoningModel = (base: string, model: string): boolean =>
+  isOpenAI(base) && /^gpt-5(?:[.-]|$)/i.test(model);
+
+const completionParams = (
+  base: string,
+  model: string,
+  maxTokens: number,
+  temperature: number | undefined
+): Record<string, unknown> => {
+  const reasoning = isOpenAIReasoningModel(base, model);
+  return {
+    ...(reasoning
+      ? { max_completion_tokens: maxTokens, reasoning_effort: 'none' }
+      : { max_tokens: maxTokens, temperature: temperature ?? 0.6 }),
+    ...(isGemini(base) ? { reasoning_effort: 'none' } : {}),
+  };
+};
 
 const safeJson = (s: string | undefined): Record<string, unknown> => {
   if (!s) return {};
@@ -62,11 +86,7 @@ export const completeChat = async (
     const body = JSON.stringify({
       model,
       messages,
-      temperature: temperature ?? 0.6,
-      max_tokens: maxTokens ?? 512,
-      // Disable Gemini 2.5-flash "thinking" so it doesn't spend the token budget
-      // before emitting an answer (confirmed truncating short replies otherwise).
-      ...(isGemini(base) ? { reasoning_effort: 'none' } : {}),
+      ...completionParams(base, model, maxTokens ?? 512, temperature),
       ...(useTools ? { tools, tool_choice: args.toolChoice ?? 'auto' } : {}),
     });
     const doFetch = (): Promise<Response> =>
@@ -156,10 +176,8 @@ export async function* streamChat(
       body: JSON.stringify({
         model,
         messages,
-        temperature: temperature ?? 0.6,
-        max_tokens: maxTokens ?? 400,
+        ...completionParams(base, model, maxTokens ?? 400, temperature),
         stream: true,
-        ...(isGemini(base) ? { reasoning_effort: 'none' } : {}),
         ...(useTools ? { tools, tool_choice: args.toolChoice ?? 'none' } : {}),
       }),
     });
