@@ -25,6 +25,7 @@ import {
 
 import CommentsSection from '@components/comments/CommentsSection';
 import ReadingCompanion from '@components/manga/ReadingCompanion';
+import { getSession, subscribeAuth } from '@utility/anilistAuth';
 import type { CompanionRosterEntry } from '@utility/companion/types';
 import {
   getAutoDownload,
@@ -39,7 +40,16 @@ import {
   isChapterDownloaded,
   subscribeDownloads,
 } from '@utility/mangaDownloads';
-import { markChapterRead, saveMangaPosition } from '@utility/mangaProgress';
+import {
+  isMangaPositionPullReady,
+  subscribeMangaPositionPull,
+} from '@utility/mangaPositionSync';
+import {
+  getMangaEntry,
+  markChapterRead,
+  saveMangaPosition,
+  subscribeMangaProgress,
+} from '@utility/mangaProgress';
 import {
   AUTO_SCROLL_SPEED_MAX,
   AUTO_SCROLL_SPEED_MIN,
@@ -99,6 +109,19 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     getReaderPrefs,
     () => READER_PREFS_DEFAULT
   );
+  // AniList sync can arrive after this route has mounted, so keep the current
+  // entry reactive long enough to restore the matching provider chapter.
+  const progressEntry = useSyncExternalStore(
+    subscribeMangaProgress,
+    () => (anilistId == null ? undefined : getMangaEntry(anilistId)),
+    () => undefined
+  );
+  const session = useSyncExternalStore(subscribeAuth, getSession, () => null);
+  const exactPullReady = useSyncExternalStore(
+    subscribeMangaPositionPull,
+    () => !session || isMangaPositionPullReady(session.user.id),
+    () => !session
+  );
 
   const mode: ReaderMode = prefs.mode ?? (webtoonDefault ? 'webtoon' : 'rtl');
   const continuous = mode === 'webtoon' || mode === 'vertical';
@@ -134,7 +157,14 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const progressFillRef = useRef<HTMLDivElement>(null);
   const announcedProgressRef = useRef(0);
-  const persistedContinuousPageRef = useRef<number | null>(null);
+  const restoredRef = useRef<string | null>(null);
+  const userInteractedRef = useRef(false);
+  const lastContinuousPersistRef = useRef<{
+    at: number;
+    page: number;
+    progressBps: number;
+  } | null>(null);
+  const [continuousLayoutVersion, setContinuousLayoutVersion] = useState(0);
 
   // Keep the visual fill smooth without rerendering the image list on every
   // scroll frame. React state only changes when the announced whole percent does.
@@ -150,9 +180,16 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     }
   }, []);
 
-  const pauseAutoScroll = useCallback(() => {
+  const noteManualReadingInteraction = useCallback(() => {
+    userInteractedRef.current = true;
     setAutoScrolling(false);
   }, []);
+
+  const pauseAutoScrollOnContact = useCallback(() => {
+    // A tap should stop active auto-scroll immediately, but an ordinary chrome
+    // toggle while idle must not block a late exact-position restore.
+    if (autoScrolling) noteManualReadingInteraction();
+  }, [autoScrolling, noteManualReadingInteraction]);
 
   const pages = useMemo(() => {
     if (!data) return [];
@@ -235,7 +272,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     let alive = true;
     setAutoScrolling(false);
     updateReadingProgress(0);
-    persistedContinuousPageRef.current = null;
+    restoredRef.current = null;
+    userInteractedRef.current = false;
+    lastContinuousPersistRef.current = null;
     setStatus('loading');
     setData(null);
     setPage(0);
@@ -288,7 +327,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
 
   // Persist progress (chapter open + page moves). Only when we know the series.
   const persist = useCallback(
-    (p: number, total: number) => {
+    (p: number, total: number, progressBps?: number) => {
       if (anilistId == null) return;
       saveMangaPosition(anilistId, {
         ch: chapterNum,
@@ -299,6 +338,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         lang,
         title: seriesTitle,
         cover,
+        progressBps,
       });
     },
     [
@@ -312,13 +352,97 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     ]
   );
 
+  // A genuinely new chapter should enter Continue Reading. For a signed-in
+  // account, never manufacture a newer page-zero timestamp until the exact
+  // pull has succeeded; a fixed timeout can beat slow mobile networks and then
+  // overwrite the real remote page. Keep the post-pull timer independent from
+  // continuous image layout so image loads cannot cancel it.
   useEffect(() => {
-    if (status === 'ready' && pages.length) {
-      persistedContinuousPageRef.current = 0;
-      persist(0, pages.length);
+    if (
+      status !== 'ready' ||
+      pages.length === 0 ||
+      !exactPullReady ||
+      progressEntry?.chapterId === chapterId
+    ) {
+      return undefined;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, pages.length]);
+    const initialKey = `initial:${chapterId}`;
+    if (restoredRef.current === initialKey) return undefined;
+    restoredRef.current = initialKey;
+    const timer = window.setTimeout(() => {
+      if (!userInteractedRef.current) {
+        persist(0, pages.length, continuous ? 0 : undefined);
+      }
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [
+    chapterId,
+    continuous,
+    exactPullReady,
+    pages.length,
+    persist,
+    progressEntry,
+    status,
+  ]);
+
+  // Restore only an exact provider chapter. AniList's chapter number is
+  // resolved in ChapterList before the route is opened, never here.
+  useEffect(() => {
+    if (status !== 'ready' || pages.length === 0) {
+      return undefined;
+    }
+    const restoreKey = `${chapterId}:${continuous ? 'continuous' : 'paged'}`;
+    if (progressEntry?.chapterId !== chapterId) {
+      return undefined;
+    }
+    if (
+      (!continuous && restoredRef.current === restoreKey) ||
+      userInteractedRef.current
+    ) {
+      return undefined;
+    }
+
+    const savedPage = Math.max(
+      0,
+      Math.min(pages.length - 1, progressEntry.page)
+    );
+    if (!continuous) {
+      restoredRef.current = restoreKey;
+      setPage(savedPage);
+      return undefined;
+    }
+
+    // Legacy positions did not record scroll basis points. Derive a safe
+    // continuous position from their zero-based page index instead.
+    const fallbackBps =
+      pages.length > 1
+        ? Math.round((savedPage / (pages.length - 1)) * 10_000)
+        : 0;
+    const progressBps = Math.max(
+      0,
+      Math.min(10_000, progressEntry.progressBps ?? fallbackBps)
+    );
+    const applyPosition = () => {
+      const el = scrollRef.current;
+      if (!el || userInteractedRef.current) return;
+      const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+      el.scrollTop = Math.round((maxScroll * progressBps) / 10_000);
+      setPage(savedPage);
+      updateReadingProgress(progressBps / 10_000);
+    };
+    const frame = window.requestAnimationFrame(applyPosition);
+    restoredRef.current = restoreKey;
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    chapterId,
+    continuous,
+    continuousLayoutVersion,
+    pages.length,
+    progressEntry,
+    status,
+    persist,
+    updateReadingProgress,
+  ]);
 
   const markDone = useCallback(() => {
     if (anilistId != null) markChapterRead(anilistId, chapterNum);
@@ -383,11 +507,33 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   const setPagePersist = useCallback(
     (next: number) => {
       const clamped = Math.max(0, Math.min(pages.length - 1, next));
+      userInteractedRef.current = true;
       setPage(clamped);
       persist(clamped, pages.length);
       if (clamped === pages.length - 1) markDone();
     },
     [pages.length, persist, markDone]
+  );
+
+  const persistContinuous = useCallback(
+    (nextPage: number, total: number, progressBps: number, force = false) => {
+      const now = Date.now();
+      const previous = lastContinuousPersistRef.current;
+      const pageChanged = previous?.page !== nextPage;
+      const meaningfulProgress =
+        !previous || Math.abs(previous.progressBps - progressBps) >= 25;
+      if (!force && previous) {
+        if (now - previous.at < 750) return;
+        if (!pageChanged && !meaningfulProgress) return;
+      }
+      lastContinuousPersistRef.current = {
+        at: now,
+        page: nextPage,
+        progressBps,
+      };
+      persist(nextPage, total, progressBps);
+    },
+    [persist]
   );
 
   const advance = useCallback(
@@ -447,8 +593,22 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [continuous, mode, advance]);
 
+  // A hardware keyboard may scroll the continuous reader while the container
+  // itself does not own focus. It is still user intent, so do not reapply a
+  // delayed image-layout restore after it happens.
+  useEffect(() => {
+    if (!continuous) return undefined;
+    const noteKeyboardInteraction = () => {
+      userInteractedRef.current = true;
+    };
+    window.addEventListener('keydown', noteKeyboardInteraction);
+    return () => window.removeEventListener('keydown', noteKeyboardInteraction);
+  }, [continuous]);
+
   // Continuous: track exact scroll progress and the page currently in view.
-  // ResizeObserver keeps the value accurate while lazy images settle.
+  // ResizeObserver keeps the visual rail accurate while lazy images settle;
+  // persistence itself is throttled and only begins after actual reading input
+  // (or explicit auto-scroll), never from the initial zero position.
   useEffect(() => {
     if (!continuous || status !== 'ready') return undefined;
     const el = scrollRef.current;
@@ -477,15 +637,17 @@ const MangaReader: React.FC<MangaReaderProps> = ({
           if (node.offsetTop <= mid) current = Number(node.dataset.page);
         });
         setPage(current);
-        if (persistedContinuousPageRef.current !== current) {
-          persistedContinuousPageRef.current = current;
-          persist(current, pages.length);
-        }
+        const progressBps = Math.round(scrollProgress * 10_000);
         if (
           allImagesLoaded &&
           scrollTop + el.clientHeight >= el.scrollHeight - 80
         ) {
+          if (userInteractedRef.current || autoScrolling) {
+            persistContinuous(current, pages.length, progressBps, true);
+          }
           markDone();
+        } else if (userInteractedRef.current || autoScrolling) {
+          persistContinuous(current, pages.length, progressBps);
         }
       });
     };
@@ -509,8 +671,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
     continuous,
     status,
     pages.length,
-    persist,
+    autoScrolling,
     markDone,
+    persistContinuous,
     updateReadingProgress,
   ]);
 
@@ -948,9 +1111,12 @@ const MangaReader: React.FC<MangaReaderProps> = ({
           <div
             ref={scrollRef}
             onClick={() => setChromeVisible((v) => !v)}
-            onPointerDown={pauseAutoScroll}
-            onTouchStart={pauseAutoScroll}
-            onWheel={pauseAutoScroll}
+            onPointerDown={pauseAutoScrollOnContact}
+            onPointerMove={(event) => {
+              if (event.buttons !== 0) noteManualReadingInteraction();
+            }}
+            onTouchMove={noteManualReadingInteraction}
+            onWheel={noteManualReadingInteraction}
             className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
           >
             <div
@@ -965,6 +1131,9 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                   data-page={i}
                   src={src}
                   alt={`Page ${i + 1}`}
+                  onLoad={() =>
+                    setContinuousLayoutVersion((version) => version + 1)
+                  }
                   loading={i < 2 ? 'eager' : 'lazy'}
                   draggable={false}
                   className="block w-full select-none [-webkit-touch-callout:none] [-webkit-user-drag:none]"
@@ -1056,7 +1225,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                 aria-label={autoScrollLabel}
                 aria-pressed={autoScrolling}
                 disabled={reducedMotion || pages.length === 0}
-                onClick={() => setAutoScrolling((value) => !value)}
+                onClick={() => {
+                  userInteractedRef.current = true;
+                  setAutoScrolling((value) => !value);
+                }}
                 className="flex min-h-[44px] items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-sm font-medium text-white/90 transition [touch-action:manipulation] hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent active:bg-white/25 disabled:opacity-40 motion-reduce:transition-none"
               >
                 {autoScrolling ? (

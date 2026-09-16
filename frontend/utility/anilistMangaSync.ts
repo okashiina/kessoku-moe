@@ -238,6 +238,22 @@ const saveMeta = (): void => {
   }
 };
 
+// Exact reader-position sync must use the same ownership decision as the
+// AniList shelf sync. These intentionally expose only the trust boundary, not
+// the account metadata itself.
+export const isKnownRemoteManga = (id: number): boolean => knownRemote.has(id);
+export const isMangaSyncReady = (): boolean => pulledOnce;
+export const isForeignManga = (id: number): boolean =>
+  Boolean(meta.foreign[id]);
+export const trustRemoteManga = (id: number): void => {
+  if (!Number.isFinite(id) || id <= 0) return;
+  knownRemote.add(id);
+  if (meta.foreign[id]) {
+    delete meta.foreign[id];
+    saveMeta();
+  }
+};
+
 const resetRemoteBaseline = (): void => {
   entryIdByMedia.clear();
   remoteProgress.clear();
@@ -569,7 +585,7 @@ export const pushMangaChanges = async (
       ok = Boolean(result?.id && result.mediaId);
       if (result?.id && result.mediaId) {
         entryIdByMedia.set(id, result.id);
-        knownRemote.add(id);
+        trustRemoteManga(id);
         remoteProgress.set(id, plan.progress);
         remoteStatus.set(id, plan.status);
         remoteScore.set(id, plan.score);

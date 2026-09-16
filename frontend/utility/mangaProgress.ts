@@ -11,6 +11,9 @@ export interface MangaProgressEntry {
   chapterId: string; // MangaDex chapter id to resume into
   page: number; // last page index within that chapter
   pages: number; // page count of that chapter; 0 = unknown
+  // Optional for old localStorage blobs. New reader writes and remote rows use
+  // 0..10000 basis points so smooth-scroll resume survives another device.
+  progressBps?: number;
   total: number; // total chapters for the title; 0 = unknown
   lang: string; // preferred translation language for this series
   read: number[]; // chapter numbers marked read (sorted unique)
@@ -26,11 +29,26 @@ export interface MangaContinueItem {
 
 const KEY = 'kessoku.mangaProgress.v1';
 const store = createStore<MangaProgressMap>(KEY, {});
+const clampBps = (value: unknown, page = 0, pages = 0): number => {
+  const n = Number(value);
+  if (Number.isFinite(n)) return Math.max(0, Math.min(10000, Math.round(n)));
+  if (pages > 1)
+    return Math.max(
+      0,
+      Math.min(10000, Math.round((page / (pages - 1)) * 10000))
+    );
+  return 0;
+};
 export const subscribeMangaProgress = store.subscribe;
 export const MANGA_CONTINUE_EMPTY: MangaContinueItem[] = [];
 
 export function getMangaEntry(id: number): MangaProgressEntry | undefined {
   return store.get()[id];
+}
+
+/** Read-only local snapshot for authenticated exact-position sync. */
+export function getMangaProgressMap(): MangaProgressMap {
+  return store.get();
 }
 
 /** Ids with locally cached manga reading state (for AniList sync). */
@@ -93,6 +111,7 @@ export function saveMangaPosition(
     chapterId: string;
     page: number;
     pages: number;
+    progressBps?: number;
     total?: number;
     lang: string;
     title: string;
@@ -111,6 +130,11 @@ export function saveMangaPosition(
         chapterId: p.chapterId,
         page: p.page,
         pages: p.pages || cur?.pages || 0,
+        progressBps: clampBps(
+          p.progressBps,
+          p.page,
+          p.pages || cur?.pages || 0
+        ),
         total: p.total || cur?.total || 0,
         lang: p.lang || cur?.lang || 'en',
         read,
@@ -147,6 +171,7 @@ export function markChapterRead(id: number, ch: number): void {
         chapterId: cur?.chapterId ?? '',
         page: cur?.page ?? 0,
         pages: cur?.pages ?? 0,
+        progressBps: cur?.progressBps,
         total: cur?.total ?? 0,
         lang: cur?.lang ?? 'en',
         read,
@@ -185,6 +210,7 @@ export function markChaptersRead(
         chapterId: cur?.chapterId ?? '',
         page: cur?.page ?? 0,
         pages: cur?.pages ?? 0,
+        progressBps: cur?.progressBps,
         total: info?.total || cur?.total || 0,
         lang: info?.lang || cur?.lang || 'en',
         read,
@@ -193,6 +219,78 @@ export function markChaptersRead(
         updatedAt: Date.now(),
       },
     };
+  });
+}
+
+export interface RemoteMangaPosition {
+  chapterId: string;
+  chapterNumber: string;
+  page: number;
+  pages: number;
+  progressBps: number;
+  total: number;
+  lang: string;
+  title: string;
+  cover: string | null;
+  updatedAt: number;
+}
+
+// Exact points are last-write-wins, but this DB intentionally does not hold
+// read[]; retain local read marks and non-empty library metadata on every pull.
+export function mergeRemoteMangaPosition(
+  id: number,
+  remote: RemoteMangaPosition
+): void {
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(remote.updatedAt))
+    return;
+  store.update((prev) => {
+    const cur = prev[id];
+    // AniList-only imports carry their own updatedAt but no provider chapter
+    // identity. An authenticated exact row must fill that gap even when the
+    // AniList list edit happened a few milliseconds later.
+    const remoteNewer =
+      !cur || !cur.chapterId || remote.updatedAt > cur.updatedAt;
+    // Avoid waking the sync subscriptions for an unchanged/older server row;
+    // otherwise a GET-only reconciliation would perpetually debounce itself.
+    if (cur && !remoteNewer) return prev;
+    const remoteChapter = Number(remote.chapterNumber);
+    const ch = Number.isFinite(remoteChapter) ? remoteChapter : cur?.ch ?? 0;
+    const base: MangaProgressEntry = cur ?? {
+      ch,
+      chapterId: '',
+      page: 0,
+      pages: 0,
+      progressBps: undefined,
+      total: 0,
+      lang: 'en',
+      read: [],
+      title: '',
+      cover: null,
+      updatedAt: 0,
+    };
+    const next: MangaProgressEntry = {
+      ...base,
+      ...(remoteNewer
+        ? {
+            ch,
+            chapterId: remote.chapterId,
+            page: remote.page,
+            pages: remote.pages,
+            progressBps: clampBps(
+              remote.progressBps,
+              remote.page,
+              remote.pages
+            ),
+            updatedAt: remote.updatedAt,
+          }
+        : {}),
+      total: remoteNewer && remote.total > 0 ? remote.total : base.total,
+      lang: remoteNewer && remote.lang ? remote.lang : base.lang,
+      title: remoteNewer && remote.title ? remote.title : base.title,
+      cover: remoteNewer && remote.cover ? remote.cover : base.cover,
+      read: Array.from(new Set(base.read ?? [])).sort((a, b) => a - b),
+    };
+    return { ...prev, [id]: next };
   });
 }
 
