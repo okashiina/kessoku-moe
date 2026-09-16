@@ -4,12 +4,17 @@ import { getSession, subscribeAuth } from '@utility/anilistAuth';
 import {
   initMangaBaseline,
   isApplyingMangaRemote,
+  isMangaSyncReady,
   noteMangaLocalChange,
   pullMangaAndMerge,
   pushMangaChanges,
 } from '@utility/anilistMangaSync';
 import { getAniListWrite, subscribeAniListWrite } from '@utility/anilistWrite';
 import { subscribeMangaList } from '@utility/mangaList';
+import {
+  pullMangaPositions,
+  pushMangaPositions,
+} from '@utility/mangaPositionSync';
 import { subscribeMangaProgress } from '@utility/mangaProgress';
 
 const PUSH_DEBOUNCE_MS = 800;
@@ -28,10 +33,17 @@ const useAniListMangaSync = (): void => {
 
     const flush = () => {
       const s = getSession();
-      if (s && getAniListWrite() && !isApplyingMangaRemote()) {
-        pushMangaChanges(s).catch(() => {
-          /* best-effort */
-        });
+      if (s && isMangaSyncReady() && !isApplyingMangaRemote()) {
+        // A successful exact-position pull is the gate for its writes. AniList
+        // shelf sync remains healthy when our DB is not configured (503).
+        pullMangaPositions(s)
+          .then(async (positionsPulled) => {
+            if (getAniListWrite()) await pushMangaChanges(s);
+            if (positionsPulled) await pushMangaPositions(s);
+          })
+          .catch(() => {
+            /* best-effort */
+          });
       }
     };
 
@@ -55,7 +67,17 @@ const useAniListMangaSync = (): void => {
         // Pulls remain available in read-only mode; only the subsequent write
         // flush honours the user's AniList write setting.
         pullMangaAndMerge(s)
-          .then((pulled) => (pulled ? pushMangaChanges(s) : undefined))
+          .then(async (pulled) => {
+            if (!pulled) {
+              pulledFor.current = null;
+              return;
+            }
+            // Ordering is intentional: AniList ownership first, exact rows
+            // second, then the AniList and exact local deltas respectively.
+            const positionsPulled = await pullMangaPositions(s);
+            await pushMangaChanges(s);
+            if (positionsPulled) await pushMangaPositions(s);
+          })
           .catch(() => {
             /* best-effort */
           });

@@ -88,11 +88,39 @@ const ChapterList: React.FC<ChapterListProps> = ({
   const first = ascending[0] ?? null;
   const readSet = new Set(entry?.read ?? []);
   const readCount = ascending.filter((c) => readSet.has(c.chapterNum)).length;
-  const resuming = Boolean(entry?.chapterId && entry.lang === lang);
-
-  let resumeHref: string | null = null;
-  if (resuming) resumeHref = `/read/${entry?.chapterId}?al=${anilistId}`;
-  else if (first) resumeHref = `/read/${first.id}?al=${anilistId}`;
+  // AniList-only entries have a chapter number but no provider-specific id.
+  // Prefer an exact local id in the matching language; otherwise resolve the
+  // saved number against this real chapter feed, not chapter one.
+  const hasProgress = Boolean(
+    entry && (entry.chapterId || entry.ch > 0 || entry.read.length > 0)
+  );
+  const resumeChapter = useMemo(() => {
+    if (!entry) return null;
+    if (entry.chapterId && entry.lang === lang) {
+      const exact = ascending.find((chapter) => chapter.id === entry.chapterId);
+      if (exact) return exact;
+    }
+    if (!Number.isFinite(entry.ch) || entry.ch <= 0) return null;
+    return (
+      ascending.find((chapter) => chapter.chapterNum === entry.ch) ??
+      [...ascending]
+        .reverse()
+        .find((chapter) => chapter.chapterNum <= entry.ch) ??
+      null
+    );
+  }, [ascending, entry, lang]);
+  const fallbackChapter = resumeChapter ?? first;
+  const resumeHref = fallbackChapter
+    ? `/read/${fallbackChapter.id}?al=${anilistId}`
+    : null;
+  let resumeLabel = 'Start reading';
+  if (resumeChapter) {
+    resumeLabel = `Continue · Ch. ${resumeChapter.chapterNum}`;
+  } else if (hasProgress && first) {
+    // The saved chapter can disappear from a provider/language feed. Keep a
+    // useful recovery action instead of hiding the primary CTA altogether.
+    resumeLabel = `Start available · Ch. ${first.chapterNum}`;
+  }
 
   // Carried into the store so a mark-from-the-list entry is complete in the
   // Continue rail (cover + title) without the reader having been opened.
@@ -173,7 +201,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
           <Link href={resumeHref} passHref>
             <a className="inline-flex items-center gap-2 rounded-full bg-aurora px-5 py-2.5 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110">
               <BookOpenIcon className="h-5 w-5" />
-              {resuming ? `Continue · Ch. ${entry?.ch}` : 'Start reading'}
+              {resumeLabel}
             </a>
           </Link>
         )}

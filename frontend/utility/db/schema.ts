@@ -254,6 +254,62 @@ export const mangaNotifyTargets = pgTable(
   ]
 );
 
+// The exact reader resume point is intentionally separate from AniList's
+// MediaList progress: AniList stores a chapter count, while this keeps the
+// MangaDex chapter reference and a page/scroll position.  The owner is always
+// resolved from the bearer token on the server; clients never submit it.
+export const mangaReadingPositions = pgTable(
+  'manga_reading_positions',
+  {
+    id: serial('id').primaryKey(),
+    anilistUserId: integer('anilist_user_id').notNull(),
+    anilistId: integer('anilist_id').notNull(),
+    chapterId: text('chapter_id').notNull(),
+    // Manga chapters may be decimals (for example, 12.5), so this must not be
+    // a numeric database field that can silently change the user-visible ref.
+    chapterNumber: text('chapter_number').notNull(),
+    page: integer('page').notNull(),
+    pages: integer('pages').notNull(),
+    progressBps: integer('progress_bps').notNull(),
+    total: integer('total').notNull(),
+    lang: text('lang').notNull(),
+    title: text('title').notNull(),
+    cover: text('cover'),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex('manga_reading_position_user_media_unq').on(
+      t.anilistUserId,
+      t.anilistId
+    ),
+    index('manga_reading_position_user_updated_idx').on(
+      t.anilistUserId,
+      t.updatedAt
+    ),
+    check('manga_reading_position_owner_chk', sql`${t.anilistUserId} > 0`),
+    check('manga_reading_position_media_chk', sql`${t.anilistId} > 0`),
+    check(
+      'manga_reading_position_chapter_chk',
+      sql`char_length(${t.chapterId}) between 1 and 512 and char_length(${t.chapterNumber}) between 1 and 64`
+    ),
+    check(
+      'manga_reading_position_page_chk',
+      sql`${t.page} >= 0 and ${t.pages} >= 0 and (${t.pages} = 0 or ${t.page} < ${t.pages})`
+    ),
+    check(
+      'manga_reading_position_progress_chk',
+      sql`${t.progressBps} between 0 and 10000`
+    ),
+    check('manga_reading_position_total_chk', sql`${t.total} >= 0`),
+    check(
+      'manga_reading_position_metadata_chk',
+      sql`char_length(${t.lang}) between 1 and 20 and char_length(${t.title}) between 1 and 500 and (${t.cover} is null or char_length(${t.cover}) <= 2048)`
+    ),
+  ]
+);
+
 // In-app notifications. Types: 'reply' (someone replied to the recipient's
 // comment) and 'manga_chapter' (a subscribed manga got a new chapter). The
 // recipient is an AniList user id; the row carries a denormalized actor name +
