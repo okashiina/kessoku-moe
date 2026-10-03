@@ -73,10 +73,18 @@ const CompanionChat: React.FC<{
   animeId: number;
   episode: number;
   total: number;
+  mediaKind?: 'anime' | 'cartoon';
   // 'dock' = the fullscreen right-side panel: fills its container's full height
   // (no card chrome). 'panel' = the windowed right-rail card.
   variant?: 'panel' | 'dock';
-}> = ({ seed, animeId, episode, total, variant = 'panel' }) => {
+}> = ({
+  seed,
+  animeId,
+  episode,
+  total,
+  mediaKind = 'anime',
+  variant = 'panel',
+}) => {
   const prefs = useCompanionPrefs();
 
   // The conversation lives in the shared per-episode thread store, so it
@@ -352,6 +360,7 @@ const CompanionChat: React.FC<{
 
     const payload = {
       seed,
+      mediaKind,
       episode,
       total,
       tone: prefs.tone,
@@ -452,6 +461,16 @@ const CompanionChat: React.FC<{
     );
   };
 
+  let capabilityNote =
+    'Spoiler-safe: I only know up to where you have watched.';
+  if (mediaKind === 'cartoon') {
+    capabilityNote =
+      "I can't see this embedded player. Tell me what just happened and we'll talk it through.";
+  } else if (visionReady && !hasPlayer) {
+    capabilityNote =
+      "Heads up: I can't watch the screen on this server, but ask away — recaps, who-voices-who, all of it still works.";
+  }
+
   return (
     <div
       className={`flex flex-col overflow-hidden bg-canvas-2/95 ${
@@ -515,9 +534,9 @@ const CompanionChat: React.FC<{
                 Pull up a seat
               </p>
               <p className="mt-1 text-xs leading-relaxed text-muted">
-                I only know what has played so far, so say what you are thinking
-                and I will keep up. Ask me who voices someone, too. No spoilers
-                from me.
+                {mediaKind === 'cartoon'
+                  ? "I'm here to talk about this cartoon. I can't see the embedded video, so tell me the moment you're reacting to. No spoilers from me."
+                  : 'I only know what has played so far, so say what you are thinking and I will keep up. Ask me who voices someone, too. No spoilers from me.'}
               </p>
             </div>
           )}
@@ -570,7 +589,17 @@ const CompanionChat: React.FC<{
 
       {/* Composer */}
       {configured !== 'no' && (
-        <div className="border-t border-line/50 px-3 py-2.5">
+        <div
+          className="border-t border-line/50 px-3 py-2.5"
+          style={
+            variant === 'dock'
+              ? {
+                  paddingBottom:
+                    'max(0.625rem, env(safe-area-inset-bottom, 0px))',
+                }
+              : undefined
+          }
+        >
           {/* Staged frame: the still the companion will look at on the next turn. */}
           {frame && (
             <div className="mb-2 flex items-center gap-2 rounded-xl border border-accent/40 bg-surface/60 p-1.5 pr-2">
@@ -587,7 +616,7 @@ const CompanionChat: React.FC<{
                 type="button"
                 onClick={() => setFrame(null)}
                 aria-label="Drop the frame"
-                className="grid h-6 w-6 place-items-center rounded-full text-faint transition hover:bg-surface hover:text-fg"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-faint transition [touch-action:manipulation] hover:bg-surface hover:text-fg"
               >
                 <XIcon className="h-3.5 w-3.5" />
               </button>
@@ -600,7 +629,7 @@ const CompanionChat: React.FC<{
                 onClick={lookAtFrame}
                 aria-label="Look at the current frame"
                 title="Look at the current frame"
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition active:scale-95 ${
+                className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition [touch-action:manipulation] active:scale-95 ${
                   frame
                     ? 'border-accent/60 bg-surface text-accent'
                     : 'border-line/60 bg-surface/50 text-muted hover:border-accent/50 hover:text-fg'
@@ -620,14 +649,14 @@ const CompanionChat: React.FC<{
               }}
               rows={1}
               placeholder="Talk about this episode…"
-              className="max-h-28 min-h-[2.5rem] flex-1 resize-none rounded-xl border border-line/60 bg-surface/50 px-3 py-2 text-base text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none sm:text-sm"
+              className="max-h-28 min-h-[44px] min-w-0 flex-1 resize-none rounded-xl border border-line/60 bg-surface/50 px-3 py-2 text-base text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => send()}
               disabled={busy || !input.trim()}
               aria-label="Send"
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-aurora text-accent-ink shadow-glow transition active:scale-95 disabled:opacity-40"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-aurora text-accent-ink shadow-glow transition [touch-action:manipulation] active:scale-95 disabled:opacity-40"
             >
               <PaperAirplaneIcon className="h-5 w-5 rotate-90" />
             </button>
@@ -635,26 +664,26 @@ const CompanionChat: React.FC<{
 
           {/* One-tap recap: the companion's killer move on the embed player (no
               frame to look at), so surface it instead of burying it in chat. */}
-          <button
-            type="button"
-            onClick={() =>
-              send(
-                'Give me a quick, spoiler-safe recap of the story so far, up to this episode.'
-              )
-            }
-            disabled={busy}
-            className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-line/60 bg-surface/50 px-4 py-1.5 text-xs font-semibold text-muted transition [touch-action:manipulation] hover:border-accent/50 hover:text-fg focus-visible:ring-1 focus-visible:ring-accent active:scale-95 disabled:opacity-40 motion-reduce:active:scale-100"
-          >
-            <SparklesIcon className="h-3.5 w-3.5" />
-            Recap so far
-          </button>
+          {mediaKind === 'anime' && (
+            <button
+              type="button"
+              onClick={() =>
+                send(
+                  'Give me a quick, spoiler-safe recap of the story so far, up to this episode.'
+                )
+              }
+              disabled={busy}
+              className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-line/60 bg-surface/50 px-4 py-1.5 text-xs font-semibold text-muted transition [touch-action:manipulation] hover:border-accent/50 hover:text-fg focus-visible:ring-1 focus-visible:ring-accent active:scale-95 disabled:opacity-40 motion-reduce:active:scale-100"
+            >
+              <SparklesIcon className="h-3.5 w-3.5" />
+              Recap so far
+            </button>
+          )}
           <p className="mt-1.5 px-1 text-[11px] text-faint">
             {/* On the embed player there's no handle to grab a frame from, so the
                 👁 button is already hidden — say so plainly instead of leaving the
                 viewer wondering why. The direct (HLS) player keeps full vision. */}
-            {visionReady && !hasPlayer
-              ? "Heads up: I can't watch the screen on this server, but ask away — recaps, who-voices-who, all of it still works."
-              : 'Spoiler-safe: I only know up to where you have watched.'}
+            {capabilityNote}
           </p>
         </div>
       )}

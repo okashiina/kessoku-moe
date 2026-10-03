@@ -1,0 +1,76 @@
+.close {
+  --pink: var(--brand-pink, #f591ba);
+  --paper: var(--brand-paper, #f5f0eb);
+  --ink: var(--brand-ink, #17141c);
+  position: relative;
+  isolation: isolate;
+  background: var(--pink);
+  color: var(--ink);
+  padding: 70px 7%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  overflow: hidden;
+}
+
+.close a {
+  touch-action: manipulation;
+}
+
+.close svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.close p {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  font-weight: 800;
+}
+
+.close h2 {
+  font-family: "Nunito", sans-serif;
+  font-size: clamp(48px, 6vw, 90px);
+  letter-spacing: -0.06em;
+  font-weight: 800;
+  line-height: 1.05;
+  margin-top: 22px;
+}
+
+.close > a {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 18px 26px;
+  border-radius: 6px;
+  font-weight: 800;
+  min-height: 44px;
+}
+
+.closeMark {
+  position: absolute;
+  right: 17%;
+  top: -90px;
+  z-index: -1;
+  font-size: 370px;
+  font-weight: 800;
+  opacity: 0.055;
+  transform: rotate(15deg);
+}
+
+@media (max-width: 700px) {
+  .close {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 48px 6%;
+  }
+
+  .close > a {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

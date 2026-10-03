@@ -83,10 +83,10 @@ const MangaRatingSelect: React.FC<MangaRatingSelectProps> = ({
         aria-expanded={open}
         aria-label={scored ? `Your rating: ${n} of 10` : 'Rate'}
         style={{ touchAction: 'manipulation' }}
-        className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+        className={`flex min-h-[44px] items-center gap-2 rounded-[5px] border px-4 text-sm font-bold transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
           scored
-            ? 'border-accent/60 bg-surface/70 text-fg hover:border-accent'
-            : 'border-line/70 bg-surface/70 text-fg hover:border-accent/60'
+            ? 'border-accent bg-surface/70 text-fg hover:text-accent'
+            : 'border-[#66516a] bg-surface/70 text-fg hover:text-accent'
         }`}
       >
         <span className={scored ? 'text-accent' : 'text-muted'}>
@@ -98,7 +98,7 @@ const MangaRatingSelect: React.FC<MangaRatingSelectProps> = ({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-2xl border border-line/60 bg-canvas/95 p-4 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          className="absolute left-0 top-full z-50 mt-2 w-max max-w-[calc(100vw-2rem)] rounded-lg border border-[#463b49] bg-canvas/95 p-4 backdrop-blur-xl"
         >
           <div className="mb-3 flex items-baseline justify-between gap-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-faint">
@@ -115,9 +115,9 @@ const MangaRatingSelect: React.FC<MangaRatingSelectProps> = ({
                 onClick={() => choose(v)}
                 aria-label={`${v} of 10`}
                 style={{ touchAction: 'manipulation' }}
-                className={`flex h-11 min-h-[44px] w-11 items-center justify-center rounded-lg text-sm font-semibold transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+                className={`flex h-11 min-h-[44px] w-11 items-center justify-center rounded-[5px] text-sm font-bold transition active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100 ${
                   v <= n
-                    ? 'bg-aurora text-accent-ink shadow-glow'
+                    ? 'bg-accent text-accent-ink'
                     : 'bg-surface/70 text-muted hover:text-fg'
                 }`}
               >

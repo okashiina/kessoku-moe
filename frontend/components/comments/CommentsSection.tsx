@@ -52,13 +52,12 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
   return (
     <section className="mt-10" aria-label={title ?? 'Comments'}>
       <div className="mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-2">
-        <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
         <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
           {title ?? 'Comments'}
         </h2>
 
         {comments.length > 0 ? (
-          <div className="ml-auto inline-flex rounded-full border border-line/60 p-0.5 text-xs font-semibold">
+          <div className="ml-auto inline-flex gap-2">
             {SORTS.map((s) => (
               <button
                 key={s.key}
@@ -66,10 +65,10 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
                 onClick={() => setSort(s.key)}
                 aria-pressed={sort === s.key}
                 style={{ touchAction: 'manipulation' }}
-                className={`inline-flex min-h-[44px] items-center rounded-full px-3 transition-colors ${
+                className={`inline-flex min-h-[44px] items-center rounded-[5px] px-[17px] py-[10px] text-sm font-bold transition-colors ${
                   sort === s.key
-                    ? 'bg-aurora text-accent-ink'
-                    : 'text-muted hover:text-fg'
+                    ? 'bg-accent text-accent-ink'
+                    : 'text-[#bfb2c1] hover:bg-[#332735] hover:text-[#f4ecef]'
                 }`}
               >
                 {s.label}
@@ -87,7 +86,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
             type="button"
             onClick={login}
             style={{ touchAction: 'manipulation' }}
-            className="inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="inline-flex min-h-[44px] items-center rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition duration-200 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             Sign in to comment
           </button>
@@ -125,7 +124,7 @@ const CommentsSection: React.FC<CommentsSectionProps> = ({
             onClick={loadMore}
             disabled={loading}
             style={{ touchAction: 'manipulation' }}
-            className="inline-flex min-h-[44px] items-center rounded-full border border-line bg-surface px-5 text-sm font-semibold text-fg transition-colors hover:bg-surface-2 disabled:opacity-50"
+            className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-5 text-sm font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-[#f4ecef] disabled:opacity-50"
           >
             {loading ? 'Loading…' : 'Load more'}
           </button>

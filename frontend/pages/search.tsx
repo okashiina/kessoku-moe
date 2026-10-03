@@ -9,23 +9,24 @@ import {
   SearchStaffQuery,
   SearchStudiosQuery,
 } from '@animeflix/api/aniList';
-import { SearchIcon } from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
 import Header from '@components/Header';
 import MangaCard from '@components/manga/Card';
 import progressBar from '@components/Progress';
+import { CartoonShow, searchCartoons } from '@utility/cartoon';
 import { fetchMangaBrowse, MangaInfo } from '@utility/manga';
 import { nsfwFromCookie } from '@utility/nsfw';
 
-// The lenses search supports. "anime" is the default and keeps the original
-// title-grid behavior untouched.
-type SearchTab = 'anime' | 'manga' | 'studios' | 'staff';
+// The default view searches all three catalogs; individual tabs narrow the results.
+type SearchTab = 'all' | 'anime' | 'manga' | 'cartoon' | 'studios' | 'staff';
 
 const TABS: { value: SearchTab; label: string }[] = [
+  { value: 'all', label: 'All' },
   { value: 'anime', label: 'Anime' },
   { value: 'manga', label: 'Manga' },
+  { value: 'cartoon', label: 'Cartoons' },
   { value: 'studios', label: 'Studios' },
   { value: 'staff', label: 'Voice actors' },
 ];
@@ -35,6 +36,7 @@ interface SearchResult {
   keyword: string;
   anime: SearchAnimeQuery | null;
   manga: MangaInfo[] | null;
+  cartoons: CartoonShow[];
   studios: SearchStudiosQuery | null;
   staff: SearchStaffQuery | null;
 }
@@ -49,15 +51,35 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
   const requested = firstParam(context.query.type).toLowerCase();
   const tab: SearchTab = TABS.some((t) => t.value === requested)
     ? (requested as SearchTab)
-    : 'anime';
+    : 'all';
 
   let anime: SearchAnimeQuery | null = null;
   let manga: MangaInfo[] | null = null;
+  let cartoons: CartoonShow[] = [];
   let studios: SearchStudiosQuery | null = null;
   let staff: SearchStaffQuery | null = null;
 
-  // Only fetch the active lens — keeps each search a single AniList round-trip.
-  if (tab === 'manga') {
+  if (tab === 'all') {
+    const results = await Promise.allSettled([
+      searchAnime({ keyword, page: 1, perPage: 20 }),
+      fetchMangaBrowse(
+        {
+          page: 1,
+          perPage: 20,
+          search: keyword || undefined,
+          sort: keyword ? ['SEARCH_MATCH'] : ['POPULARITY_DESC'],
+        },
+        nsfwFromCookie(context.req.headers.cookie)
+      ),
+      searchCartoons(keyword),
+    ]);
+    const [animeResult, mangaResult, cartoonResult] = results;
+    anime = animeResult.status === 'fulfilled' ? animeResult.value : null;
+    manga = mangaResult.status === 'fulfilled' ? mangaResult.value.media : null;
+    cartoons = cartoonResult.status === 'fulfilled' ? cartoonResult.value : [];
+  } else if (tab === 'cartoon') {
+    cartoons = await searchCartoons(keyword).catch(() => []);
+  } else if (tab === 'manga') {
     // Gate adult titles on the manga lens to match /manga browse: SFW unless the
     // reader's NSFW cookie is set.
     const nsfw = nsfwFromCookie(context.req.headers.cookie);
@@ -85,6 +107,7 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
       keyword,
       anime,
       manga,
+      cartoons,
       studios,
       staff,
     },
@@ -92,14 +115,11 @@ export const getServerSideProps: GetServerSideProps<SearchResult> = async (
 };
 
 const EmptyState: React.FC<{ keyword: string }> = ({ keyword }) => (
-  <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/40 px-6 py-16 text-center">
-    <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-faint">
-      <SearchIcon className="h-7 w-7" aria-hidden />
-    </span>
-    <h2 className="mt-5 font-display text-xl font-bold text-fg">
+  <div className="mt-12 flex min-h-[340px] flex-col items-center justify-center gap-4 text-center">
+    <h2 className="font-display text-[26px] font-extrabold text-fg">
       No matches found
     </h2>
-    <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
+    <p className="max-w-[420px] leading-[1.7] text-[#bfb2c1]">
       We couldn&apos;t find anything for{' '}
       <span className="font-medium text-fg">&ldquo;{keyword}&rdquo;</span>. Try
       a different name, or switch tabs.
@@ -112,6 +132,7 @@ const Search = ({
   keyword,
   anime,
   manga,
+  cartoons,
   studios,
   staff,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
@@ -129,8 +150,10 @@ const Search = ({
   );
 
   const counts: Record<SearchTab, number> = {
+    all: animeResults.length + mangaResults.length + cartoons.length,
     anime: animeResults.length,
     manga: mangaResults.length,
+    cartoon: cartoons.length,
     studios: studioResults.length,
     staff: staffResults.length,
   };
@@ -148,7 +171,7 @@ const Search = ({
   const switchTab = (next: SearchTab) => {
     const query: Record<string, string> = {};
     if (keyword) query.keyword = keyword;
-    if (next !== 'anime') query.type = next;
+    if (next !== 'all') query.type = next;
     router.push({ pathname: '/search', query }, undefined, { scroll: false });
   };
 
@@ -160,21 +183,14 @@ const Search = ({
 
       <main className="mx-auto max-w-screen-2xl px-4 pb-16 sm:px-6 lg:px-8">
         <header className="mt-8 animate-rise">
-          <p className="font-sans text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-            Search
-          </p>
-          <div className="mt-2 flex items-center gap-3">
-            <span
-              className="h-7 w-1 shrink-0 rounded-full bg-aurora"
-              aria-hidden
-            />
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-fg sm:text-3xl lg:text-4xl">
-              Results for{' '}
-              <span className="text-accent">&ldquo;{keyword}&rdquo;</span>
-            </h1>
-          </div>
+          <h1 className="font-display text-[clamp(32px,4vw,52px)] font-extrabold tracking-[-0.05em] text-fg">
+            Results for{' '}
+            <span className="text-accent [overflow-wrap:anywhere]">
+              &ldquo;{keyword}&rdquo;
+            </span>
+          </h1>
           {hasResults && (
-            <p className="mt-2 pl-4 text-sm text-muted">
+            <p className="mt-3 text-[15px] text-[#bfb2c1]">
               {count} {nounFor(count)} found
             </p>
           )}
@@ -190,10 +206,10 @@ const Search = ({
                 type="button"
                 onClick={() => switchTab(t.value)}
                 aria-pressed={active}
-                className={`rounded-full border px-4 py-1.5 text-sm font-medium transition duration-200 ${
+                className={`min-h-[44px] rounded-[5px] px-[17px] py-[10px] text-sm font-bold transition duration-200 ${
                   active
-                    ? 'border-accent bg-accent text-accent-ink shadow-glow'
-                    : 'border-line/70 bg-surface/60 text-muted hover:border-accent/60 hover:bg-surface-2 hover:text-fg'
+                    ? 'bg-accent text-accent-ink hover:bg-accent hover:text-accent-ink'
+                    : 'text-[#bfb2c1] hover:bg-[#332735] hover:text-fg'
                 }`}
               >
                 {t.label}
@@ -204,25 +220,73 @@ const Search = ({
 
         {!hasResults && <EmptyState keyword={keyword} />}
 
-        {/* Anime — unchanged poster grid */}
-        {tab === 'anime' && hasResults && (
-          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {animeResults.map((media) => (
-              <Card key={media.id} anime={media} />
-            ))}
-          </div>
+        {/* Anime — poster grid */}
+        {(tab === 'all' || tab === 'anime') && animeResults.length > 0 && (
+          <section className="mt-8">
+            {tab === 'all' && (
+              <h2 className="mb-5 font-display text-2xl font-bold">Anime</h2>
+            )}
+            <div className="grid animate-rise grid-cols-2 gap-[22px] sm:grid-cols-3 lg:grid-cols-5">
+              {animeResults.map((media) => (
+                <Card key={media.id} anime={media} fluid />
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Manga — poster grid linking to /manga/{id}. Reuses the catalog
             MangaCard so covers, origin tags, and the link behave identically to
             the /manga library (the bespoke card here collapsed to no thumbnail:
             aspect-[2/3] needs the disabled core plugin). */}
-        {tab === 'manga' && hasResults && (
-          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {mangaResults.map((media) => (
-              <MangaCard key={media.id} manga={media} />
-            ))}
-          </div>
+        {(tab === 'all' || tab === 'manga') && mangaResults.length > 0 && (
+          <section className="mt-10">
+            {tab === 'all' && (
+              <h2 className="mb-5 font-display text-2xl font-bold">Manga</h2>
+            )}
+            <div className="grid animate-rise grid-cols-2 justify-items-center gap-[22px] sm:grid-cols-3 lg:grid-cols-5">
+              {mangaResults.map((media) => (
+                <MangaCard key={media.id} manga={media} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {(tab === 'all' || tab === 'cartoon') && cartoons.length > 0 && (
+          <section className="mt-10">
+            {tab === 'all' && (
+              <h2 className="mb-5 font-display text-2xl font-bold">Cartoons</h2>
+            )}
+            <div className="grid grid-cols-2 gap-[22px] sm:grid-cols-3 lg:grid-cols-5">
+              {cartoons.map((show) => (
+                <Link key={show.id} href={`/cartoon/${show.id}`} passHref>
+                  <a className="group min-w-0">
+                    <div className="aspect-w-2 aspect-h-3 overflow-hidden rounded-xl bg-surface-2">
+                      {show.image?.medium ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- TVMaze serves resized cover art.
+                        <img
+                          src={show.image.medium}
+                          alt=""
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex items-center justify-center p-4 text-center text-sm font-bold">
+                          {show.name}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-3 text-sm font-bold group-hover:text-accent">
+                      {show.name}
+                    </h3>
+                    <p className="mt-1 text-xs text-muted">
+                      Cartoon
+                      {show.premiered ? ` · ${show.premiered.slice(0, 4)}` : ''}
+                    </p>
+                  </a>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         {/* Studios — linkable rows */}
@@ -234,8 +298,8 @@ const Search = ({
                 null;
               return (
                 <Link key={studio.id} href={`/studio/${studio.id}`} passHref>
-                  <a className="group flex items-center gap-3 rounded-2xl border border-line/60 bg-surface p-3 transition duration-200 hover:border-accent/60 hover:bg-surface-2">
-                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-2 ring-1 ring-line/40">
+                  <a className="group flex min-h-[44px] items-center gap-3 rounded-lg border border-[#463b49] bg-surface p-3 transition duration-200">
+                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface-2">
                       {cover?.coverImage?.medium && (
                         <Image
                           alt={studio.name}
@@ -263,8 +327,8 @@ const Search = ({
           <div className="mt-8 grid animate-rise grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {staffResults.map((person) => (
               <Link key={person.id} href={`/staff/${person.id}`} passHref>
-                <a className="group flex items-center gap-3 rounded-2xl border border-line/60 bg-surface p-3 transition duration-200 hover:border-accent/60 hover:bg-surface-2">
-                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-surface-2 ring-1 ring-line/40">
+                <a className="group flex min-h-[44px] items-center gap-3 rounded-lg border border-[#463b49] bg-surface p-3 transition duration-200">
+                  <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-surface-2">
                     {person.image?.medium && (
                       <Image
                         alt={person.name?.full ?? 'Voice actor'}

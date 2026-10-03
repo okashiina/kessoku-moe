@@ -17,6 +17,7 @@ const COMMUNITY_LINKS: {
 const EXPLORE_LINKS = [
   { label: 'Home', href: '/home' },
   { label: 'Browse', href: '/browse' },
+  { label: 'Cartoon', href: '/cartoon' },
   { label: 'Schedule', href: '/schedule' },
 ];
 
@@ -36,7 +37,7 @@ const FooterLink: React.FC<{ href: string; children: React.ReactNode }> = ({
   children,
 }) => (
   <Link href={href} passHref>
-    <a className="text-sm text-muted transition duration-200 hover:text-fg">
+    <a className="inline-flex min-h-[44px] items-center text-sm text-muted transition hover:text-fg">
       {children}
     </a>
   </Link>
@@ -51,7 +52,7 @@ const FooterHeading: React.FC<{ children: React.ReactNode }> = ({
 );
 
 const Footer: React.FC<{}> = () => (
-  <footer className="relative mt-20 border-t border-line/40 bg-canvas-2/40">
+  <footer className="mt-20 border-t border-line bg-canvas">
     <div className="mx-auto w-full max-w-screen-2xl px-4 py-12 sm:px-6 lg:px-8">
       <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:grid-cols-5">
         {/* Brand */}
@@ -107,9 +108,9 @@ const Footer: React.FC<{}> = () => (
                   {...(external
                     ? { target: '_blank', rel: 'noreferrer noopener' }
                     : {})}
-                  className="inline-flex items-center gap-2 text-sm text-muted transition duration-200 hover:text-fg"
+                  className="inline-flex min-h-[44px] items-center gap-2 text-sm text-muted transition hover:text-fg"
                 >
-                  <Glyph className="h-4 w-4" aria-hidden />
+                  <Glyph className="h-5 w-5" aria-hidden />
                   {label}
                 </a>
               </li>
@@ -118,7 +119,7 @@ const Footer: React.FC<{}> = () => (
         </nav>
       </div>
 
-      <div className="mt-12 flex flex-col gap-2 border-t border-line/30 pt-6 text-xs text-faint sm:flex-row sm:items-center sm:justify-between">
+      <div className="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-faint sm:flex-row sm:items-center sm:justify-between">
         <p>
           kessoku moe is a fan project. Metadata and artwork come from{' '}
           <a

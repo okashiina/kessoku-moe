@@ -33,10 +33,10 @@ const MangaBookmarkButton: React.FC<MangaBookmarkButtonProps> = ({
       type="button"
       onClick={() => toggleMangaSaved({ id, title, cover, country })}
       aria-pressed={saved}
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+      className={`inline-flex min-h-[44px] items-center gap-2 rounded-[5px] border px-4 text-sm font-bold transition [touch-action:manipulation] active:scale-95 ${
         saved
           ? 'bg-accent/15 border-accent text-accent'
-          : 'border-line/70 bg-surface/60 text-fg hover:border-accent/60'
+          : 'border-[#66516a] bg-surface/70 text-fg hover:text-accent'
       }`}
     >
       {saved ? (

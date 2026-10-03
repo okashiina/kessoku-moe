@@ -59,12 +59,11 @@ const RelatedSection: React.FC<RelatedSectionProps> = ({
 
   return (
     <section className="mt-10">
-      <div className={`mb-3 flex items-center gap-2.5 ${pad}`}>
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-          Related
-        </h2>
-      </div>
+      <h2
+        className={`mb-3 font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl ${pad}`}
+      >
+        Related
+      </h2>
 
       <div className="edge-fade-x">
         <div
@@ -77,7 +76,7 @@ const RelatedSection: React.FC<RelatedSectionProps> = ({
             <div key={node.id} className="relative shrink-0">
               {/* Relation chip sits top-left of the poster; the score badge in
                   Card lives top-right, so they never collide. */}
-              <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-canvas/70 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent shadow-card backdrop-blur-sm">
+              <span className="bg-canvas/85 pointer-events-none absolute left-2 top-2 z-10 rounded-[5px] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent backdrop-blur-sm">
                 {RELATION_LABELS[relationType]}
               </span>
               <AnimeCard anime={node} />

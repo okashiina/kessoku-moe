@@ -139,7 +139,7 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ entry }) => {
 
   return (
     <Link href={`/anime/${media.id}`} passHref>
-      <a className="group flex items-center gap-3 rounded-2xl border border-line/40 bg-surface/40 p-2.5 ring-1 ring-line/20 backdrop-blur-sm transition duration-300 ease-out hover:-translate-y-0.5 hover:bg-surface-2 hover:shadow-lift hover:ring-accent/40">
+      <a className="group flex min-h-[44px] items-center gap-3 rounded-lg border border-[#463b49] bg-surface/40 p-2.5 transition hover:bg-surface-2">
         {/* Small fixed-size 2:3 thumbnail. We use an explicitly sized `relative`
             box (NOT the @tailwindcss/aspect-ratio plugin): inside a flex row the
             plugin's auto-absolute child stretches to the row height, so we lock
@@ -178,7 +178,7 @@ const ScheduleRow: React.FC<ScheduleRowProps> = ({ entry }) => {
           </div>
         </div>
 
-        <span className="shrink-0 rounded-full border border-line/60 bg-canvas/50 px-2.5 py-1 text-xs font-semibold text-fg">
+        <span className="shrink-0 rounded-[5px] border border-[#463b49] bg-canvas/50 px-2.5 py-1 text-xs font-semibold text-fg">
           {formatTime(entry.airingAt)}
         </span>
       </a>
@@ -222,13 +222,10 @@ const Schedule = ({
       <Header />
 
       <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        <div className="mb-2 flex items-center gap-2.5">
-          <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-          <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-            Airing Schedule
-          </h1>
-        </div>
-        <p className="mb-8 ml-3.5 text-sm text-muted">
+        <h1 className="font-display text-[clamp(32px,4vw,56px)] font-extrabold tracking-[-0.05em] text-fg">
+          Airing Schedule
+        </h1>
+        <p className="mb-8 text-sm text-[#bfb2c1]">
           Episodes airing over the next 7 days.
         </p>
 
@@ -237,11 +234,7 @@ const Schedule = ({
             {orderedDays.map((day, i) => (
               <section key={day.dayIndex}>
                 <div className="mb-4 flex items-center gap-2.5">
-                  <span
-                    className="h-5 w-1 rounded-full bg-aurora"
-                    aria-hidden
-                  />
-                  <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+                  <h2 className="font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
                     {i === 0 ? `${day.label} · Today` : day.label}
                   </h2>
                   <span className="text-sm text-faint">
@@ -263,11 +256,11 @@ const Schedule = ({
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-            <p className="font-display text-lg font-bold text-fg">
+          <div className="flex min-h-[340px] flex-col items-center justify-center text-center">
+            <h2 className="font-display text-[26px] font-extrabold text-fg">
               Nothing scheduled
-            </p>
-            <p className="mt-2 max-w-sm text-sm text-muted">
+            </h2>
+            <p className="mt-4 max-w-[420px] text-sm leading-relaxed text-[#bfb2c1]">
               No episodes are scheduled to air in the next 7 days. Check back
               soon.
             </p>

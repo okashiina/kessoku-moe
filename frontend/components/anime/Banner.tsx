@@ -8,7 +8,6 @@ import { AnimeBannerFragment } from '@animeflix/api/aniList';
 import { ClockIcon, ThumbUpIcon } from '@heroicons/react/outline';
 import { PlayIcon } from '@heroicons/react/solid';
 
-import Genre from '@components/Genre';
 import Icon from '@components/Icon';
 import progressBar from '@components/Progress';
 import { pickTitle, useTitleLang } from '@utility/titleLang';
@@ -47,9 +46,9 @@ const Banner: React.FC<BannerProps> = ({ anime }) => {
           />
         )}
 
-        {/* Scrims to canvas — legibility + blend into the page (not text effects). */}
-        <div className="via-canvas/55 absolute inset-0 bg-gradient-to-t from-canvas to-canvas/10" />
-        <div className="via-canvas/45 absolute inset-0 bg-gradient-to-r from-canvas/95 to-transparent" />
+        {/* Scrims to ink — legibility on bottom and left. */}
+        <div className="via-[#17141c]/55 absolute inset-0 bg-gradient-to-t from-[#17141c] to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#17141c] via-[#17141c]/70 to-transparent" />
 
         <div className="absolute inset-0 z-10 flex flex-col justify-end px-4 pb-10 sm:px-6 sm:pb-14 lg:px-8 lg:pb-20">
           <div className="max-w-2xl">
@@ -61,7 +60,7 @@ const Banner: React.FC<BannerProps> = ({ anime }) => {
             </p>
 
             <h1
-              className="mt-2 animate-rise font-display text-3xl font-extrabold leading-[1.04] text-fg sm:text-5xl lg:text-6xl"
+              className="mt-2 animate-rise font-display text-3xl font-extrabold leading-[1.04] tracking-tight text-fg sm:text-5xl lg:text-6xl"
               style={{ animationDelay: '90ms' }}
             >
               {title}
@@ -95,7 +94,11 @@ const Banner: React.FC<BannerProps> = ({ anime }) => {
                 style={{ animationDelay: '250ms' }}
               >
                 {anime.genres.slice(0, 4).map((genre) => (
-                  <Genre key={genre} genre={genre} />
+                  <Link key={genre} href={`/genre/${genre}`} passHref>
+                    <a className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3.5 text-sm font-medium text-muted transition duration-200 hover:text-fg">
+                      {genre}
+                    </a>
+                  </Link>
                 ))}
               </div>
             )}
@@ -111,7 +114,7 @@ const Banner: React.FC<BannerProps> = ({ anime }) => {
 
             <Link href={`/${isHome ? 'anime' : 'watch'}/${anime.id}`} passHref>
               <a
-                className="mt-6 inline-flex animate-rise items-center gap-2 rounded-full bg-aurora px-6 py-3 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 ease-out hover:brightness-110 active:scale-95"
+                className="mt-6 inline-flex min-h-[44px] animate-rise items-center gap-2 rounded-[5px] bg-accent px-6 py-2.5 text-sm font-bold text-accent-ink transition duration-200 ease-out hover:brightness-110 active:scale-95"
                 style={{ animationDelay: '360ms' }}
               >
                 <PlayIcon className="h-5 w-5" />

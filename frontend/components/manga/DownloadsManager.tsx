@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 
 import Link from 'next/link';
 
-import { BookOpenIcon, ChevronRightIcon } from '@heroicons/react/solid';
+import { ChevronRightIcon } from '@heroicons/react/solid';
 
 import {
   getAutoDownload,
@@ -20,6 +20,8 @@ import {
   readUrlFor,
   subscribeDownloads,
 } from '@utility/mangaDownloads';
+
+import styles from '../../styles/Browse.module.css';
 
 const fmtDate = (ms: number): string =>
   new Date(ms).toLocaleDateString(undefined, {
@@ -76,6 +78,9 @@ const usePersistState = (): PersistState => {
   return state;
 };
 
+const outlineBtn =
+  'inline-flex min-h-[44px] items-center justify-center rounded-[5px] border border-[#66516a] px-4 text-sm font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:border-[#7a6280] disabled:cursor-not-allowed disabled:opacity-50';
+
 // Persistence status + the "auto-save on wifi" opt-in. Shown in both the empty
 // and populated states so the controls are always reachable.
 const StorageSettings: React.FC<{ persist: PersistState }> = ({ persist }) => {
@@ -85,14 +90,14 @@ const StorageSettings: React.FC<{ persist: PersistState }> = ({ persist }) => {
     () => false
   );
   return (
-    <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-line/50 bg-surface/30 px-4 py-3">
+    <div className="mb-5 flex flex-col gap-3 rounded-lg border border-[#463b49] px-4 py-3">
       {persist !== 'unsupported' && (
-        <p className="text-xs text-muted">
+        <p className="text-xs text-[#bfb2c1]">
           Storage:{' '}
           {persist === 'persistent' ? (
-            <span className="font-medium text-emerald-300">persistent ✓</span>
+            <span className="font-bold text-[#f4ecef]">persistent</span>
           ) : (
-            <span className="font-medium text-fg">best-effort</span>
+            <span className="font-bold text-[#f4ecef]">best-effort</span>
           )}
           <span className="ml-1">
             {persist === 'persistent'
@@ -102,9 +107,9 @@ const StorageSettings: React.FC<{ persist: PersistState }> = ({ persist }) => {
         </p>
       )}
       <label className="flex min-h-[44px] items-center justify-between gap-3">
-        <span className="text-sm text-fg">
+        <span className="text-sm text-[#f4ecef]">
           Auto-save the next chapter as you read
-          <span className="mt-0.5 block text-xs text-muted">
+          <span className="mt-0.5 block text-xs text-[#bfb2c1]">
             On wifi only, so the next one is ready offline.
           </span>
         </span>
@@ -112,7 +117,7 @@ const StorageSettings: React.FC<{ persist: PersistState }> = ({ persist }) => {
           type="checkbox"
           checked={auto}
           onChange={(e) => setAutoDownloadEnabled(e.target.checked)}
-          className="h-5 w-5 shrink-0 accent-pink-500 [touch-action:manipulation]"
+          className="h-5 w-5 shrink-0 accent-accent [touch-action:manipulation]"
         />
       </label>
     </div>
@@ -143,88 +148,79 @@ const DownloadsManager: React.FC = () => {
 
   if (!downloads.length) {
     return (
-      <div className="px-4 sm:px-6 lg:px-8">
+      <>
         <StorageSettings persist={persist} />
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-          <p className="font-display text-lg font-bold text-fg">
-            Nothing saved for the road yet
-          </p>
-          <p className="mt-2 max-w-sm text-sm text-muted">
-            Open a series, hit Save for offline (or Download in the reader), and
-            chapters land here. Tap one to read it with no connection.
+        <div className={styles.empty}>
+          <h2>Nothing saved yet</h2>
+          <p>
+            Save a chapter from the reader and it will show up here for offline
+            reading.
           </p>
           <Link href="/manga" passHref>
-            <a className="mt-6 inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110">
+            <a className="inline-flex min-h-[48px] items-center justify-center rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink">
               Find something to read
             </a>
           </Link>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8">
+    <>
       <StorageSettings persist={persist} />
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/50 bg-surface/30 px-4 py-3">
-        <div className="text-sm text-muted">
-          <span className="font-semibold text-fg">{downloads.length}</span>{' '}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[#463b49] px-4 py-3">
+        <div className="text-sm text-[#bfb2c1]">
+          <span className="font-bold text-[#f4ecef]">{downloads.length}</span>{' '}
           {downloads.length === 1 ? 'chapter' : 'chapters'} saved
           {storage && (
             <>
               {' · '}
-              <span className="text-fg">{storage}</span> approx app storage
+              <span className="text-[#f4ecef]">{storage}</span> approx app
+              storage
             </>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onClearAll}
-          className="inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 py-2 text-sm font-semibold text-fg transition [touch-action:manipulation] hover:border-rose-400/60 hover:text-rose-300 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
-        >
+        <button type="button" onClick={onClearAll} className={outlineBtn}>
           Clear all
         </button>
       </div>
 
-      <p className="mb-2 text-xs text-muted">
+      <p className="mb-2 text-xs text-[#bfb2c1]">
         Tap a chapter to read it offline.
       </p>
       <ul className="flex flex-col gap-3">
         {downloads.map((d) => (
           <li
             key={d.chapterId}
-            className="flex items-center gap-2 rounded-2xl border border-line/50 bg-surface/40 pr-2"
+            className="flex min-h-[44px] items-center gap-2 rounded-lg border border-[#463b49] pr-2"
           >
             {/* Plain <a> (full navigation), not a Next <Link>: a client-side nav
                 fetches the page's data JSON, which isn't cached and fails offline.
                 A full nav hits the SW, which serves the cached read-page HTML. */}
             <a
               href={d.readUrl || readUrlFor(d.chapterId, d.anilistId)}
-              className="group flex min-h-[44px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-fg transition [touch-action:manipulation] hover:text-accent"
+              className="group flex min-h-[44px] min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-[#f4ecef] transition [touch-action:manipulation] hover:text-accent"
             >
-              <BookOpenIcon
-                className="h-5 w-5 shrink-0 text-accent/70 transition group-hover:text-accent"
-                aria-hidden
-              />
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">
+                <span className="block truncate font-bold">
                   {d.title || d.chapterId}
                 </span>
-                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#bfb2c1]">
                   <span>
                     {d.pageCount} {d.pageCount === 1 ? 'page' : 'pages'}
                   </span>
                   <span aria-hidden>·</span>
                   <span>{fmtDate(d.savedAt)}</span>
                   {d.partial && (
-                    <span className="rounded-full border border-amber-400/50 bg-amber-400/10 px-2 py-0.5 font-medium text-amber-200">
+                    <span className="rounded-[5px] border border-[#66516a] px-2 py-0.5 font-bold text-[#f4ecef]">
                       Partial
                     </span>
                   )}
                 </span>
               </span>
               <ChevronRightIcon
-                className="h-5 w-5 shrink-0 text-faint transition group-hover:text-accent"
+                className="h-5 w-5 shrink-0 text-[#bfb2c1] transition group-hover:text-accent"
                 aria-hidden
               />
             </a>
@@ -232,14 +228,14 @@ const DownloadsManager: React.FC = () => {
               type="button"
               onClick={() => onDelete(d.chapterId, d.title || d.chapterId)}
               aria-label={`Delete ${d.title || d.chapterId}`}
-              className="inline-flex min-h-[44px] shrink-0 items-center rounded-full border border-line/70 bg-surface/60 px-4 py-2 text-sm font-semibold text-fg transition [touch-action:manipulation] hover:border-rose-400/60 hover:text-rose-300 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+              className={outlineBtn}
             >
               Delete
             </button>
           </li>
         ))}
       </ul>
-    </div>
+    </>
   );
 };
 

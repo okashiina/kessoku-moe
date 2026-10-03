@@ -17,11 +17,10 @@ import {
 // Kitsu/Jikan, then asks the companion for one concise recap.
 
 const API_BASE = (
-  process.env.COMPANION_API_BASE ||
-  'https://generativelanguage.googleapis.com/v1beta/openai'
+  process.env.COMPANION_API_BASE || 'https://api.openai.com/v1'
 ).replace(/\/$/, '');
 const API_KEY = process.env.COMPANION_API_KEY || '';
-const MODEL = process.env.COMPANION_MODEL || 'gemini-2.5-flash';
+const MODEL = process.env.COMPANION_MODEL || 'gpt-5.6-luna';
 
 const clip = (s: string, max: number): string =>
   s.length > max ? `${s.slice(0, max)}...` : s;

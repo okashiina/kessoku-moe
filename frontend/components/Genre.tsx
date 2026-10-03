@@ -7,7 +7,7 @@ export interface GenreProps {
 const Genre: React.FC<GenreProps> = ({ genre }) => {
   return (
     <Link href={`/genre/${genre}`} passHref>
-      <a className="rounded-full border border-line/70 bg-surface/60 px-3 py-1 text-xs font-medium text-muted backdrop-blur-sm transition duration-200 hover:border-accent/60 hover:bg-surface-2 hover:text-fg sm:text-sm">
+      <a className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#5a495f] px-3.5 py-2 text-sm font-bold text-[#c9bdc8] transition duration-200 [touch-action:manipulation] hover:text-[#f4ecef]">
         {genre}
       </a>
     </Link>

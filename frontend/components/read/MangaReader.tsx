@@ -794,7 +794,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex h-[100dvh] flex-col bg-black text-white [touch-action:manipulation]">
+    <div className="fixed inset-0 z-[60] flex h-[100dvh] flex-col bg-[#17141c] text-[#f4ecef] [touch-action:manipulation]">
       <div
         role="progressbar"
         dir="ltr"
@@ -813,7 +813,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       </div>
       {/* Top chrome */}
       <header
-        className={`absolute inset-x-0 top-0 z-30 flex items-center gap-3 bg-gradient-to-b from-black/80 to-transparent px-3 py-2 transition-opacity duration-300 motion-reduce:transition-none ${
+        className={`absolute inset-x-0 top-0 z-30 flex items-center gap-2 border-b border-[#463b49] bg-[#17141c] px-3 py-2 transition-opacity duration-300 motion-reduce:transition-none ${
           chromeVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
@@ -821,14 +821,16 @@ const MangaReader: React.FC<MangaReaderProps> = ({
         <Link href={detailHref} passHref>
           <a
             aria-label="Back to series"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition [touch-action:manipulation] hover:bg-white/10"
+            className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[5px] font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/50"
           >
             <ArrowLeftIcon className="h-5 w-5" />
           </a>
         </Link>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{seriesTitle}</p>
-          <p className="truncate text-xs text-white/60">
+          <p className="truncate text-sm font-bold text-[#f4ecef]">
+            {seriesTitle}
+          </p>
+          <p className="truncate text-xs text-[#f4ecef]/60">
             {chapterLabel}
             {group ? ` · ${group}` : ''} · {lang.toUpperCase()}
           </p>
@@ -838,7 +840,11 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             type="button"
             aria-label="Chapter comments"
             onClick={() => setShowComments(true)}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition [touch-action:manipulation] hover:bg-white/10"
+            className={`flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[5px] font-bold transition [touch-action:manipulation] ${
+              showComments
+                ? 'bg-[#f591ba] text-[#17141c]'
+                : 'text-[#f4ecef] hover:bg-[#463b49]/50'
+            }`}
           >
             <AnnotationIcon className="h-5 w-5" />
           </button>
@@ -847,7 +853,11 @@ const MangaReader: React.FC<MangaReaderProps> = ({
           type="button"
           aria-label="Reader settings"
           onClick={() => setShowSettings((v) => !v)}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition [touch-action:manipulation] hover:bg-white/10"
+          className={`flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[5px] font-bold transition [touch-action:manipulation] ${
+            showSettings
+              ? 'bg-[#f591ba] text-[#17141c]'
+              : 'text-[#f4ecef] hover:bg-[#463b49]/50'
+          }`}
         >
           <CogIcon className="h-5 w-5" />
         </button>
@@ -870,17 +880,17 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             type="button"
             aria-label="Close settings"
             onClick={() => setShowSettings(false)}
-            className="absolute inset-0 z-30 bg-black/40"
+            className="absolute inset-0 z-30 bg-[#17141c]/80"
           />
           <div
-            className="absolute inset-x-0 top-12 z-40 mx-auto w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-zinc-900/95 p-4 shadow-xl backdrop-blur"
+            className="absolute inset-x-0 top-12 z-40 mx-auto w-[calc(100%-1.5rem)] max-w-md overflow-y-auto overscroll-contain rounded-[5px] border border-[#463b49] bg-[#17141c] p-4"
             style={{
               top: 'max(3rem, calc(env(safe-area-inset-top) + 2.75rem))',
               maxHeight: '80svh',
               paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
             }}
           >
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/50">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#f4ecef]/50">
               Reading mode
             </p>
             <div className="mb-4 grid grid-cols-2 gap-2">
@@ -889,10 +899,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                   key={m}
                   type="button"
                   onClick={() => setReaderMode(m)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  className={`min-h-[44px] rounded-[5px] px-3 py-2 text-base font-bold transition [touch-action:manipulation] ${
                     mode === m
-                      ? 'bg-accent text-accent-ink'
-                      : 'bg-white/5 text-white/80 hover:bg-white/10'
+                      ? 'bg-[#f591ba] text-[#17141c]'
+                      : 'border border-[#463b49] text-[#f4ecef] hover:bg-[#463b49]/30'
                   }`}
                 >
                   {MODE_LABEL[m]}
@@ -902,7 +912,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
 
             {!continuous && (
               <>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/50">
+                <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#f4ecef]/50">
                   Fit
                 </p>
                 <div className="mb-4 grid grid-cols-3 gap-2">
@@ -911,10 +921,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                       key={f}
                       type="button"
                       onClick={() => setReaderFit(f)}
-                      className={`rounded-lg px-3 py-2 text-sm font-medium capitalize transition ${
+                      className={`min-h-[44px] rounded-[5px] px-3 py-2 text-base font-bold capitalize transition [touch-action:manipulation] ${
                         prefs.fit === f
-                          ? 'bg-accent text-accent-ink'
-                          : 'bg-white/5 text-white/80 hover:bg-white/10'
+                          ? 'bg-[#f591ba] text-[#17141c]'
+                          : 'border border-[#463b49] text-[#f4ecef] hover:bg-[#463b49]/30'
                       }`}
                     >
                       {f}
@@ -962,23 +972,23 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                 type="checkbox"
                 checked={prefs.dataSaver}
                 onChange={(e) => setDataSaver(e.target.checked)}
-                className="h-5 w-5 accent-pink-500"
+                className="h-5 w-5 accent-[#f591ba]"
               />
             </label>
 
             {/* Offline download */}
-            <p className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wide text-white/50">
+            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-[#f4ecef]/50">
               Offline
             </p>
             {downloaded ? (
-              <div className="flex min-h-[44px] items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2.5">
-                <span className="flex items-center gap-2 text-sm text-emerald-300">
+              <div className="flex min-h-[44px] items-center justify-between gap-2 rounded-[5px] border border-[#463b49] px-3 py-2.5">
+                <span className="flex items-center gap-2 text-base font-bold text-[#f591ba]">
                   <DownloadIcon className="h-4 w-4" /> Saved offline
                 </span>
                 <button
                   type="button"
                   onClick={handleDeleteDownload}
-                  className="min-h-[44px] rounded-lg px-3 py-2 text-sm font-medium text-white/70 transition [touch-action:manipulation] hover:bg-white/10 hover:text-white active:bg-white/20"
+                  className="min-h-[44px] min-w-[44px] rounded-[5px] px-3 py-2 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/50"
                 >
                   Delete
                 </button>
@@ -988,7 +998,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                 type="button"
                 onClick={handleDownload}
                 disabled={Boolean(dl) || Boolean(bulk) || pages.length === 0}
-                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2.5 text-sm font-medium text-white/80 transition [touch-action:manipulation] hover:bg-white/10 active:bg-white/20 disabled:opacity-50"
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[5px] border border-[#463b49] px-3 py-2.5 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/30 disabled:opacity-50"
               >
                 <DownloadIcon className="h-4 w-4" />
                 {dl
@@ -1003,7 +1013,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
                 type="button"
                 onClick={handleDownloadNext}
                 disabled={Boolean(dl) || Boolean(bulk)}
-                className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-white/5 px-3 py-2.5 text-sm font-medium text-white/80 transition [touch-action:manipulation] hover:bg-white/10 active:bg-white/20 disabled:opacity-50"
+                className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-[5px] border border-[#463b49] px-3 py-2.5 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/30 disabled:opacity-50"
               >
                 <DownloadIcon className="h-4 w-4" />
                 {bulk
@@ -1024,10 +1034,10 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             type="button"
             aria-label="Close comments"
             onClick={() => setShowComments(false)}
-            className="absolute inset-0 z-40 bg-black/60"
+            className="absolute inset-0 z-40 bg-[#17141c]/80"
           />
           <div
-            className="absolute inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-2xl flex-col rounded-t-2xl border border-white/10 bg-zinc-900/95 shadow-xl backdrop-blur"
+            className="absolute inset-x-0 bottom-0 z-50 mx-auto flex w-full max-w-2xl flex-col rounded-t-[5px] border border-[#463b49] bg-[#17141c]"
             style={{
               maxHeight: '85svh',
               height: '85svh',
@@ -1035,15 +1045,15 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             role="dialog"
             aria-label="Chapter comments"
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3">
-              <p className="truncate text-sm font-semibold text-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-[#463b49] px-4 py-3">
+              <p className="truncate text-base font-bold text-[#f4ecef]">
                 {chapterLabel} discussion
               </p>
               <button
                 type="button"
                 aria-label="Close comments"
                 onClick={() => setShowComments(false)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/80 transition [touch-action:manipulation] hover:bg-white/10"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-[5px] font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/50"
               >
                 <XIcon className="h-5 w-5" />
               </button>
@@ -1071,18 +1081,18 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       {/* Body */}
       {status === 'loading' && (
         <div className="flex flex-1 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80 motion-reduce:animate-none" />
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#463b49] border-t-[#f591ba] motion-reduce:animate-none" />
         </div>
       )}
 
       {status === 'error' && (
         <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
-          <p className="text-base font-semibold text-white">
+          <p className="text-base font-bold text-[#f4ecef]">
             {errorKind === 'missing'
               ? 'No pages for this chapter yet'
               : 'This source is temporarily unavailable'}
           </p>
-          <p className="max-w-xs text-sm text-white/60">
+          <p className="max-w-xs text-base text-[#f4ecef]/60">
             {errorKind === 'missing'
               ? 'This release has nothing to show. Try another chapter or check back later.'
               : 'The page server did not answer. Try again in a bit.'}
@@ -1092,13 +1102,13 @@ const MangaReader: React.FC<MangaReaderProps> = ({
               <button
                 type="button"
                 onClick={retry}
-                className="min-h-[44px] rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink transition [touch-action:manipulation] hover:brightness-110 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="min-h-[44px] min-w-[44px] rounded-[5px] bg-[#f591ba] px-5 py-2.5 text-base font-bold text-[#17141c] transition [touch-action:manipulation]"
               >
                 Retry
               </button>
             )}
             <Link href={detailHref} passHref>
-              <a className="inline-flex min-h-[44px] items-center rounded-full bg-white/10 px-5 py-2.5 text-sm font-semibold transition [touch-action:manipulation] hover:bg-white/20 active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100">
+              <a className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-[5px] border border-[#463b49] px-5 py-2.5 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/30">
                 Back to chapters
               </a>
             </Link>
@@ -1142,18 +1152,20 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             </div>
             {/* End-of-chapter footer */}
             <div className="mx-auto flex max-w-3xl flex-col items-center gap-3 px-4 py-10 text-center">
-              <p className="text-sm text-white/60">End of {chapterLabel}</p>
+              <p className="text-base text-[#f4ecef]/60">
+                End of {chapterLabel}
+              </p>
               {nextChapter ? (
                 <button
                   type="button"
                   onClick={() => goChapter(nextChapter)}
-                  className="min-h-[44px] rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink [touch-action:manipulation]"
+                  className="min-h-[44px] min-w-[44px] rounded-[5px] bg-[#f591ba] px-6 py-2.5 text-base font-bold text-[#17141c] [touch-action:manipulation]"
                 >
                   Next: {nextChapter.label}
                 </button>
               ) : (
                 <Link href={detailHref} passHref>
-                  <a className="inline-flex min-h-[44px] items-center rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold [touch-action:manipulation]">
+                  <a className="inline-flex min-h-[44px] min-w-[44px] items-center rounded-[5px] border border-[#463b49] px-6 py-2.5 text-base font-bold text-[#f4ecef] [touch-action:manipulation] hover:bg-[#463b49]/30">
                     Back to chapters
                   </a>
                 </Link>
@@ -1205,7 +1217,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
       {/* Bottom chrome (paged: counter + chapter nav) */}
       {status === 'ready' && (
         <footer
-          className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 bg-gradient-to-t from-black/80 to-transparent px-4 py-3 transition-opacity duration-300 motion-reduce:transition-none ${
+          className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-between gap-3 border-t border-[#463b49] bg-[#17141c] px-4 py-3 transition-opacity duration-300 motion-reduce:transition-none ${
             chromeVisible ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
@@ -1214,7 +1226,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             type="button"
             disabled={!prevChapter}
             onClick={() => goChapter(prevChapter)}
-            className="flex min-h-[44px] items-center gap-1 rounded-full bg-white/10 px-4 py-2.5 text-sm font-medium transition [touch-action:manipulation] hover:bg-white/20 disabled:opacity-30"
+            className="flex min-h-[44px] min-w-[44px] items-center gap-1 rounded-[5px] border border-[#463b49] px-4 py-2.5 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/30 disabled:opacity-30"
           >
             <ChevronLeftIcon className="h-4 w-4" /> Prev
           </button>
@@ -1246,7 +1258,7 @@ const MangaReader: React.FC<MangaReaderProps> = ({
             type="button"
             disabled={!nextChapter}
             onClick={() => goChapter(nextChapter)}
-            className="flex min-h-[44px] items-center gap-1 rounded-full bg-white/10 px-4 py-2.5 text-sm font-medium transition [touch-action:manipulation] hover:bg-white/20 disabled:opacity-30"
+            className="flex min-h-[44px] min-w-[44px] items-center gap-1 rounded-[5px] border border-[#463b49] px-4 py-2.5 text-base font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:bg-[#463b49]/30 disabled:opacity-30"
           >
             Next <ChevronRightIcon className="h-4 w-4" />
           </button>

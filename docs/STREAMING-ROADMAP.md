@@ -5,6 +5,32 @@ like Miruro does, **without** inheriting its "heavy & fragile" failure modes.
 
 This is a living plan. Phase 0 (embed switcher) is already shipped as the safety net.
 
+## 2026-10-03 release: cartoon discovery and mobile navigation
+
+- General cartoons now have a TVMaze catalog, title search, genre browsing, catalog
+  pagination, season/episode guides, and a Home-style discovery page at `/cartoon`.
+- `/cartoon/[id]` uses IMDb episode embeds where available and the curated official
+  video alternative. The watch layout includes the companion, with cartoon context
+  and anime-only lookup tools disabled. Stream availability depends on the title
+  and external provider; this release does not add a cartoon scraper to Option B.
+- Cartoon Continue watching stores the last selected season and episode separately
+  from anime progress. Cross-origin embeds cannot supply exact playback timestamps.
+- Home and Cartoon share the featured banner. Home recommendations use restrained
+  transitions; landing has an English cartoon promo and a 12-title scroll preview.
+- A persistent mobile navigation dock links Home, Browse, Manga, Cartoon, and My
+  List. It clears safe areas and the keyboard, and hides on video/watch and reader
+  routes. The glass treatment has a non-blur fallback.
+- Android/Chrome and iOS/PWA code audits passed after raising player controls and
+  poster arrows to 44px. Chromium/WebKit checks cover mobile layout, search,
+  catalog navigation, and episode history. Physical iPhone playback and installed
+  PWA push remain device checks, rather than claims of this release.
+- Latest main's manga auto-scroll, reading position sync, and reader progress
+  indicator are retained. No new runtime dependency is required.
+
+The full Linux production build is a required PR gate. Local Windows compilation
+succeeds; standalone packaging in the release worktree cannot reuse its junctioned
+dependency folders without an `EEXIST` error.
+
 ---
 
 ## 1. What we learned from Miruro (verified via Playwright network probe)

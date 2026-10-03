@@ -4,6 +4,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
 import Header from '@components/Header';
@@ -23,6 +24,8 @@ import {
   MangaInfo,
 } from '@utility/manga';
 import { nsfwFromCookie } from '@utility/nsfw';
+
+import styles from '../../styles/Browse.module.css';
 
 const GENRES = [
   'Action',
@@ -156,15 +159,8 @@ const MangaLibrary = ({
     });
   };
 
-  const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm transition duration-200 [touch-action:manipulation] sm:text-sm ${
-      active
-        ? 'border-accent bg-accent text-accent-ink shadow-glow'
-        : 'border-line/70 bg-surface/60 text-muted hover:border-accent/60 hover:bg-surface-2 hover:text-fg'
-    }`;
-
   return (
-    <>
+    <div className={styles.page}>
       <NextSeo
         title="Read manga & manhwa | kessoku moe"
         description="Read manga, manhwa, and manhua in English, Indonesian, and more."
@@ -172,94 +168,92 @@ const MangaLibrary = ({
 
       <Header />
 
-      <main className="mx-auto w-full max-w-screen-2xl pb-20 pt-6">
-        <div className="mb-6 flex flex-col gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-            <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              Manga &amp; Manhwa
-            </h1>
+      <main className={styles.main}>
+        <div className={`${styles.heading} flex-wrap`}>
+          <div className="min-w-0">
+            <h1>Manga &amp; Manhwa</h1>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
             <Link href="/manga/browse" passHref>
-              <a className="ml-auto inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
-                Browse
-              </a>
+              <a className={styles.filterToggle}>Browse</a>
             </Link>
             <Link href="/manga/downloads" passHref>
-              <a className="inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
-                Downloads
-              </a>
+              <a className={styles.filterToggle}>Downloads</a>
             </Link>
           </div>
+        </div>
 
-          {/* Search */}
-          <form onSubmit={submitSearch} className="flex max-w-xl gap-2">
-            <input
-              type="search"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search titles…"
-              className="min-w-0 flex-1 rounded-xl border border-line/70 bg-surface/60 px-4 py-2 text-base text-fg outline-none transition placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent sm:text-sm"
-            />
-            <button
-              type="submit"
-              className="rounded-xl bg-aurora px-4 py-2 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110"
-            >
-              Search
-            </button>
-          </form>
+        <form onSubmit={submitSearch} className="mb-4 flex max-w-xl gap-2">
+          <input
+            type="search"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search titles…"
+            className="min-h-[48px] min-w-0 flex-1 rounded-[5px] border border-[#66516a] bg-surface px-4 text-base text-fg outline-none transition placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent"
+          />
+          <button
+            type="submit"
+            className="min-h-[48px] rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition hover:brightness-110"
+          >
+            Search
+          </button>
+        </form>
 
-          {/* AI vibe-search: describe a mood, get matching titles */}
+        <details className={styles.vibe}>
+          <summary>Have a mood in mind? Try vibe search</summary>
           <VibeSearch />
+        </details>
 
-          {/* Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            {COUNTRIES.map((c) => (
-              <button
-                key={c.value}
-                type="button"
-                onClick={() => toggle('country', c.value, activeCountry)}
-                className={chip(activeCountry === c.value)}
-              >
-                {c.label}
-              </button>
-            ))}
-            <span className="mx-1 h-4 w-px bg-line/60" aria-hidden />
+        <div className={`${styles.genres} mb-3 mt-6`}>
+          {COUNTRIES.map((c) => (
+            <button
+              key={c.value}
+              type="button"
+              onClick={() => toggle('country', c.value, activeCountry)}
+              aria-pressed={activeCountry === c.value}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div className={styles.sorts} aria-label="Sort manga">
             {SORTS.map((s) => (
               <button
                 key={s.value}
                 type="button"
+                aria-pressed={activeSort === s.value}
                 onClick={() => toggle('sort', s.value, activeSort)}
-                className={chip(activeSort === s.value)}
               >
                 {s.label}
               </button>
             ))}
-            <span className="mx-1 h-4 w-px bg-line/60" aria-hidden />
-            <NsfwToggle />
           </div>
+          <NsfwToggle />
+        </div>
 
-          <div className="flex flex-wrap gap-2">
-            {GENRES.map((g) => (
-              <button
-                key={g}
-                type="button"
-                onClick={() => toggle('genre', g, activeGenre)}
-                className={chip(activeGenre === g)}
-              >
-                {g}
-              </button>
-            ))}
-            {STATUSES.map((s) => (
-              <button
-                key={s.value}
-                type="button"
-                onClick={() => toggle('status', s.value, activeStatus)}
-                className={chip(activeStatus === s.value)}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+        <div className={`${styles.genres} pb-6`}>
+          {GENRES.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => toggle('genre', g, activeGenre)}
+              aria-pressed={activeGenre === g}
+            >
+              {g}
+            </button>
+          ))}
+          {STATUSES.map((s) => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => toggle('status', s.value, activeStatus)}
+              aria-pressed={activeStatus === s.value}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
 
         {mode === 'home' && home && (
@@ -276,54 +270,44 @@ const MangaLibrary = ({
           </>
         )}
         {mode === 'grid' && grid && grid.media.length > 0 && (
-          <div className="px-4 sm:px-6 lg:px-8">
+          <>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
               {grid.media.map((manga) => (
                 <MangaCard key={manga.id} manga={manga} />
               ))}
             </div>
-            <nav className="mt-10 flex items-center justify-center gap-3">
+            <nav className={styles.pagination} aria-label="Pagination">
               <button
                 type="button"
                 disabled={grid.currentPage <= 1}
                 onClick={() => goToPage(grid.currentPage - 1)}
-                className="rounded-full border border-line/70 bg-surface/60 px-5 py-2 text-sm font-semibold text-fg transition hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
               >
+                <ArrowLeftIcon aria-hidden />
                 Previous
               </button>
-              <span className="min-w-[5rem] text-center text-sm font-medium text-muted">
-                Page {grid.currentPage}
-              </span>
+              <span>Page {grid.currentPage}</span>
               <button
                 type="button"
                 disabled={!grid.hasNextPage}
                 onClick={() => goToPage(grid.currentPage + 1)}
-                className="rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
               >
-                Next
+                Next page
+                <ArrowRightIcon aria-hidden />
               </button>
             </nav>
-          </div>
+          </>
         )}
         {mode === 'grid' && (!grid || grid.media.length === 0) && (
-          <div className="mx-4 flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center sm:mx-6 lg:mx-8">
-            <p className="font-display text-lg font-bold text-fg">
-              Nothing matched
-            </p>
-            <p className="mt-2 max-w-sm text-sm text-muted">
-              Try a different title or clear a filter.
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push('/manga')}
-              className="mt-6 rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110"
-            >
+          <div className={styles.empty}>
+            <h2>Nothing matched</h2>
+            <p>Try a different title or clear a filter.</p>
+            <button type="button" onClick={() => router.push('/manga')}>
               Reset
             </button>
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 };
 

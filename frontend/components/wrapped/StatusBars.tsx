@@ -16,28 +16,30 @@ const StatusBars: React.FC<StatusBarsProps> = ({ title, rows }) => {
   const total = rows.reduce((sum, r) => sum + r.count, 0);
 
   return (
-    <section className="rounded-2xl border border-line/50 bg-surface/40 p-5">
-      <div className="mb-4 flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-base font-bold text-fg">{title}</h3>
-        <span className="text-xs font-medium tabular-nums text-muted">
+    <section className="min-w-0 flex-1">
+      <div className="mb-5 flex items-baseline justify-between gap-3">
+        <h3 className="font-display text-lg font-extrabold tracking-tight text-[#f4ecef]">
+          {title}
+        </h3>
+        <span className="text-xs font-bold tabular-nums text-[#bfb2c1]">
           {total} {total === 1 ? 'title' : 'titles'}
         </span>
       </div>
-      <ul className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-4">
         {rows.map((r) => (
           <li key={r.label}>
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <span className="text-sm text-fg">{r.label}</span>
-              <span className="text-sm font-semibold tabular-nums text-fg">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2">
+              <span className="text-sm text-[#f4ecef]">{r.label}</span>
+              <span className="text-sm font-bold tabular-nums text-[#f4ecef]">
                 {r.count}
               </span>
             </div>
             <div
-              className="h-2 w-full overflow-hidden rounded-full bg-canvas-2"
+              className="h-1.5 w-full overflow-hidden rounded-[5px] bg-[#221c26]"
               aria-hidden
             >
               <div
-                className="h-full rounded-full bg-aurora"
+                className="h-full rounded-[5px] bg-[#f591ba]"
                 style={{ width: `${(r.count / max) * 100}%` }}
               />
             </div>

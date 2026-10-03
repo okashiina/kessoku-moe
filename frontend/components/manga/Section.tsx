@@ -14,19 +14,18 @@ const MangaSection: React.FC<MangaSectionProps> = ({ title, mangaList }) => {
 
   return (
     <section className="mt-10 first:mt-8">
-      <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
-        <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+      <div className="mb-3">
+        <h2 className="min-w-0 truncate font-display text-lg font-extrabold tracking-tight text-fg">
           {title}
         </h2>
       </div>
 
-      <div className="edge-fade-x">
+      <div className="edge-fade-x -mx-[5%] px-[5%]">
         <div
           tabIndex={0}
           ref={listRef}
           onMouseEnter={() => listRef.current?.focus()}
-          className="flex snap-x gap-4 overflow-x-auto overflow-y-hidden scroll-smooth px-4 pb-3 outline-none scrollbar-hide sm:px-6 lg:px-8"
+          className="flex snap-x gap-4 overflow-x-auto overflow-y-hidden scroll-smooth pb-3 outline-none scrollbar-hide"
         >
           {mangaList.map((manga) => (
             <MangaCard key={manga.id} manga={manga} />

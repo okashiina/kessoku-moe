@@ -2,7 +2,6 @@ import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Image from 'next/image';
 
 import { AnimeInfoFragment } from '@animeflix/api/aniList';
-import { EmojiSadIcon } from '@heroicons/react/solid';
 import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
@@ -173,69 +172,180 @@ const CharacterPage = ({
 
       <Header />
 
-      <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        <header className="mb-10 flex animate-rise flex-col gap-5 sm:flex-row sm:items-start">
-          <span className="relative h-28 w-28 shrink-0 overflow-hidden rounded-2xl bg-surface-2 ring-1 ring-line/40 sm:h-32 sm:w-32">
-            {character.image && (
-              <Image
-                alt={displayName}
-                src={character.image}
-                layout="fill"
-                objectFit="cover"
-              />
-            )}
-          </span>
+      <div className="character-page">
+        <main className="character-main">
+          <header className="character-header">
+            <div className="character-portrait">
+              {character.image && (
+                <Image
+                  alt={displayName}
+                  src={character.image}
+                  layout="fill"
+                  objectFit="cover"
+                />
+              )}
+            </div>
 
-          <div className="min-w-0">
-            <p className="font-sans text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-              Character
-            </p>
-            <h1 className="mt-2 font-display text-2xl font-extrabold tracking-tight text-fg sm:text-3xl lg:text-4xl">
-              {displayName}
-            </h1>
-            {character.native && (
-              <p className="mt-1 text-base text-muted">{character.native}</p>
-            )}
-            {character.bio && (
-              <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm leading-relaxed text-muted">
-                {character.bio}
-              </p>
-            )}
-          </div>
-        </header>
+            <div className="character-intro">
+              <p className="character-kicker">Character</p>
+              <h1>{displayName}</h1>
+              {character.native && (
+                <p className="character-native">{character.native}</p>
+              )}
+              {character.bio && (
+                <p className="character-bio">{character.bio}</p>
+              )}
+            </div>
+          </header>
 
-        <div className="mb-6 flex items-center gap-2.5">
-          <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-          <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-            Appears in
-          </h2>
-        </div>
+          <h2 className="character-section-title">Appears in</h2>
 
-        {hasAppearances ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {appearances.map((a) => (
-              <div key={a.node.id} className="w-36 sm:w-44">
-                <Card anime={a.node} />
-                {a.role && (
-                  <p className="mt-1.5 truncate text-xs text-faint">{a.role}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-line/60 bg-surface/40 px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-faint">
-              <EmojiSadIcon className="h-7 w-7" aria-hidden />
-            </span>
-            <h2 className="mt-5 font-display text-xl font-bold text-fg">
-              No appearances listed
-            </h2>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
-              We couldn&apos;t pull any anime for this character yet.
-            </p>
-          </div>
-        )}
-      </main>
+          {hasAppearances ? (
+            <div className="character-grid">
+              {appearances.map((a) => (
+                <div key={a.node.id} className="character-grid-item">
+                  <Card anime={a.node} fluid />
+                  {a.role && <p className="character-role">{a.role}</p>}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="character-empty">
+              <h2>No appearances listed</h2>
+              <p>We couldn&apos;t pull any anime for this character yet.</p>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <style jsx>{`
+        .character-page {
+          background: #17141c;
+          min-height: 100dvh;
+        }
+        .character-main {
+          max-width: 1440px;
+          margin: auto;
+          padding: 42px 5% 80px;
+          color: #f4ecef;
+        }
+        .character-header {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          margin-bottom: 32px;
+        }
+        .character-portrait {
+          position: relative;
+          width: 112px;
+          height: 112px;
+          flex-shrink: 0;
+          overflow: hidden;
+          border-radius: 8px;
+          background: #28212d;
+        }
+        .character-kicker {
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          color: #f591ba;
+        }
+        .character-intro h1 {
+          font-family: 'Nunito', sans-serif;
+          font-size: clamp(32px, 4.5vw, 64px);
+          font-weight: 800;
+          letter-spacing: -0.05em;
+          line-height: 1.1;
+          color: #f4ecef;
+          margin-top: 8px;
+        }
+        .character-native {
+          color: #bfb2c1;
+          margin-top: 8px;
+          font-size: 15px;
+        }
+        .character-bio {
+          max-width: 72ch;
+          margin-top: 16px;
+          font-size: 16px;
+          line-height: 1.6;
+          color: #f4ecef;
+          white-space: pre-wrap;
+        }
+        .character-section-title {
+          font-family: 'Nunito', sans-serif;
+          font-size: 22px;
+          font-weight: 800;
+          letter-spacing: -0.035em;
+          color: #f4ecef;
+          margin-bottom: 24px;
+        }
+        .character-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px 22px;
+          align-items: start;
+        }
+        .character-grid :global([class*='text-faint']) {
+          color: #bfb2c1;
+        }
+        .character-role {
+          margin-top: 6px;
+          font-size: 12px;
+          color: #bfb2c1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .character-empty {
+          min-height: 340px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 16px;
+        }
+        .character-empty h2 {
+          font-family: 'Nunito', sans-serif;
+          font-size: 26px;
+          font-weight: 800;
+        }
+        .character-empty p {
+          max-width: 420px;
+          color: #bfb2c1;
+          line-height: 1.7;
+        }
+        @media (min-width: 640px) {
+          .character-header {
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 24px;
+          }
+          .character-portrait {
+            width: 128px;
+            height: 128px;
+          }
+        }
+        @media (min-width: 768px) {
+          .character-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1024px) {
+          .character-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 639px) {
+          .character-main {
+            padding: 30px 5% max(48px, env(safe-area-inset-bottom));
+          }
+          .character-header {
+            margin-bottom: 24px;
+          }
+        }
+      `}</style>
     </>
   );
 };

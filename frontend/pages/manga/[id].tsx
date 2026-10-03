@@ -282,9 +282,9 @@ const MangaDetailPage = ({
       />
       <Header />
 
-      <main className="pb-20">
+      <main className="bg-canvas pb-20">
         {/* Banner */}
-        <div className="relative h-44 w-full overflow-hidden sm:h-64 lg:h-80">
+        <div className="relative isolate h-44 w-full overflow-hidden sm:h-64 lg:h-80">
           {detail.bannerImage ? (
             <Image
               alt=""
@@ -295,9 +295,10 @@ const MangaDetailPage = ({
               priority
             />
           ) : (
-            <div className="h-full w-full bg-gradient-to-br from-surface to-canvas-2" />
+            <div className="h-full w-full bg-surface" />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-canvas via-canvas/60 to-canvas/10" />
+          <div className="via-[#17141c]/55 absolute inset-0 bg-gradient-to-t from-[#17141c] to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#17141c] via-[#17141c]/70 to-transparent" />
         </div>
 
         <div className="mx-auto -mt-20 w-full max-w-screen-xl px-4 sm:-mt-24 sm:px-6 lg:px-8">
@@ -306,7 +307,7 @@ const MangaDetailPage = ({
                 aspect-[2/3] would collapse to 0 height) */}
             <div
               style={{ aspectRatio: '2 / 3' }}
-              className="relative w-32 shrink-0 overflow-hidden rounded-2xl bg-surface shadow-lift ring-1 ring-line/40 sm:w-44"
+              className="relative w-32 shrink-0 overflow-hidden rounded-lg bg-surface ring-1 ring-[#463b49] sm:w-44"
             >
               {cover && (
                 <Image
@@ -320,35 +321,35 @@ const MangaDetailPage = ({
 
             <div className="min-w-0 flex-1 pb-1">
               <div className="mb-2 flex flex-wrap items-center gap-2">
-                <span className="bg-accent/15 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-accent">
+                <span className="rounded-[5px] bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-ink">
                   {originLabel(detail.countryOfOrigin)}
                 </span>
                 {detail.status && (
-                  <span className="rounded-full border border-line/60 px-2.5 py-0.5 text-xs font-medium capitalize text-muted">
+                  <span className="rounded-[5px] border border-[#463b49] px-2.5 py-0.5 text-xs font-medium capitalize text-muted">
                     {detail.status.toLowerCase().replace(/_/g, ' ')}
                   </span>
                 )}
                 {detail.meanScore && (
-                  <span className="rounded-full border border-line/60 px-2.5 py-0.5 text-xs font-medium text-muted">
+                  <span className="rounded-[5px] border border-[#463b49] px-2.5 py-0.5 text-xs font-medium text-muted">
                     {detail.meanScore}%
                   </span>
                 )}
                 {detail.isAdult && (
-                  <span className="rounded-full border border-accent/50 bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent">
+                  <span className="rounded-[5px] border border-accent/50 bg-accent/10 px-2.5 py-0.5 text-xs font-bold text-accent">
                     18+
                   </span>
                 )}
                 {webtoon && (
-                  <span className="rounded-full border border-line/60 px-2.5 py-0.5 text-xs font-medium text-muted">
+                  <span className="rounded-[5px] border border-[#463b49] px-2.5 py-0.5 text-xs font-medium text-muted">
                     Webtoon
                   </span>
                 )}
               </div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-4xl">
+              <h1 className="font-display text-[clamp(28px,5vw,48px)] font-extrabold leading-[1.1] tracking-[-0.05em] text-fg">
                 {title}
               </h1>
               {detail.title.native && (
-                <p className="mt-1 text-sm text-faint">{detail.title.native}</p>
+                <p className="mt-1 text-sm text-muted">{detail.title.native}</p>
               )}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <MangaBookmarkButton
@@ -391,7 +392,7 @@ const MangaDetailPage = ({
                   href={`/manga?genre=${encodeURIComponent(g)}`}
                   passHref
                 >
-                  <a className="rounded-full border border-line/60 bg-surface/50 px-3 py-1 text-xs font-medium text-muted transition hover:border-accent/60 hover:text-fg">
+                  <a className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3.5 text-sm font-medium text-muted transition duration-200 hover:text-fg">
                     {g}
                   </a>
                 </Link>
@@ -408,12 +409,9 @@ const MangaDetailPage = ({
 
           {/* Chapters */}
           <div className="mt-10">
-            <div className="mb-4 flex items-center gap-2.5">
-              <span className="h-6 w-1 rounded-full bg-aurora" aria-hidden />
-              <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-                Chapters
-              </h2>
-            </div>
+            <h2 className="mb-4 font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
+              Chapters
+            </h2>
 
             {languages.length > 0 ? (
               <ChapterList
@@ -425,19 +423,19 @@ const MangaDetailPage = ({
                 cover={cover}
               />
             ) : (
-              <div className="rounded-2xl border border-line/40 bg-surface/30 px-6 py-12 text-center">
-                <p className="text-sm font-semibold text-fg">
+              <div className="border-t border-[#463b49] py-10 text-center">
+                <h3 className="font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
                   No readable chapters found
-                </p>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
+                </h3>
+                <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
                   {notFoundSource
-                    ? "We couldn't match this title to a chapter source yet. It may be filed under a different title, or licensed and pulled from open sources."
+                    ? "We couldn't match this title to a chapter source yet."
                     : 'No chapters are available in these languages right now.'}
                 </p>
               </div>
             )}
 
-            <p className="mt-4 text-xs text-faint">
+            <p className="mt-4 text-xs text-muted">
               Chapters via MangaDex, Weeb Central, and the scanlation groups
               credited above. Metadata via AniList.
             </p>

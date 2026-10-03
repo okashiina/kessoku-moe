@@ -22,7 +22,7 @@ const Card: React.FC<CardProps> = ({ anime, number, episode }) => {
         <div className="aspect-w-16 aspect-h-9 w-full">
           {/* No `relative` here: the aspect-ratio plugin already anchors this child
               with position:absolute. Adding `relative` collapses the box. */}
-          <div className="overflow-hidden rounded-2xl bg-surface shadow-card ring-1 ring-line/40 transition duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-lift group-hover:ring-2 group-hover:ring-accent/50">
+          <div className="overflow-hidden rounded-lg border border-line bg-surface transition duration-300 ease-out group-hover:-translate-y-0.5">
             <Image
               alt={`Thumbnail for ${title}`}
               src={
@@ -44,8 +44,8 @@ const Card: React.FC<CardProps> = ({ anime, number, episode }) => {
             </span>
 
             <span className="absolute inset-0 flex items-center justify-center opacity-0 transition duration-300 group-hover:opacity-100">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-aurora text-accent-ink shadow-glow">
-                <PlayIcon className="ml-0.5 h-6 w-6" />
+              <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-canvas/80 text-fg backdrop-blur-sm">
+                <PlayIcon className="ml-0.5 h-5 w-5" />
               </span>
             </span>
           </div>

@@ -199,7 +199,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
       <div className="mb-5 flex flex-wrap items-center gap-3">
         {resumeHref && (
           <Link href={resumeHref} passHref>
-            <a className="inline-flex items-center gap-2 rounded-full bg-aurora px-5 py-2.5 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110">
+            <a className="inline-flex min-h-[44px] items-center gap-2 rounded-[5px] bg-accent px-5 py-2.5 text-sm font-bold text-accent-ink transition duration-200 hover:brightness-110 active:scale-95">
               <BookOpenIcon className="h-5 w-5" />
               {resumeLabel}
             </a>
@@ -221,10 +221,10 @@ const ChapterList: React.FC<ChapterListProps> = ({
               type="button"
               onClick={() => setLang(l)}
               aria-pressed={l === lang}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition [touch-action:manipulation] sm:text-sm ${
+              className={`min-h-[44px] rounded-[5px] border px-3.5 py-2 text-xs font-bold transition [touch-action:manipulation] sm:text-sm ${
                 l === lang
-                  ? 'border-accent bg-accent text-accent-ink shadow-glow'
-                  : 'border-line/70 bg-surface/60 text-muted hover:border-accent/60 hover:text-fg'
+                  ? 'border-accent bg-accent text-accent-ink'
+                  : 'border-[#66516a] bg-surface/60 text-muted hover:text-fg'
               }`}
             >
               {langLabel(l)}
@@ -238,7 +238,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
         <button
           type="button"
           onClick={() => setAsc((v) => !v)}
-          className="rounded-full border border-line/70 bg-surface/60 px-3 py-1.5 text-xs font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg"
+          className="min-h-[44px] rounded-[5px] border border-[#66516a] bg-surface/60 px-3.5 py-2 text-xs font-bold text-muted transition [touch-action:manipulation] hover:text-fg"
         >
           {asc ? 'Oldest first' : 'Newest first'}
         </button>
@@ -256,7 +256,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
 
       {/* Chapter rows */}
       {sorted.length > 0 ? (
-        <ul className="divide-y divide-line/40 overflow-hidden rounded-2xl border border-line/40 bg-surface/30">
+        <ul className="flex flex-col gap-2">
           {sorted.map((ch) => {
             const read = readSet.has(ch.chapterNum);
             const startPress = (e: React.PointerEvent) => {
@@ -298,7 +298,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
                       WebkitUserSelect: 'none',
                       touchAction: 'manipulation',
                     }}
-                    className={`flex min-h-[44px] select-none items-center gap-3 px-4 py-3 transition hover:bg-surface-2 ${
+                    className={`group flex min-h-[44px] select-none items-center gap-3 rounded-lg border border-[#463b49] bg-surface/30 px-4 py-3 transition hover:bg-surface/60 ${
                       read ? 'text-muted' : 'text-fg'
                     }`}
                   >
@@ -306,27 +306,27 @@ const ChapterList: React.FC<ChapterListProps> = ({
                       {read ? (
                         <CheckCircleIcon className="h-5 w-5 text-accent/70" />
                       ) : (
-                        <BookOpenIcon className="h-4 w-4 text-faint" />
+                        <BookOpenIcon className="h-4 w-4 text-muted" />
                       )}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">
+                      <span className="block truncate text-sm font-semibold transition group-hover:text-accent">
                         {ch.label}
                         {ch.title ? (
-                          <span className="font-normal text-muted">
+                          <span className="font-normal text-muted group-hover:text-accent/80">
                             {' · '}
                             {ch.title}
                           </span>
                         ) : null}
                       </span>
                       {ch.group && (
-                        <span className="mt-0.5 block truncate text-xs text-faint">
+                        <span className="mt-0.5 block truncate text-xs text-muted">
                           {ch.group}
                         </span>
                       )}
                     </span>
                     {ch.pages > 0 && (
-                      <span className="shrink-0 text-xs text-faint">
+                      <span className="shrink-0 text-xs text-muted">
                         {ch.pages}p
                       </span>
                     )}
@@ -337,8 +337,13 @@ const ChapterList: React.FC<ChapterListProps> = ({
           })}
         </ul>
       ) : (
-        <div className="rounded-2xl border border-line/40 bg-surface/30 px-6 py-12 text-center text-sm text-muted">
-          No chapters in {langLabel(lang)} yet. Try another language.
+        <div className="border-t border-[#463b49] py-10 text-center">
+          <h3 className="font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
+            No chapters in {langLabel(lang)}
+          </h3>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Try another language tab above.
+          </p>
         </div>
       )}
 
@@ -358,7 +363,7 @@ const ChapterList: React.FC<ChapterListProps> = ({
           <div
             role="menu"
             aria-label={`${menuCh.label} read controls`}
-            className="fixed z-50 w-60 rounded-xl border border-line/70 bg-canvas-2 p-1.5 shadow-card"
+            className="fixed z-50 w-60 rounded-lg border border-[#463b49] bg-canvas-2 p-1.5"
             style={{ left: menu.x, top: menu.y }}
           >
             <p className="px-2.5 pb-1 pt-1 text-xs font-semibold text-faint">

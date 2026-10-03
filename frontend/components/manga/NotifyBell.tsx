@@ -133,10 +133,10 @@ const NotifyBell: React.FC<{ mangaId: number; title?: string }> = ({
         aria-pressed={on}
         aria-label={on ? 'Stop notifying' : 'Notify me about new chapters'}
         style={{ touchAction: 'manipulation' }}
-        className={`flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:scale-95 disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100 ${
+        className={`flex min-h-[44px] items-center gap-2 rounded-[5px] border px-4 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:scale-95 disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100 ${
           on
-            ? 'border-accent/60 bg-surface/70 text-fg hover:border-accent'
-            : 'border-line/70 bg-surface/70 text-fg hover:border-accent/60'
+            ? 'border-accent bg-surface/70 text-fg hover:text-accent'
+            : 'border-[#66516a] bg-surface/70 text-fg hover:text-accent'
         }`}
       >
         <span className={on ? 'text-accent' : 'text-muted'}>

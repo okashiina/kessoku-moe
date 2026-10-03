@@ -4,28 +4,22 @@ import Link from 'next/link';
 // Band, stage metaphor), English, no em dashes. Two clear next steps: the manga
 // catalog and the anime home.
 const WrappedEmpty: React.FC = () => (
-  <div className="mx-auto flex max-w-md flex-col items-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-16 text-center">
-    <span
-      className="mb-5 inline-flex h-14 w-14 items-center justify-center rounded-full bg-aurora text-2xl shadow-glow"
-      aria-hidden
-    >
-      ♪
-    </span>
-    <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+  <div className="mx-auto flex max-w-md animate-rise flex-col items-start border-t border-[#463b49] pt-10 motion-reduce:animate-none motion-reduce:opacity-100">
+    <h2 className="font-display text-2xl font-extrabold tracking-tight text-[#f4ecef] sm:text-3xl">
       Your set list is empty
     </h2>
-    <p className="mt-3 text-sm leading-relaxed text-muted">
-      Read a chapter or watch an episode and this page fills in. Every title you
-      finish becomes a track on your set.
+    <p className="mt-3 text-sm leading-relaxed text-[#bfb2c1]">
+      Read or watch enough chapters and episodes and this page will tally them
+      into a recap.
     </p>
-    <div className="mt-7 flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+    <div className="mt-7 flex w-full flex-col gap-3 sm:flex-row">
       <Link href="/manga" passHref>
-        <a className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-aurora px-6 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] active:scale-95 motion-reduce:active:scale-100">
+        <a className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[5px] bg-[#f591ba] px-6 text-sm font-bold text-[#17141c] transition [touch-action:manipulation] active:scale-[0.98] motion-reduce:active:scale-100 sm:w-auto">
           Open the manga shelf
         </a>
       </Link>
       <Link href="/" passHref>
-        <a className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-surface px-6 text-sm font-semibold text-fg ring-1 ring-line/60 transition [touch-action:manipulation] hover:text-accent active:scale-95 active:text-accent motion-reduce:active:scale-100">
+        <a className="inline-flex min-h-[44px] w-full items-center justify-center rounded-[5px] border border-[#463b49] px-6 text-sm font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:text-[#f591ba] active:scale-[0.98] active:text-[#f591ba] motion-reduce:active:scale-100 sm:w-auto">
           Browse anime
         </a>
       </Link>

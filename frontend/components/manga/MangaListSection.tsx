@@ -68,9 +68,11 @@ const MangaListSection: React.FC = () => {
 
   if (!tiles.length) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-        <p className="font-display text-lg font-bold text-fg">No manga yet</p>
-        <p className="mt-2 max-w-sm text-sm text-muted">
+      <div className="flex min-h-[340px] flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+        <h2 className="font-display text-[26px] font-extrabold text-fg">
+          No manga yet
+        </h2>
+        <p className="max-w-[420px] text-sm leading-[1.7] text-[#bfb2c1]">
           Tap &ldquo;Add to My List&rdquo; on any manga, or start reading one,
           and it shows up here.
         </p>
@@ -80,10 +82,10 @@ const MangaListSection: React.FC = () => {
 
   return (
     <section>
-      <div className="grid grid-cols-3 justify-items-center gap-4 sm:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-[22px] md:grid-cols-3 lg:grid-cols-5">
         {tiles.map((t) => (
           <Link key={t.id} href={`/manga/${t.id}`} passHref>
-            <a className="group block w-full max-w-[11rem]">
+            <a className="group block w-full">
               <div
                 style={{ aspectRatio: '2 / 3' }}
                 className="relative w-full overflow-hidden rounded-2xl bg-surface shadow-card ring-1 ring-line/40 transition group-hover:-translate-y-1 group-hover:shadow-lift group-hover:ring-2 group-hover:ring-accent/50"
@@ -97,12 +99,12 @@ const MangaListSection: React.FC = () => {
                   />
                 )}
                 {t.status && (
-                  <span className="absolute left-2 top-2 rounded-full bg-aurora px-2 py-0.5 text-[11px] font-semibold text-accent-ink shadow-glow">
+                  <span className="absolute left-2 top-2 rounded-[5px] bg-accent px-2 py-0.5 text-[11px] font-bold text-accent-ink">
                     {STATUS_BADGE[t.status]}
                   </span>
                 )}
                 {t.chapter != null && (
-                  <span className="absolute bottom-2 left-2 rounded-full bg-canvas/75 px-2 py-0.5 text-[11px] font-semibold text-fg backdrop-blur-sm">
+                  <span className="absolute bottom-2 left-2 rounded-[5px] bg-canvas/75 px-2 py-0.5 text-[11px] font-bold text-fg backdrop-blur-sm">
                     Ch. {t.chapter}
                   </span>
                 )}

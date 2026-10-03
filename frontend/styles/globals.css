@@ -1,23 +1,34 @@
 @tailwind base;
+
+:root {
+  --mobile-dock-clearance: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 1023px) {
+  body[data-mobile-dock='true'] {
+    --mobile-dock-clearance: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* kessoku moe tokens — OKLCH channels only ("L C H"), wrapped by Tailwind as
-     oklch(var(--token) / <alpha-value>) so opacity modifiers work.
-     Brand: Ink #0B0B14 surfaces, Hot Pink #FF4D8D accent, Stage Violet #9B3BE0 soft. */
+  /* Kessoku Setlist. OKLCH channels keep Tailwind opacity modifiers working. */
   :root {
-    --canvas: 0.13 0.02 290;
-    --canvas-2: 0.17 0.022 290;
-    --surface: 0.21 0.024 290;
-    --surface-2: 0.26 0.026 295;
-    --line: 0.34 0.03 300;
-    --fg: 0.965 0.006 300;
-    --muted: 0.78 0.02 300;
-    --faint: 0.6 0.025 300;
-    --accent: 0.68 0.21 358;
-    --accent-soft: 0.53 0.23 305;
-    --accent-ink: 0.99 0.01 350;
+    --canvas: 0.19856 0.01642 302.03527;
+    --canvas-2: 0.23785 0.02073 311.71156;
+    --surface: 0.26096 0.02417 310.97827;
+    --surface-2: 0.30367 0.02706 310.51035;
+    --line: 0.40376 0.03333 320.30595;
+    --fg: 0.95017 0.00946 352.36573;
+    --muted: 0.81152 0.02018 328.32072;
+    --faint: 0.74688 0.02458 323.65706;
+    --accent: 0.77277 0.12923 354.46962;
+    --accent-soft: 0.83588 0.08738 353.07173;
+    --accent-ink: 0.19856 0.01642 302.03527;
+    --brand-ink: #17141c;
+    --brand-pink: #f591ba;
+    --brand-paper: #f4ecef;
     color-scheme: dark;
   }
 
@@ -28,12 +39,7 @@
   body {
     @apply bg-canvas font-sans text-fg antialiased;
     min-height: 100dvh;
-    /* Atmospheric aurora: fixed radial glows at the top, low alpha so poster art wins. */
-    background-image:
-      radial-gradient(58% 48% at 82% -12%, oklch(var(--accent) / 0.2), transparent 70%),
-      radial-gradient(50% 42% at -5% -8%, oklch(var(--accent-soft) / 0.16), transparent 72%);
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+
   }
 
   /* Headings default to the display face. */

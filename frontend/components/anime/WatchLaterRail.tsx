@@ -2,19 +2,15 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 import { AnimeInfoFragment } from '@animeflix/api/aniList';
 
-import Section from '@components/anime/Section';
+import HomePoster from '@components/home/HomePoster';
+import PosterRow, { PosterRowItem } from '@components/home/PosterRow';
 import useWatchlist from '@hooks/useWatchlist';
+import styles from '@styles/Home.module.css';
 import { getAllAnimeByIds } from '@utility/animeByIds';
 import { effectiveStatus, subscribeStatus } from '@utility/listStatus';
 import { subscribeProgress } from '@utility/progress';
 import { subscribeWatchlist } from '@utility/watchlist';
 
-// "Watch Later" rail: every saved title still sitting in PLANNING. Mirrors
-// MyListRail (same watchlist source + getAnimeByIds fetch + Section render),
-// then filters to the effective list status. The PLANNING set depends on the
-// status, progress, and watchlist stores, so we subscribe to all three and
-// recompute when any of them change. SSR returns an empty set so the snapshot
-// is stable and nothing renders on the server.
 const subscribeAll = (cb: () => void): (() => void) => {
   const unsubs = [
     subscribeStatus(cb),
@@ -25,6 +21,9 @@ const subscribeAll = (cb: () => void): (() => void) => {
 };
 
 const EMPTY_PLANNING = '';
+
+const tiltAt = (i: number): 'left' | 'right' | 'none' =>
+  i % 2 === 0 ? 'left' : 'right';
 
 const WatchLaterRail: React.FC = () => {
   const ids = useWatchlist();
@@ -43,7 +42,6 @@ const WatchLaterRail: React.FC = () => {
     if (list.length === 0) {
       setMedia([]);
     } else {
-      // Already ordered to match `list` (most-recent-first), no 30-cap.
       getAllAnimeByIds(list)
         .then((resolved) => {
           if (!cancelled) setMedia(resolved);
@@ -56,9 +54,6 @@ const WatchLaterRail: React.FC = () => {
     };
   }, [idKey]);
 
-  // A primitive snapshot of the PLANNING ids (comma-joined) so the value stays
-  // referentially stable for useSyncExternalStore and only changes when the
-  // PLANNING set actually does.
   const planningKey = useSyncExternalStore(
     subscribeAll,
     () =>
@@ -77,7 +72,25 @@ const WatchLaterRail: React.FC = () => {
 
   if (planning.length === 0) return null;
 
-  return <Section title="Watch Later" animeList={planning} />;
+  const shown = planning.slice(0, 4);
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeading}>
+        <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+          Watch Later
+        </h2>
+      </div>
+
+      <PosterRow className={styles.watchLaterRow}>
+        {shown.map((anime, i) => (
+          <PosterRowItem key={anime.id}>
+            <HomePoster anime={anime} tilt={tiltAt(i)} />
+          </PosterRowItem>
+        ))}
+      </PosterRow>
+    </section>
+  );
 };
 
 export default WatchLaterRail;

@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
 
-import { AnimeInfoFragment } from '@animeflix/api/aniList';
+import Link from 'next/link';
 
-import Section from '@components/anime/Section';
+import { AnimeInfoFragment } from '@animeflix/api/aniList';
+import { ArrowRightIcon } from '@heroicons/react/outline';
+
+import HomePoster from '@components/home/HomePoster';
+import PosterRow, { PosterRowItem } from '@components/home/PosterRow';
 import useWatchlist from '@hooks/useWatchlist';
+import styles from '@styles/Home.module.css';
 import { getAllAnimeByIds } from '@utility/animeByIds';
+
+const tiltAt = (i: number): 'left' | 'right' | 'none' =>
+  i % 2 === 0 ? 'left' : 'right';
 
 const MyListRail: React.FC = () => {
   const ids = useWatchlist();
@@ -23,7 +31,6 @@ const MyListRail: React.FC = () => {
     if (list.length === 0) {
       setMedia([]);
     } else {
-      // Already ordered to match `list` (most-recent-first), no 30-cap.
       getAllAnimeByIds(list)
         .then((resolved) => {
           if (!cancelled) setMedia(resolved);
@@ -38,7 +45,31 @@ const MyListRail: React.FC = () => {
 
   if (ids.length === 0 || media.length === 0) return null;
 
-  return <Section title="My List" animeList={media} />;
+  const shown = media.slice(0, 8);
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeading}>
+        <h2 className="min-w-0 truncate font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+          My List
+        </h2>
+        <Link href="/watchlist" passHref>
+          <a className="ml-auto inline-flex min-h-[44px] items-center gap-2.5 whitespace-nowrap text-[13px] font-bold text-accent">
+            See all
+            <ArrowRightIcon className="h-5 w-5" aria-hidden />
+          </a>
+        </Link>
+      </div>
+
+      <PosterRow className={styles.myListRow}>
+        {shown.map((anime, i) => (
+          <PosterRowItem key={anime.id}>
+            <HomePoster anime={anime} tilt={tiltAt(i)} />
+          </PosterRowItem>
+        ))}
+      </PosterRow>
+    </section>
+  );
 };
 
 export default MyListRail;

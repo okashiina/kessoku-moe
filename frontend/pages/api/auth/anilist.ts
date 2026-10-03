@@ -11,6 +11,8 @@ const TOKEN_URL = 'https://anilist.co/api/v2/oauth/token';
 interface TokenResponse {
   access_token?: string;
   expires_in?: number;
+  error?: string;
+  message?: string;
 }
 
 export default async function handler(
@@ -26,8 +28,10 @@ export default async function handler(
     code?: string;
     redirectUri?: string;
   };
-  const clientId = process.env.NEXT_PUBLIC_ANILIST_CLIENT_ID;
-  const clientSecret = process.env.ANILIST_CLIENT_SECRET;
+  // Environment values copied from a dashboard occasionally contain a trailing
+  // newline or whitespace. AniList treats that as a different credential.
+  const clientId = (process.env.NEXT_PUBLIC_ANILIST_CLIENT_ID || '').trim();
+  const clientSecret = (process.env.ANILIST_CLIENT_SECRET || '').trim();
 
   if (!code || !redirectUri || !clientId || !clientSecret) {
     res.status(400).json({ error: 'missing_params_or_config' });
@@ -52,7 +56,11 @@ export default async function handler(
 
     const data = (await anilist.json()) as TokenResponse;
     if (!anilist.ok || !data.access_token) {
-      res.status(400).json({ error: 'exchange_failed' });
+      // Keep the upstream error visible without ever echoing credentials.
+      res.status(400).json({
+        error: data.error || 'exchange_failed',
+        message: data.message,
+      });
       return;
     }
 

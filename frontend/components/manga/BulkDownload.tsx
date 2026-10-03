@@ -29,6 +29,12 @@ interface Progress {
 
 const CONFIRM_OVER = 20; // confirm before a large batch (data + storage + time)
 
+const outlineBtn =
+  'inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-[5px] border border-[#66516a] px-3 text-xs font-bold text-[#f4ecef] [touch-action:manipulation] hover:border-[#7a6280] disabled:cursor-not-allowed disabled:opacity-50';
+
+const primaryBtn =
+  'inline-flex min-h-[44px] items-center justify-center gap-2 self-start rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition [touch-action:manipulation] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50';
+
 const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
   const last = chapters.length - 1;
   const [open, setOpen] = useState(false);
@@ -99,35 +105,35 @@ const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
   else if (fullRange) buttonLabel = `Download all (${pending})`;
 
   return (
-    <div className="mb-4 rounded-2xl border border-line/50 bg-surface/30">
+    <div className="mb-4 rounded-lg border border-[#463b49]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex min-h-[44px] w-full items-center gap-2 px-4 py-2.5 text-sm font-semibold text-fg transition [touch-action:manipulation] hover:text-accent active:text-accent"
+        className="flex min-h-[44px] w-full items-center gap-2 px-4 py-2.5 text-sm font-bold text-[#f4ecef] transition [touch-action:manipulation] hover:text-accent"
       >
         <DownloadIcon className="h-5 w-5 text-accent" aria-hidden />
         Save for offline
         {savedCount > 0 && (
-          <span className="text-xs font-medium text-muted">
+          <span className="text-xs font-bold text-[#bfb2c1]">
             {savedCount}/{chapters.length} saved
           </span>
         )}
-        <span className="ml-auto text-muted" aria-hidden>
+        <span className="ml-auto text-[#bfb2c1]" aria-hidden>
           {open ? '▴' : '▾'}
         </span>
       </button>
 
       {open && (
-        <div className="flex flex-col gap-3 border-t border-line/40 px-4 py-3">
+        <div className="flex flex-col gap-3 border-t border-[#463b49] px-4 py-3">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="flex min-w-[8rem] flex-1 flex-col gap-1 text-xs text-muted">
+            <label className="flex min-w-[8rem] flex-1 flex-col gap-1 text-xs text-[#bfb2c1]">
               From chapter
               <select
                 value={lo}
                 onChange={(e) => setFrom(Number(e.target.value))}
                 disabled={running}
-                className="min-h-[44px] w-full rounded-xl border border-line/70 bg-surface/60 px-3 text-sm text-fg [touch-action:manipulation] focus:border-accent focus:outline-none disabled:opacity-50"
+                className="min-h-[44px] w-full rounded-[5px] border border-[#66516a] bg-surface px-3 text-sm text-[#f4ecef] [touch-action:manipulation] focus:border-accent focus:outline-none disabled:opacity-50"
               >
                 {chapters.map((c, i) => (
                   <option key={c.id} value={i}>
@@ -136,13 +142,13 @@ const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
                 ))}
               </select>
             </label>
-            <label className="flex min-w-[8rem] flex-1 flex-col gap-1 text-xs text-muted">
+            <label className="flex min-w-[8rem] flex-1 flex-col gap-1 text-xs text-[#bfb2c1]">
               To chapter
               <select
                 value={hi}
                 onChange={(e) => setTo(Number(e.target.value))}
                 disabled={running}
-                className="min-h-[44px] w-full rounded-xl border border-line/70 bg-surface/60 px-3 text-sm text-fg [touch-action:manipulation] focus:border-accent focus:outline-none disabled:opacity-50"
+                className="min-h-[44px] w-full rounded-[5px] border border-[#66516a] bg-surface px-3 text-sm text-[#f4ecef] [touch-action:manipulation] focus:border-accent focus:outline-none disabled:opacity-50"
               >
                 {chapters.map((c, i) => (
                   <option key={c.id} value={i}>
@@ -155,15 +161,15 @@ const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
 
           {running ? (
             <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between gap-3 text-xs text-muted">
-                <span className="min-w-0 truncate">
+              <div className="flex items-center justify-between gap-3 text-xs text-[#bfb2c1]">
+                <span className="min-w-0 truncate text-[#f4ecef]">
                   Saving {progress.index} of {progress.count}
                   {progress.label ? ` · ${progress.label}` : ''}
                 </span>
                 <button
                   type="button"
                   onClick={() => abortRef.current?.abort()}
-                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-full border border-line/70 bg-surface/60 px-3 text-xs font-semibold text-fg [touch-action:manipulation] hover:border-rose-400/60 hover:text-rose-300 active:scale-95 motion-reduce:active:scale-100"
+                  className={outlineBtn}
                 >
                   <XIcon className="h-3.5 w-3.5" aria-hidden /> Stop
                 </button>
@@ -173,7 +179,7 @@ const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
                 aria-hidden
               >
                 <div
-                  className="h-full rounded-full bg-aurora"
+                  className="h-full rounded-full bg-accent"
                   style={{
                     width: `${
                       progress.count
@@ -189,15 +195,17 @@ const BulkDownload: React.FC<Props> = ({ anilistId, chapters }) => {
               type="button"
               onClick={run}
               disabled={pending === 0}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 self-start rounded-full bg-aurora px-5 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:active:scale-100"
+              className={primaryBtn}
             >
               <DownloadIcon className="h-4 w-4" aria-hidden />
               {buttonLabel}
             </button>
           )}
 
-          {result && !running && <p className="text-xs text-muted">{result}</p>}
-          <p className="text-xs text-muted">
+          {result && !running && (
+            <p className="text-xs text-[#bfb2c1]">{result}</p>
+          )}
+          <p className="text-xs text-[#bfb2c1]">
             Saved chapters read with no connection. Big batches use more data
             and storage, and manhwatop titles need the relay machine awake while
             they download.

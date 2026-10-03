@@ -165,10 +165,10 @@ const RatingSelect: React.FC<{ id: number; inline?: boolean }> = ({
               key={v}
               type="button"
               onClick={() => choose(v * 10)}
-              className={`h-8 rounded-lg text-sm font-semibold transition active:scale-95 ${
+              className={`min-h-[44px] rounded-[5px] text-sm font-bold transition active:scale-95 ${
                 v <= n
-                  ? 'bg-aurora text-accent-ink shadow-glow'
-                  : 'bg-surface/70 text-muted hover:text-fg'
+                  ? 'bg-accent text-accent-ink'
+                  : 'border border-[#66516a] bg-surface/70 text-muted hover:text-fg'
               }`}
             >
               {v}
@@ -243,10 +243,10 @@ const RatingSelect: React.FC<{ id: number; inline?: boolean }> = ({
         aria-label={
           scored ? `Your rating: ${triggerValue(raw, format)}` : 'Rate'
         }
-        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
+        className={`flex min-h-[44px] items-center gap-2 rounded-[5px] border px-4 text-sm font-bold transition active:scale-95 ${
           scored
-            ? 'border-accent/60 bg-surface/70 text-fg hover:border-accent'
-            : 'border-line/70 bg-surface/70 text-fg hover:border-accent/60'
+            ? 'border-accent bg-surface/70 text-fg hover:text-accent'
+            : 'border-[#66516a] bg-surface/70 text-fg hover:text-accent'
         }`}
       >
         <span className={scored ? 'text-accent' : 'text-muted'}>
@@ -258,7 +258,7 @@ const RatingSelect: React.FC<{ id: number; inline?: boolean }> = ({
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-2 w-max max-w-[90vw] rounded-2xl border border-line/60 bg-canvas/95 p-4 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          className="absolute left-0 top-full z-50 mt-2 w-max max-w-[90vw] rounded-lg border border-line bg-canvas/95 p-4 backdrop-blur-xl"
         >
           <div className="mb-3 flex items-baseline justify-between gap-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-faint">

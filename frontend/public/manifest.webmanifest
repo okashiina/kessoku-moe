@@ -6,8 +6,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0B0B14",
-  "theme_color": "#0B0B14",
+  "background_color": "#17141c",
+  "theme_color": "#17141c",
   "icons": [
     {
       "src": "/kessoku-moe-appicon.svg",

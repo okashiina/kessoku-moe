@@ -2,6 +2,7 @@ import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
 import Header from '@components/Header';
@@ -9,6 +10,8 @@ import MangaCard from '@components/manga/Card';
 import progressBar from '@components/Progress';
 import { fetchMangaBrowse, MangaInfo } from '@utility/manga';
 import { nsfwFromCookie } from '@utility/nsfw';
+
+import styles from '../../styles/MangaBrowse.module.css';
 
 // Browse by genre or tag. Genres use AniList's `genre_in`; the curated tag set
 // uses the new `tag_in` arg on browseQuery. One filter at a time keeps the URL
@@ -133,6 +136,8 @@ const Browse = ({
   progressBar.finish();
 
   const activeLabel = activeGenre || activeTag;
+  const sortLabel =
+    SORTS.find((s) => s.value === activeSort)?.label || 'Popular';
 
   // Pick a single genre or tag (toggling off the active one), resetting paging.
   const pick = (key: 'genre' | 'tag', value: string) => {
@@ -169,15 +174,12 @@ const Browse = ({
     });
   };
 
-  const chip = (active: boolean) =>
-    `inline-flex min-h-[44px] items-center rounded-full border px-3.5 text-xs font-medium backdrop-blur-sm transition duration-200 [touch-action:manipulation] active:scale-95 motion-reduce:active:scale-100 sm:text-sm ${
-      active
-        ? 'border-accent bg-accent text-accent-ink shadow-glow'
-        : 'border-line/70 bg-surface/60 text-muted hover:border-accent/60 hover:bg-surface-2 hover:text-fg'
-    }`;
+  const clearFilter = () => {
+    router.push('/manga/browse', undefined, { scroll: true });
+  };
 
   return (
-    <>
+    <div className={styles.page}>
       <NextSeo
         title="Browse manga by genre & tag | kessoku moe"
         description="Pick a genre or tag and dig through the catalog — isekai, revenge, found family, and more."
@@ -185,135 +187,130 @@ const Browse = ({
 
       <Header />
 
-      <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-5">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-            <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              Browse
-            </h1>
-            <Link href="/manga" passHref>
-              <a className="ml-auto inline-flex min-h-[44px] items-center rounded-full border border-line/70 bg-surface/60 px-4 text-sm font-medium text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg">
-                Back to home
-              </a>
-            </Link>
+      <main className={styles.main}>
+        <div className={styles.heading}>
+          <div>
+            <h1>Browse the catalog.</h1>
+            <p>Genres, tags, and everything in between.</p>
           </div>
+          <Link href="/manga">
+            <a>
+              <ArrowLeftIcon aria-hidden />
+              Back to home
+            </a>
+          </Link>
+        </div>
 
-          <section>
-            <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Genres
-            </h2>
-            <div className="flex flex-wrap gap-2">
+        <section className={styles.filters} aria-label="Browse filters">
+          <fieldset>
+            <legend>Genres</legend>
+            <div className={styles.chips}>
               {GENRES.map((g) => (
                 <button
                   key={g}
                   type="button"
                   onClick={() => pick('genre', g)}
-                  className={chip(activeGenre === g)}
+                  aria-pressed={activeGenre === g}
                 >
                   {g}
                 </button>
               ))}
             </div>
-          </section>
-
-          <section>
-            <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Popular tags
-            </h2>
-            <div className="flex flex-wrap gap-2">
+            <legend>Popular tags</legend>
+            <div className={styles.chips}>
               {TAGS.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => pick('tag', t)}
-                  className={chip(activeTag === t)}
+                  aria-pressed={activeTag === t}
                 >
                   {t}
                 </button>
               ))}
             </div>
-          </section>
+          </fieldset>
+        </section>
 
-          {activeLabel && (
-            <section>
-              <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                Sort
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {SORTS.map((s) => (
-                  <button
-                    key={s.value}
-                    type="button"
-                    onClick={() => setSort(s.value)}
-                    className={chip(activeSort === s.value)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+        {activeLabel && (
+          <div className={styles.toolbar}>
+            <div className={styles.sorts} aria-label="Sort manga">
+              {SORTS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  aria-pressed={activeSort === s.value}
+                  onClick={() => setSort(s.value)}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {!activeLabel && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-            <p className="font-display text-lg font-bold text-fg">
-              Pick a genre or tag
-            </p>
-            <p className="mt-2 max-w-sm text-sm text-muted">
-              Tap any chip above to pull up the catalog.
-            </p>
+          <div className={styles.empty}>
+            <h2>Pick a genre or tag</h2>
+            <p>Tap any chip above to pull up the catalog.</p>
           </div>
         )}
 
         {activeLabel && grid && grid.media.length > 0 && (
           <>
-            <p className="mb-4 text-sm text-muted">
-              Showing{' '}
-              <span className="font-semibold text-fg">{activeLabel}</span>
-            </p>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
+            <div className={styles.resultHeader}>
+              <div>
+                <h2>{activeLabel}</h2>
+                <p role="status">
+                  {grid.media.length} titles on this page · {sortLabel}
+                </p>
+              </div>
+              <button
+                type="button"
+                className={styles.clearFilter}
+                onClick={clearFilter}
+              >
+                Clear filter
+              </button>
+            </div>
+            <div className={styles.grid}>
               {grid.media.map((manga) => (
-                <MangaCard key={manga.id} manga={manga} />
+                <MangaCard key={manga.id} manga={manga} fluid />
               ))}
             </div>
-            <nav className="mt-10 flex items-center justify-center gap-3">
+            <nav className={styles.pagination} aria-label="Pagination">
               <button
                 type="button"
                 disabled={grid.currentPage <= 1}
                 onClick={() => goToPage(grid.currentPage - 1)}
-                className="min-h-[44px] rounded-full border border-line/70 bg-surface/60 px-5 text-sm font-semibold text-fg transition [touch-action:manipulation] hover:border-accent/60 disabled:cursor-not-allowed disabled:opacity-40"
               >
+                <ArrowLeftIcon aria-hidden />
                 Previous
               </button>
-              <span className="min-w-[5rem] text-center text-sm font-medium text-muted">
-                Page {grid.currentPage}
-              </span>
+              <span>Page {grid.currentPage}</span>
               <button
                 type="button"
                 disabled={!grid.hasNextPage}
                 onClick={() => goToPage(grid.currentPage + 1)}
-                className="min-h-[44px] rounded-full bg-aurora px-5 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
               >
-                Next
+                Next page
+                <ArrowRightIcon aria-hidden />
               </button>
             </nav>
           </>
         )}
 
         {activeLabel && (!grid || grid.media.length === 0) && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-            <p className="font-display text-lg font-bold text-fg">
-              Nothing here yet
-            </p>
-            <p className="mt-2 max-w-sm text-sm text-muted">
-              Try another genre or tag.
-            </p>
+          <div className={styles.empty}>
+            <h2>Nothing here yet</h2>
+            <p>Try another genre or tag to find something worth reading.</p>
+            <button type="button" onClick={clearFilter}>
+              Browse all filters
+            </button>
           </div>
         )}
       </main>
-    </>
+    </div>
   );
 };
 

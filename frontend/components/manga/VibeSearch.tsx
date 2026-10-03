@@ -5,6 +5,7 @@ import type { MangaInfo } from '@utility/manga';
 import { getNsfwClient, subscribeNsfw } from '@utility/nsfw';
 
 import type { VibeFilters } from '../../pages/api/manga/vibe-search';
+import styles from '../../styles/Browse.module.css';
 
 // AI vibe-search box: the reader describes a mood in plain words and we POST it
 // to /api/manga/vibe-search, which turns it into whitelisted AniList filters and
@@ -32,7 +33,7 @@ const describeFilters = (f: VibeFilters): string => {
   if (f.countryOfOrigin) parts.push(COUNTRY_LABEL[f.countryOfOrigin]);
   if (f.status) parts.push(STATUS_LABEL[f.status]);
   parts.push(SORT_LABEL[f.sort] ?? 'popular');
-  if (f.search) parts.unshift(`“${f.search}”`);
+  if (f.search) parts.unshift(`"${f.search}"`);
   if (f.titles?.length) parts.unshift('best matches');
   return parts.filter(Boolean).join(' · ');
 };
@@ -84,8 +85,8 @@ const VibeSearch: React.FC = () => {
   };
 
   return (
-    <section className="mt-2">
-      <form onSubmit={submit} className="flex max-w-xl gap-2">
+    <>
+      <form onSubmit={submit} className="flex max-w-xl gap-2 pt-2">
         <input
           type="text"
           value={input}
@@ -94,12 +95,12 @@ const VibeSearch: React.FC = () => {
           placeholder="Describe the vibe… e.g. cozy romance with a slow burn"
           aria-label="Describe the vibe you want to read"
           enterKeyHint="search"
-          className="min-w-0 flex-1 rounded-xl border border-line/70 bg-surface/60 px-4 py-2 text-base text-fg outline-none transition [touch-action:manipulation] placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent"
+          className="min-h-[48px] min-w-0 flex-1 rounded-[5px] border border-[#66516a] bg-surface px-4 text-base text-fg outline-none transition [touch-action:manipulation] placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent"
         />
         <button
           type="submit"
           disabled={state.kind === 'loading' || !input.trim()}
-          className="shrink-0 rounded-xl bg-aurora px-4 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[48px] shrink-0 rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition [touch-action:manipulation] hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {state.kind === 'loading' ? 'Reading…' : 'Vibe search'}
         </button>
@@ -113,7 +114,7 @@ const VibeSearch: React.FC = () => {
 
       {state.kind === 'limited' && (
         <p className="mt-3 text-sm text-muted">
-          Slow down a sec — too many vibe searches at once. Try again in a
+          Slow down a sec. Too many vibe searches at once. Try again in a
           moment.
         </p>
       )}
@@ -126,15 +127,13 @@ const VibeSearch: React.FC = () => {
 
       {state.kind === 'done' && (
         <div className="mt-6">
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-              Vibe results
-            </h2>
-            {state.media.length > 0 && (
-              <span className="text-sm text-muted">
-                showing: {describeFilters(state.filters)}
-              </span>
-            )}
+          <div className={styles.resultHeader}>
+            <div>
+              <h2>Vibe results</h2>
+              {state.media.length > 0 && (
+                <p>showing: {describeFilters(state.filters)}</p>
+              )}
+            </div>
           </div>
 
           {state.media.length > 0 ? (
@@ -150,7 +149,7 @@ const VibeSearch: React.FC = () => {
           )}
         </div>
       )}
-    </section>
+    </>
   );
 };
 

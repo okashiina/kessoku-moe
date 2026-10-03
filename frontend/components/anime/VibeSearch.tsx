@@ -99,12 +99,12 @@ const VibeSearch: React.FC = () => {
           placeholder="Describe the vibe... e.g. noisy band comedy after school"
           aria-label="Describe the anime vibe you want to watch"
           enterKeyHint="search"
-          className="min-w-0 flex-1 rounded-xl border border-line/70 bg-surface/60 px-4 py-2 text-base text-fg outline-none transition [touch-action:manipulation] placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent"
+          className="min-h-[48px] min-w-0 flex-1 rounded-[5px] border border-[#66516a] bg-surface px-4 text-base text-fg outline-none transition [touch-action:manipulation] placeholder:text-faint focus:border-accent focus:ring-1 focus:ring-accent"
         />
         <button
           type="submit"
           disabled={state.kind === 'loading' || !input.trim()}
-          className="min-h-[44px] shrink-0 rounded-xl bg-aurora px-4 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] hover:brightness-110 active:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-[44px] shrink-0 rounded-[5px] bg-accent px-4 py-2 text-sm font-bold text-accent-ink transition [touch-action:manipulation] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:active:scale-100"
         >
           {state.kind === 'loading' ? 'Tuning...' : 'Vibe search'}
         </button>

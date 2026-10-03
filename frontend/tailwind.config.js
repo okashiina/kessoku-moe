@@ -31,23 +31,17 @@ module.exports = {
         },
       },
       fontFamily: {
-        display: [
-          'Comfortaa',
-          'Quicksand',
-          'Nunito',
-          'ui-rounded',
-          'sans-serif',
-        ],
+        display: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
+        brand: ['Comfortaa', 'ui-rounded', 'sans-serif'],
         sans: ['Nunito', 'ui-rounded', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
         card: '0 12px 32px -16px oklch(0 0 0 / 0.7)',
         lift: '0 26px 64px -22px oklch(0 0 0 / 0.78)',
-        glow: '0 12px 50px -12px oklch(var(--accent) / 0.45)',
+        glow: '0 8px 20px -12px oklch(0 0 0 / 0.45)',
       },
       backgroundImage: {
-        aurora:
-          'linear-gradient(135deg, oklch(var(--accent-soft)), oklch(var(--accent)))',
+        aurora: 'linear-gradient(oklch(var(--accent)), oklch(var(--accent)))',
       },
       keyframes: {
         rise: {

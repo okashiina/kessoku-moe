@@ -1,0 +1,33 @@
+.trending {
+  padding: 25px 3% 90px;
+  max-width: 1536px;
+  margin: auto;
+}
+
+.trending > a {
+  margin: 18px 32px 0;
+  color: var(--pink);
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.textLink:hover {
+  color: var(--pink);
+}
+
+@media (max-width: 700px) {
+  .trending {
+    padding: 0 0 55px;
+  }
+
+  .trending > a {
+    margin-left: 24px;
+  }
+}

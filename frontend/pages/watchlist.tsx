@@ -25,6 +25,13 @@ const TABS: { value: Tab; label: string }[] = [
   { value: 'DROPPED', label: 'Dropped' },
 ];
 
+const chipClass = (active: boolean) =>
+  `min-h-[44px] rounded-[5px] px-[17px] py-[10px] text-sm font-bold capitalize transition [touch-action:manipulation] ${
+    active
+      ? 'bg-accent text-accent-ink hover:bg-accent hover:text-accent-ink'
+      : 'text-[#bfb2c1] hover:bg-[#332735] hover:text-fg'
+  }`;
+
 const Watchlist = () => {
   progressBar.finish();
 
@@ -77,20 +84,15 @@ const Watchlist = () => {
       <Header />
 
       <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        {/* Heading with accent tick + a link to the personal Wrapped page. */}
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-            <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              My List
-            </h1>
-          </div>
+        <div className="mb-8 flex items-end justify-between gap-6">
+          <h1 className="font-display text-[clamp(32px,4vw,52px)] font-extrabold leading-[1.1] tracking-[-0.05em] text-fg">
+            My List
+          </h1>
           <Link href="/wrapped" passHref>
             <a
-              className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full bg-surface px-4 text-sm font-semibold text-fg ring-1 ring-line/60 transition [touch-action:manipulation] hover:text-accent active:scale-95 motion-reduce:active:scale-100"
+              className="inline-flex min-h-[44px] shrink-0 items-center text-[13px] font-bold text-accent transition [touch-action:manipulation] hover:brightness-110"
               aria-label="See your reading and watching Wrapped"
             >
-              <span aria-hidden>♪</span>
               Wrapped
             </a>
           </Link>
@@ -99,7 +101,6 @@ const Watchlist = () => {
         {/* Signed-out nudge to sync with AniList (hides when logged in). */}
         {view === 'anime' && <AniListSignInBanner />}
 
-        {/* Anime / Manga switch */}
         <div className="mb-6 flex gap-2">
           {(['anime', 'manga'] as const).map((v) => (
             <button
@@ -107,11 +108,7 @@ const Watchlist = () => {
               type="button"
               onClick={() => setView(v)}
               aria-pressed={view === v}
-              className={`rounded-full px-5 py-2 text-sm font-semibold capitalize transition ${
-                view === v
-                  ? 'bg-aurora text-accent-ink shadow-glow'
-                  : 'bg-surface text-muted hover:text-fg'
-              }`}
+              className={chipClass(view === v)}
             >
               {v}
             </button>
@@ -122,7 +119,6 @@ const Watchlist = () => {
           <MangaListSection />
         ) : (
           <>
-            {/* Status tabs */}
             <div className="mb-8 flex flex-wrap gap-2">
               {TABS.map(({ value, label }) => {
                 const active = tab === value;
@@ -132,11 +128,7 @@ const Watchlist = () => {
                     type="button"
                     onClick={() => setTab(value)}
                     aria-pressed={active}
-                    className={`rounded-full px-4 py-1.5 text-xs font-medium transition duration-200 sm:text-sm ${
-                      active
-                        ? 'bg-aurora text-accent-ink shadow-glow'
-                        : 'bg-surface text-muted hover:text-fg'
-                    }`}
+                    className={chipClass(active)}
                   >
                     {label}
                   </button>
@@ -145,17 +137,17 @@ const Watchlist = () => {
             </div>
 
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-3 justify-items-center gap-4 sm:grid-cols-4 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-[22px] md:grid-cols-3 lg:grid-cols-5">
                 {filtered.map((anime) => (
-                  <Card key={anime.id} anime={anime} />
+                  <Card key={anime.id} anime={anime} fluid />
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-                <p className="font-display text-lg font-bold text-fg">
+              <div className="flex min-h-[340px] flex-col items-center justify-center gap-4 px-6 py-20 text-center">
+                <h2 className="font-display text-[26px] font-extrabold text-fg">
                   {media.length > 0 ? 'Nothing here yet' : 'Your list is empty'}
-                </p>
-                <p className="mt-2 max-w-sm text-sm text-muted">
+                </h2>
+                <p className="max-w-[420px] text-sm leading-[1.7] text-[#bfb2c1]">
                   {media.length > 0
                     ? 'No saved titles match this tab. Try another one.'
                     : 'Tap the bookmark on any title to save it here.'}

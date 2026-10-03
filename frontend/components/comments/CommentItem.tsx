@@ -144,8 +144,10 @@ const CommentItem: React.FC<CommentItemProps> = ({
                   : `Upvote, ${node.voteCount} total`
               }
               style={{ touchAction: 'manipulation' }}
-              className={`inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-semibold tabular-nums transition-colors disabled:cursor-default ${
-                node.voted ? 'text-accent' : 'text-muted enabled:hover:text-fg'
+              className={`inline-flex min-h-[44px] items-center gap-1 rounded-[5px] border px-3 text-xs font-bold tabular-nums transition-colors disabled:cursor-default ${
+                node.voted
+                  ? 'border-accent text-accent'
+                  : 'border-[#66516a] text-[#bfb2c1] enabled:hover:bg-[#332735] enabled:hover:text-[#f4ecef]'
               }`}
             >
               <span aria-hidden className={node.voted ? '' : 'opacity-70'}>
@@ -161,7 +163,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 aria-label="Reply to comment"
                 aria-expanded={replying}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-semibold text-muted transition-colors hover:text-fg"
+                className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3 text-xs font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-[#f4ecef]"
               >
                 Reply
               </button>
@@ -174,7 +176,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 aria-label="Edit your comment"
                 aria-expanded={editing}
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-semibold text-muted transition-colors hover:text-fg"
+                className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3 text-xs font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-[#f4ecef]"
               >
                 Edit
               </button>
@@ -186,7 +188,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 onClick={handleRemove}
                 aria-label="Delete your comment"
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-semibold text-muted transition-colors hover:text-accent"
+                className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3 text-xs font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-accent"
               >
                 Delete
               </button>
@@ -199,7 +201,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 disabled={reported}
                 aria-label="Report comment"
                 style={{ touchAction: 'manipulation' }}
-                className="inline-flex min-h-[44px] items-center rounded-lg px-2 text-xs font-semibold text-muted transition-colors hover:text-fg disabled:text-faint disabled:hover:text-faint"
+                className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-3 text-xs font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-[#f4ecef] disabled:text-faint disabled:hover:bg-transparent disabled:hover:text-faint"
               >
                 {reported ? 'Reported' : 'Report'}
               </button>

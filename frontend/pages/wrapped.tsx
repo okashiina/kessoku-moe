@@ -26,15 +26,12 @@ const Wrapped: React.FC = () => {
 
       <Header />
 
-      <main className="mx-auto w-full max-w-screen-md px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        <header className="mb-7">
-          <div className="flex items-center gap-2.5">
-            <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-            <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-              Your Wrapped
-            </h1>
-          </div>
-          <p className="mt-2 text-sm text-muted">
+      <main className="mx-auto w-full max-w-screen-md bg-[#17141c] px-4 pb-20 pt-6 text-[#f4ecef] sm:px-6 lg:px-8">
+        <header className="mb-10 animate-rise motion-reduce:animate-none motion-reduce:opacity-100">
+          <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
+            Your Wrapped
+          </h1>
+          <p className="mt-2 text-sm text-[#bfb2c1]">
             Every chapter and episode you finished, played back as one set.
           </p>
         </header>

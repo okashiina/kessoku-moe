@@ -48,10 +48,10 @@ const StatusSelect: React.FC<{ id: number }> = ({ id }) => {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition active:scale-95 ${
+        className={`flex min-h-[44px] items-center gap-2 rounded-[5px] border px-4 text-sm font-bold transition active:scale-95 ${
           onList
-            ? 'border-accent/60 bg-aurora text-accent-ink shadow-glow'
-            : 'border-line/70 bg-surface/70 text-fg hover:border-accent/60'
+            ? 'border-accent bg-accent text-accent-ink'
+            : 'border-[#66516a] bg-surface/70 text-fg hover:text-accent'
         }`}
       >
         <svg
@@ -84,7 +84,7 @@ const StatusSelect: React.FC<{ id: number }> = ({ id }) => {
       {open && (
         <div
           role="menu"
-          className="absolute left-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-2xl border border-line/60 bg-canvas/95 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          className="absolute left-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-lg border border-line bg-canvas/95 backdrop-blur-xl"
         >
           {STATUS_OPTIONS.map((o) => {
             const active = status === o.value;
@@ -95,7 +95,7 @@ const StatusSelect: React.FC<{ id: number }> = ({ id }) => {
                 role="menuitemradio"
                 aria-checked={active}
                 onClick={() => choose(o.value)}
-                className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-surface/60 ${
+                className={`flex min-h-[44px] w-full items-center justify-between px-4 text-left text-sm transition hover:bg-surface/60 ${
                   active ? 'text-accent' : 'text-fg'
                 }`}
               >
@@ -121,7 +121,7 @@ const StatusSelect: React.FC<{ id: number }> = ({ id }) => {
             <button
               type="button"
               onClick={remove}
-              className="w-full border-t border-line/50 px-4 py-2 text-left text-sm text-muted transition hover:bg-surface/60 hover:text-fg"
+              className="min-h-[44px] w-full border-t border-line px-4 text-left text-sm text-muted transition hover:bg-surface/60 hover:text-fg"
             >
               Remove from list
             </button>
