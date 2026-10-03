@@ -21,12 +21,12 @@ import { fetchMangaDetail } from '@utility/manga';
 import { checkMangaAi, clientIp } from '@utility/manga/aiGuard';
 
 const API_BASE = (
-  process.env.COMPANION_API_BASE ||
-  'https://generativelanguage.googleapis.com/v1beta/openai'
+  process.env.COMPANION_API_BASE || 'https://api.openai.com/v1'
 ).replace(/\/$/, '');
 const API_KEY = process.env.COMPANION_API_KEY || '';
-const MODEL = process.env.COMPANION_MODEL || 'gemini-2.5-flash';
+const MODEL = process.env.COMPANION_MODEL || 'gpt-5.6-luna';
 const IS_GEMINI = API_BASE.includes('generativelanguage');
+const IS_VISION = IS_GEMINI || API_BASE.includes('api.openai.com');
 
 const UNCENSORED_BASE = (
   process.env.COMPANION_UNCENSORED_API_BASE || 'https://openrouter.ai/api/v1'
@@ -215,7 +215,7 @@ const handler = async (
   if (req.method === 'GET') {
     res.status(200).json({
       configured: Boolean(API_KEY),
-      vision: Boolean(API_KEY) && IS_GEMINI,
+      vision: Boolean(API_KEY) && IS_VISION,
     });
     return;
   }
@@ -240,7 +240,7 @@ const handler = async (
   const frameData =
     typeof body.frameData === 'string' ? body.frameData.trim() : '';
   const vision =
-    IS_GEMINI &&
+    IS_VISION &&
     frameData.startsWith('data:image/') &&
     frameData.length < 4_000_000;
 

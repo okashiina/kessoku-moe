@@ -9,14 +9,13 @@ import { checkCompanionRate, clientIp } from '@utility/companion/rateLimit';
 // search still returns useful results.
 
 const API_BASE = (
-  process.env.COMPANION_API_BASE ||
-  'https://generativelanguage.googleapis.com/v1beta/openai'
+  process.env.COMPANION_API_BASE || 'https://api.openai.com/v1'
 ).replace(/\/$/, '');
 const API_KEY = process.env.COMPANION_API_KEY || '';
 const MODEL =
   process.env.VIBE_SEARCH_MODEL ||
   process.env.COMPANION_CHEAP_MODEL ||
-  'gemini-2.5-flash-lite';
+  'gpt-5.6-luna';
 
 const KNOWN_GENRES = [
   'Action',

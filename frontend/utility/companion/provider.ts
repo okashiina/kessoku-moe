@@ -1,7 +1,7 @@
 import type { ToolCall } from './types';
 
-// Server-only thin wrapper over any OpenAI-compatible chat endpoint (Gemini
-// today, Groq as a base+model swap). Two shapes:
+// Server-only thin wrapper over any OpenAI-compatible chat endpoint (OpenAI by
+// default, with Gemini/Groq still supported as a base+model swap). Two shapes:
 //   completeChat — one non-streamed call; returns the text AND any tool_calls
 //                  in one complete JSON. Tool decisions happen here because
 //                  streamed tool_call argument shards are fragmented and chunk
@@ -35,19 +35,30 @@ interface BaseArgs {
   extraHeaders?: Record<string, string>;
 }
 
+export interface CompanionProvider {
+  name: string;
+  base: string;
+  key: string;
+  model: string;
+  extraHeaders?: Record<string, string>;
+}
+
 // Provider-specific compatibility gates. Gemini and native OpenAI GPT-5 models
 // accept `reasoning_effort`; Groq would 400 on the extra field, so we gate on
 // the provider/model combination.
+const normalizeBase = (base: string): string => base.replace(/\/$/, '');
+
 const isGemini = (base: string): boolean => base.includes('generativelanguage');
 
 const isOpenAI = (base: string): boolean => base.includes('api.openai.com');
 
-// GPT-5 chat models reject `max_tokens` / `temperature` and want
-// `max_completion_tokens` (+ optional reasoning_effort). Without this gate,
-// companion + vibe-search 400 and silently fall back to empty results.
+export const isVisionProvider = (base: string): boolean =>
+  isGemini(base) || isOpenAI(base);
+
 const isOpenAIReasoningModel = (base: string, model: string): boolean =>
   isOpenAI(base) && /^gpt-5(?:[.-]|$)/i.test(model);
 
+/** Shape completion parameters for native OpenAI GPT-5 requests. */
 const completionParams = (
   base: string,
   model: string,
@@ -71,6 +82,113 @@ const safeJson = (s: string | undefined): Record<string, unknown> => {
   } catch {
     return {};
   }
+};
+
+const openRouterHeaders = (): Record<string, string> => ({
+  'HTTP-Referer':
+    process.env.COMPANION_OPENROUTER_REFERER ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'https://kessoku-moe.cc',
+  'X-Title': process.env.COMPANION_OPENROUTER_TITLE || 'kessoku moe',
+});
+
+const addProvider = (
+  providers: CompanionProvider[],
+  provider: CompanionProvider | null
+): void => {
+  if (!provider?.key || !provider.base || !provider.model) return;
+  const base = normalizeBase(provider.base);
+  const key = `${base}:${provider.model}:${provider.key.slice(0, 8)}`;
+  if (
+    providers.some((p) => `${p.base}:${p.model}:${p.key.slice(0, 8)}` === key)
+  )
+    return;
+  providers.push({ ...provider, base });
+};
+
+const parseFallbackJson = (): CompanionProvider[] => {
+  const raw = process.env.COMPANION_FALLBACKS;
+  if (!raw) return [];
+  try {
+    const value = JSON.parse(raw) as unknown;
+    if (!Array.isArray(value)) return [];
+    return value
+      .map((p, i) => {
+        if (!p || typeof p !== 'object') return null;
+        const v = p as Record<string, unknown>;
+        const base = typeof v.base === 'string' ? v.base : '';
+        const key = typeof v.key === 'string' ? v.key : '';
+        const model = typeof v.model === 'string' ? v.model : '';
+        const name =
+          typeof v.name === 'string' && v.name.trim()
+            ? v.name
+            : `fallback-${i + 1}`;
+        return { name, base, key, model };
+      })
+      .filter(Boolean) as CompanionProvider[];
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[companion] invalid COMPANION_FALLBACKS', err);
+    return [];
+  }
+};
+
+export const companionProviders = (): CompanionProvider[] => {
+  const providers: CompanionProvider[] = [];
+  const primaryBase = normalizeBase(
+    process.env.COMPANION_API_BASE || 'https://api.openai.com/v1'
+  );
+  const primaryKey =
+    process.env.COMPANION_API_KEY ||
+    (isOpenAI(primaryBase) ? process.env.OPENAI_API_KEY || '' : '');
+  addProvider(providers, {
+    name: 'primary',
+    base: primaryBase,
+    key: primaryKey,
+    model: process.env.COMPANION_MODEL || 'gpt-5.6-luna',
+  });
+
+  addProvider(providers, {
+    name: 'fallback',
+    base: process.env.COMPANION_FALLBACK_API_BASE || '',
+    key: process.env.COMPANION_FALLBACK_API_KEY || '',
+    model: process.env.COMPANION_FALLBACK_MODEL || '',
+  });
+  parseFallbackJson().forEach((p) => addProvider(providers, p));
+
+  addProvider(providers, {
+    name: 'openai',
+    base: 'https://api.openai.com/v1',
+    key: process.env.OPENAI_API_KEY || '',
+    model: process.env.OPENAI_MODEL || 'gpt-5.6-luna',
+  });
+  addProvider(providers, {
+    name: 'gemini',
+    base: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    key: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  });
+  addProvider(providers, {
+    name: 'groq',
+    base: 'https://api.groq.com/openai/v1',
+    key: process.env.GROQ_API_KEY || '',
+    model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+  });
+  addProvider(providers, {
+    name: 'openrouter',
+    base: 'https://openrouter.ai/api/v1',
+    key:
+      process.env.OPENROUTER_API_KEY ||
+      process.env.COMPANION_UNCENSORED_API_KEY ||
+      '',
+    model:
+      process.env.OPENROUTER_MODEL ||
+      process.env.COMPANION_UNCENSORED_MODEL ||
+      'cognitivecomputations/dolphin-mistral-24b-venice-edition:free',
+    extraHeaders: openRouterHeaders(),
+  });
+
+  return providers;
 };
 
 export const completeChat = async (
@@ -153,6 +271,37 @@ export const completeChat = async (
   }
 };
 
+export const completeChatWithFallback = async (
+  args: Omit<BaseArgs, 'base' | 'key' | 'model' | 'extraHeaders'> & {
+    providers: CompanionProvider[];
+    tools?: OpenAiTool[];
+    toolChoice?: 'auto' | 'none';
+  }
+): Promise<{
+  content: string;
+  toolCalls: ToolCall[];
+  rateLimited: boolean;
+}> => {
+  let sawRateLimit = false;
+  // Try providers in order, stopping as soon as one returns a usable answer.
+  // eslint-disable-next-line no-restricted-syntax
+  for (const provider of args.providers) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await completeChat({
+      ...args,
+      base: provider.base,
+      key: provider.key,
+      model: provider.model,
+      extraHeaders: provider.extraHeaders,
+    });
+    sawRateLimit = sawRateLimit || result.rateLimited;
+    if (result.content || result.toolCalls.length) {
+      return { ...result, rateLimited: sawRateLimit || result.rateLimited };
+    }
+  }
+  return { content: '', toolCalls: [], rateLimited: sawRateLimit };
+};
+
 // Async-iterate the text deltas of a streamed completion. Parses standard
 // OpenAI SSE framing (`data: {choices:[{delta:{content}}]}` … `data: [DONE]`),
 // tolerant of however the provider chunks bytes across reads.
@@ -227,5 +376,31 @@ export async function* streamChat(
         }
       }
     }
+  }
+}
+
+export async function* streamChatWithFallback(
+  args: Omit<BaseArgs, 'base' | 'key' | 'model' | 'extraHeaders'> & {
+    providers: CompanionProvider[];
+    tools?: OpenAiTool[];
+    toolChoice?: 'auto' | 'none';
+  }
+): AsyncGenerator<string> {
+  // Keep provider streams sequential so answers are never interleaved.
+  // eslint-disable-next-line no-restricted-syntax
+  for (const provider of args.providers) {
+    let got = false;
+    // eslint-disable-next-line no-restricted-syntax, no-await-in-loop
+    for await (const delta of streamChat({
+      ...args,
+      base: provider.base,
+      key: provider.key,
+      model: provider.model,
+      extraHeaders: provider.extraHeaders,
+    })) {
+      got = true;
+      yield delta;
+    }
+    if (got) return;
   }
 }

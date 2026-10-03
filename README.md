@@ -69,7 +69,7 @@ Everything in `.env.local` is optional. Leave it blank and the app still runs: t
 | Feature | Variables | Notes |
 | --- | --- | --- |
 | AniList sync | `NEXT_PUBLIC_ANILIST_CLIENT_ID`, `ANILIST_CLIENT_SECRET` | Create an AniList API client, set its redirect to `<origin>/auth/callback`. |
-| Watch companion | `COMPANION_API_KEY`, `COMPANION_MODEL` | Any OpenAI-compatible endpoint. A [free Gemini key](https://aistudio.google.com/apikey) works out of the box. |
+| Watch companion | `COMPANION_API_KEY`, `COMPANION_API_BASE`, `COMPANION_MODEL` | OpenAI defaults are documented in [`frontend/.env.example`](frontend/.env.example); the key stays server-only. |
 | Self-hosted video | `NEXT_PUBLIC_SOURCE_SERVICE_URL` | Points the player at your source service. Unset means the embed fallback. |
 
 Full annotations are in [frontend/.env.example](frontend/.env.example).

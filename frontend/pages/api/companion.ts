@@ -2,8 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 
 import { executeCompanionTool } from '@utility/companion/execute';
 import {
+  companionProviders,
   completeChat,
-  streamChat,
+  completeChatWithFallback,
+  isVisionProvider,
+  streamChatWithFallback,
   type ProviderMessage,
 } from '@utility/companion/provider';
 import {
@@ -29,15 +32,10 @@ import type {
 // any OpenAI-compatible endpoint (Gemini default, Groq as a base+model swap);
 // the key is read server-side only. See docs/STREAMING-ROADMAP.md §11.
 
-const API_BASE = (
-  process.env.COMPANION_API_BASE ||
-  'https://generativelanguage.googleapis.com/v1beta/openai'
-).replace(/\/$/, '');
-const API_KEY = process.env.COMPANION_API_KEY || '';
-const MODEL = process.env.COMPANION_MODEL || 'gemini-2.5-flash';
-// Vision (the 👁 "look at this frame" button) only works on Gemini's multimodal
-// endpoint; on a Groq base the button is hidden and any frame is ignored.
-const IS_GEMINI = API_BASE.includes('generativelanguage');
+const PROVIDERS = companionProviders();
+// Vision (the 👁 "look at this frame" button) works on Gemini and native OpenAI
+// multimodal endpoints; on a Groq-only setup the button is hidden.
+const HAS_VISION_PROVIDER = PROVIDERS.some((p) => isVisionProvider(p.base));
 
 // Optional uncensored provider for the explicit "unhinged" tone (18+ opt-in).
 const UNCENSORED_KEY = process.env.COMPANION_UNCENSORED_API_KEY || '';
@@ -105,6 +103,7 @@ interface ChatMessage {
 }
 interface CompanionBody {
   seed?: Seed;
+  mediaKind?: 'anime' | 'cartoon';
   tone?: string;
   mature?: boolean;
   episode?: number;
@@ -128,6 +127,23 @@ const buildSystem = (
   opts: { tools: boolean; vision?: boolean }
 ): string => {
   const seed = body.seed || {};
+  if (body.mediaKind === 'cartoon') {
+    const title = clip(seed.title?.trim() || 'this cartoon', 120);
+    const synopsis = clip(seed.synopsis?.trim() || '', 1200);
+    const shown = (body.window || []).filter(Boolean).slice(-30).join('\n');
+    return `You are kessoku's watch companion, talking with the viewer while they watch ${title}. This is a western cartoon or animated TV show, not anime. Match the viewer's language. Keep replies short, warm, and grounded.
+The viewer is at episode ${body.episode || 1}${
+      body.total ? ` of ${body.total}` : ''
+    }. Do not reveal later episodes or future events. Show synopsis (may contain future events; do not spoil them): ${
+      synopsis || 'Unavailable'
+    }.
+${
+  shown
+    ? `Already shown subtitles:\n${shown}`
+    : 'This is an embedded player. You cannot see or hear the video, and you do not know the exact scene. Ask the viewer for the moment or line when needed. Do not pretend to see the screen.'
+}
+Do not invent episode events, cast, voice actors, or relationships. No AniList lookup or anime recap tools apply to this cartoon. Discuss only this show and what the viewer shares about it.`;
+  }
   const title = seed.title?.trim() || 'this anime';
   const format = seed.format ? ` (${seed.format})` : '';
   const epTotal = body.total ? ` of ${body.total}` : '';
@@ -238,10 +254,10 @@ const handler = async (
 ): Promise<void> => {
   if (req.method === 'GET') {
     res.status(200).json({
-      configured: Boolean(API_KEY),
+      configured: Boolean(PROVIDERS.length),
       // The client shows the 👁 "look" button only when the companion is both
-      // configured and on a vision-capable (Gemini) provider.
-      vision: Boolean(API_KEY) && IS_GEMINI,
+      // configured and on a vision-capable provider.
+      vision: Boolean(PROVIDERS.length) && HAS_VISION_PROVIDER,
     });
     return;
   }
@@ -250,7 +266,7 @@ const handler = async (
     res.status(405).json({ error: 'method_not_allowed' });
     return;
   }
-  if (!API_KEY) {
+  if (!PROVIDERS.length) {
     res.status(503).json({ error: 'companion_unconfigured' });
     return;
   }
@@ -296,16 +312,19 @@ const handler = async (
   const tone = body.tone || 'adaptive';
   const unhinged = tone === 'unhinged' && Boolean(body.mature);
   // Tools are offered on every normal turn; the unhinged path skips them.
-  const enableTools = !unhinged;
+  const enableTools = !unhinged && body.mediaKind !== 'cartoon';
 
   // A frame ride-along only counts when it's a real image data URL and the
   // provider can actually see it (Gemini). The unhinged path has no tools/vision.
   const frameData = typeof body.frameData === 'string' ? body.frameData : '';
   const vision =
     !unhinged &&
-    IS_GEMINI &&
+    HAS_VISION_PROVIDER &&
     frameData.startsWith('data:image/') &&
     frameData.length < 3_000_000;
+  const activeProviders = vision
+    ? PROVIDERS.filter((p) => isVisionProvider(p.base))
+    : PROVIDERS;
 
   // On a vision turn the last user message becomes a multimodal array (text +
   // image); otherwise it's a plain string. `ProviderMessage.content` is `unknown`
@@ -354,16 +373,12 @@ const handler = async (
 
   const streamSynthesis = async (): Promise<boolean> => {
     let got = false;
-    // Tools declared + tool_choice:'none' → the model can only stream text, so a
-    // stray tool-call attempt can't 400 the synthesis pass (Groq/Llama quirk).
+    // Final synthesis should be plain text. Keeping this pass tool-free makes
+    // fallback providers that don't support OpenAI tool calling still usable.
     // eslint-disable-next-line no-restricted-syntax
-    for await (const d of streamChat({
-      base: API_BASE,
-      key: API_KEY,
-      model: MODEL,
+    for await (const d of streamChatWithFallback({
+      providers: activeProviders,
       messages,
-      tools: COMPANION_TOOLS,
-      toolChoice: 'none',
       maxTokens: 400,
     })) {
       got = true;
@@ -372,13 +387,9 @@ const handler = async (
     if (!got) {
       // Stream yielded nothing — one non-streamed retry so a flaky stream
       // doesn't dead-end the turn.
-      const retry = await completeChat({
-        base: API_BASE,
-        key: API_KEY,
-        model: MODEL,
+      const retry = await completeChatWithFallback({
+        providers: activeProviders,
         messages,
-        tools: COMPANION_TOOLS,
-        toolChoice: 'none',
         maxTokens: 400,
       });
       rateLimited = rateLimited || retry.rateLimited;
@@ -453,10 +464,8 @@ const handler = async (
       });
       let reply = u.content;
       if (!reply) {
-        const fb = await completeChat({
-          base: API_BASE,
-          key: API_KEY,
-          model: MODEL,
+        const fb = await completeChatWithFallback({
+          providers: activeProviders,
           messages,
           maxTokens: 400,
         });
@@ -472,10 +481,8 @@ const handler = async (
     if (enableTools) {
       // First pass is non-streamed so tool_calls arrive complete (streamed
       // tool-call shards chunk differently across Gemini-openai vs Groq).
-      const first = await completeChat({
-        base: API_BASE,
-        key: API_KEY,
-        model: MODEL,
+      const first = await completeChatWithFallback({
+        providers: activeProviders,
         messages,
         tools: COMPANION_TOOLS,
         maxTokens: 512,
