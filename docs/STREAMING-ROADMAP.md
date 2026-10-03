@@ -5,6 +5,16 @@ like Miruro does, **without** inheriting its "heavy & fragile" failure modes.
 
 This is a living plan. Phase 0 (embed switcher) is already shipped as the safety net.
 
+## 2026-10-04 update: mobile account actions
+
+Join room and Notifications now open inside the mobile account dropdown, with an
+unread indicator on the avatar. The dropdown clears the dock, scrolls in short
+viewports, and provides a solid fallback for reduced transparency. Desktop keeps
+both header actions. Chrome/WebKit checks cover 360px/390px, landscape, room-code
+entry, mocked notifications, signed-out fallback, dismissal, and reduced motion.
+Physical iPhone keyboard and installed-PWA behavior remain device checks. This is
+a web UI update; no native React Native app or new streaming provider is added.
+
 ## 2026-10-03 release: cartoon discovery and mobile navigation
 
 - General cartoons now have a TVMaze catalog, title search, genre browsing, catalog

@@ -18,6 +18,15 @@ supersedes the older page-specific patterns below for `/` and `/browse`.
   Shared rails have 44px previous/next controls and never steal focus on hover.
 - Header: compact menu below 1024px, 44px logo target, safe-area top padding.
   Search keeps 16px input text at every width to avoid mobile focus zoom.
+- Mobile secondary actions: Join room and Notifications live inside the account
+  dropdown. An unread dot stays on the avatar, whose hit area is 44px. The
+  dropdown uses a translucent functional surface, a solid reduced-transparency
+  fallback, and a scrollable height bounded by the visual viewport and dock.
+  Desktop keeps the room launcher and notification bell in the header.
+- The installed iOS PWA renders web UI. Native Apple Liquid Glass requires a
+  separately installed native app (for example Expo/React Native on iOS 26+);
+  Universal Links can open that app once installed. CSS glass here is a web
+  approximation and does not call native iOS material APIs.
 - Motion uses the existing Framer Motion dependency. Reduced motion removes hero
   parallax; native rail scrolling remains usable. No generated video or new runtime.
 - Nunito and Comfortaa are now served locally from `public/fonts`, with the

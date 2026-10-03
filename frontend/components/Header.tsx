@@ -111,8 +111,10 @@ const Header: React.FC<{}> = () => {
         </nav>
 
         <SearchAutosuggest />
-        <RoomJoinLauncher />
-        <NotificationBell />
+        <div className="hidden shrink-0 items-center gap-3 lg:flex">
+          <RoomJoinLauncher />
+          <NotificationBell />
+        </div>
         <AniListAuthButton />
       </div>
 

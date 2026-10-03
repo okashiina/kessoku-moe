@@ -1,0 +1,43 @@
+.panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 50;
+  width: 320px;
+  max-width: calc(100vw - 2rem);
+  max-height: max(44px, calc(var(--mobile-visible-height, 100dvh) - 6rem - env(safe-area-inset-top, 0px) - var(--mobile-dock-clearance, 6rem)));
+  margin-top: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid oklch(var(--line) / 80%);
+  border-radius: 24px;
+  background: oklch(var(--canvas) / 94%);
+  box-shadow: 0 16px 48px oklch(var(--canvas) / 50%), inset 0 1px 0 oklch(var(--fg) / 12%);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  backdrop-filter: blur(24px) saturate(1.3);
+}
+
+.panel:focus {
+  outline: none;
+}
+
+@media (min-width: 1024px) {
+  .panel {
+    width: 256px;
+    max-height: calc(100dvh - 6rem - env(safe-area-inset-top, 0px));
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .panel {
+    background: oklch(var(--canvas));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .panel {
+    background: oklch(var(--canvas));
+  }
+}
