@@ -1,5 +1,13 @@
 # Competitive Analysis — anime streaming apps → refining "kessoku moe"
 
+## 2026-10-04 product update
+
+Mobile room joining and the notifications inbox now live in the account dropdown,
+leaving more space for global search. The avatar retains an unread indicator.
+The web glass styling includes a reduced-transparency fallback; native iOS Liquid
+Glass would require a separately installed native app. This describes our own
+implementation and does not update the dated competitor research below.
+
 ## 2026-10-03 product update
 
 Cartoon discovery now sits beside anime and manga: TVMaze metadata, global search,

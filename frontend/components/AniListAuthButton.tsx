@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 
 import { CogIcon, UserCircleIcon } from '@heroicons/react/outline';
 
 import AniListBenefitsModal from '@components/AniListBenefitsModal';
+import NotificationBell from '@components/NotificationBell';
+import RoomJoinLauncher from '@components/RoomJoinLauncher';
 import useAniListAuth from '@hooks/useAniListAuth';
+import useNotifications from '@hooks/useNotifications';
+import styles from '@styles/AccountMenu.module.css';
 import { clientId } from '@utility/anilistAuth';
 import { setTitleLang, useTitleLang, type TitleLang } from '@utility/titleLang';
 
@@ -21,11 +26,18 @@ const TITLE_OPTIONS: { id: TitleLang; label: string }[] = [
 ];
 
 const AniListAuthButton: React.FC = () => {
+  const router = useRouter();
   const { session, isLoggedIn, login, logout } = useAniListAuth();
+  const { unread } = useNotifications();
   const lang = useTitleLang();
   const [open, setOpen] = useState(false);
   const [benefitsOpen, setBenefitsOpen] = useState(false);
+  const [mobileAction, setMobileAction] = useState<
+    'room' | 'notifications' | null
+  >(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const hasAniList = Boolean(clientId());
   const user = session?.user;
 
@@ -36,7 +48,13 @@ const AniListAuthButton: React.FC = () => {
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
+      if (
+        e.key === 'Escape' &&
+        wrapRef.current?.contains(document.activeElement)
+      ) {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
     };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -45,6 +63,17 @@ const AniListAuthButton: React.FC = () => {
       document.removeEventListener('keydown', onKey);
     };
   }, []);
+
+  useEffect(() => {
+    const close = () => setOpen(false);
+    router.events.on('routeChangeStart', close);
+    return () => router.events.off('routeChangeStart', close);
+  }, [router.events]);
+
+  useEffect(() => {
+    if (open) panelRef.current?.focus({ preventScroll: true });
+    else setMobileAction(null);
+  }, [open]);
 
   let avatarInner: React.ReactNode;
   if (isLoggedIn && user?.avatar) {
@@ -73,21 +102,38 @@ const AniListAuthButton: React.FC = () => {
   return (
     <div ref={wrapRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        aria-haspopup="menu"
+        aria-controls={open ? 'account-settings-panel' : undefined}
         aria-expanded={open}
-        aria-label="Account and settings"
+        aria-label={
+          unread > 0
+            ? `Account and settings, ${unread} unread notifications`
+            : 'Account and settings'
+        }
         title={isLoggedIn && user ? user.name : 'Account and settings'}
-        className="block h-9 w-9 overflow-hidden rounded-full ring-1 ring-line/60 transition hover:ring-accent/60"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full transition [touch-action:manipulation] hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:bg-surface-2 motion-reduce:transition-none"
       >
-        {avatarInner}
+        <span className="block h-9 w-9 overflow-hidden rounded-full ring-1 ring-line/60">
+          {avatarInner}
+        </span>
+        {unread > 0 && (
+          <span
+            aria-hidden="true"
+            className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-accent ring-2 ring-canvas lg:hidden"
+          />
+        )}
       </button>
 
       {open && (
         <div
-          role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-2xl border border-line/60 bg-canvas/95 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          ref={panelRef}
+          id="account-settings-panel"
+          role="region"
+          aria-label="Account and settings"
+          tabIndex={-1}
+          className={styles.panel}
         >
           {isLoggedIn && user && (
             <div className="border-b border-line/50 px-4 py-3">
@@ -101,13 +147,30 @@ const AniListAuthButton: React.FC = () => {
             </div>
           )}
 
+          <div className="space-y-2 border-b border-line/50 p-2 empty:hidden lg:hidden">
+            <RoomJoinLauncher
+              variant="account"
+              expanded={mobileAction === 'room'}
+              onExpandedChange={(expanded) =>
+                setMobileAction(expanded ? 'room' : null)
+              }
+            />
+            <NotificationBell
+              variant="account"
+              expanded={mobileAction === 'notifications'}
+              onExpandedChange={(expanded) =>
+                setMobileAction(expanded ? 'notifications' : null)
+              }
+            />
+          </div>
+
           {/* Title language — a display pref everyone gets, signed in or not. */}
           <div className="border-b border-line/50 px-4 py-3">
             <p className="mb-1.5 text-[0.65rem] font-semibold uppercase tracking-wide text-faint">
               Title language
             </p>
             <div
-              className="flex gap-1"
+              className="flex gap-2"
               role="group"
               aria-label="Title language"
             >
@@ -117,7 +180,7 @@ const AniListAuthButton: React.FC = () => {
                   type="button"
                   onClick={() => setTitleLang(o.id)}
                   aria-pressed={lang === o.id}
-                  className={`flex-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
+                  className={`min-h-[44px] flex-1 rounded-lg px-2.5 py-2 text-sm font-semibold transition [touch-action:manipulation] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 motion-reduce:transition-none ${
                     lang === o.id
                       ? 'bg-aurora text-accent-ink shadow-glow'
                       : 'text-muted hover:bg-surface/60 hover:text-fg'
@@ -133,7 +196,7 @@ const AniListAuthButton: React.FC = () => {
           <Link href="/settings" passHref>
             <a
               onClick={() => setOpen(false)}
-              className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-muted transition hover:bg-surface/60 hover:text-fg"
+              className="flex min-h-[48px] w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-fg transition [touch-action:manipulation] hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 active:bg-surface-2 motion-reduce:transition-none"
             >
               <CogIcon className="h-4 w-4" />
               Settings
@@ -149,7 +212,7 @@ const AniListAuthButton: React.FC = () => {
                   setOpen(false);
                   logout();
                 }}
-                className="w-full px-4 py-2.5 text-left text-sm font-medium text-muted transition hover:bg-surface/60 hover:text-fg"
+                className="min-h-[48px] w-full px-4 py-2.5 text-left text-sm font-medium text-fg transition [touch-action:manipulation] hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 active:bg-surface-2 motion-reduce:transition-none"
               >
                 Log out
               </button>
@@ -160,7 +223,7 @@ const AniListAuthButton: React.FC = () => {
                   setOpen(false);
                   setBenefitsOpen(true);
                 }}
-                className="w-full px-4 py-2.5 text-left text-sm font-medium text-muted transition hover:bg-surface/60 hover:text-fg"
+                className="min-h-[48px] w-full px-4 py-2.5 text-left text-sm font-medium text-fg transition [touch-action:manipulation] hover:bg-surface/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60 active:bg-surface-2 motion-reduce:transition-none"
               >
                 Sign in with AniList
               </button>

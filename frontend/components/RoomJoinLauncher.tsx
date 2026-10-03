@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRouter } from 'next/router';
 
@@ -13,7 +13,17 @@ import { normalizeRoomCode, peekRoom } from '@utility/room';
 
 const ERROR_TEXT = "Room not found, or it isn't watching anything yet.";
 
-const RoomJoinLauncher: React.FC = () => {
+interface RoomJoinLauncherProps {
+  variant?: 'header' | 'account';
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+}
+
+const RoomJoinLauncher: React.FC<RoomJoinLauncherProps> = ({
+  variant = 'header',
+  expanded,
+  onExpandedChange,
+}) => {
   const router = useRouter();
   const [configured, setConfigured] = useState<'unknown' | 'yes' | 'no'>(
     'unknown'
@@ -21,7 +31,16 @@ const RoomJoinLauncher: React.FC = () => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = expanded ?? localOpen;
+  const setOpen = useCallback(
+    (value: boolean): void => {
+      setLocalOpen(value);
+      onExpandedChange?.(value);
+    },
+    [onExpandedChange]
+  );
+  const inline = variant === 'account';
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +62,7 @@ const RoomJoinLauncher: React.FC = () => {
 
   // Close the popover on an outside click or Escape.
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open || inline) return undefined;
     const onDown = (e: MouseEvent): void => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -58,7 +77,7 @@ const RoomJoinLauncher: React.FC = () => {
       document.removeEventListener('mousedown', onDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open]);
+  }, [open, inline, setOpen]);
 
   // Focus the field when the popover opens.
   useEffect(() => {
@@ -107,25 +126,36 @@ const RoomJoinLauncher: React.FC = () => {
     <div ref={wrapRef} className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="dialog"
+        onClick={() => setOpen(!open)}
+        aria-haspopup={inline ? undefined : 'dialog'}
         aria-expanded={open}
         aria-label="Join a room"
-        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-95 ${
-          open
-            ? 'border-accent/50 bg-surface text-fg'
-            : 'border-line/60 bg-surface/50 text-muted hover:border-accent/50 hover:text-fg'
-        }`}
+        className={
+          inline
+            ? 'flex min-h-[48px] w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-medium text-fg transition-colors [touch-action:manipulation] hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:bg-surface-2 motion-reduce:transition-none'
+            : `inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition [touch-action:manipulation] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-95 motion-reduce:transition-none ${
+                open
+                  ? 'border-accent/50 bg-surface text-fg'
+                  : 'border-line/60 bg-surface/50 text-muted hover:border-accent/50 hover:text-fg'
+              }`
+        }
       >
-        <UserGroupIcon className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">Join room</span>
+        <UserGroupIcon
+          className={inline ? 'h-5 w-5 shrink-0' : 'h-4 w-4 shrink-0'}
+          aria-hidden
+        />
+        <span className={inline ? '' : 'hidden sm:inline'}>Join room</span>
       </button>
 
       {open && (
         <div
-          role="dialog"
+          role={inline ? 'region' : 'dialog'}
           aria-label="Join a room"
-          className="absolute right-0 top-full z-50 mt-2 w-72 rounded-2xl border border-line/60 bg-surface p-4 shadow-glow"
+          className={
+            inline
+              ? 'px-3 pb-4 pt-2'
+              : 'absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-line/60 bg-surface p-4 shadow-glow'
+          }
         >
           <form onSubmit={onFormSubmit} className="flex flex-col gap-2.5">
             <div className="leading-tight">
@@ -146,12 +176,12 @@ const RoomJoinLauncher: React.FC = () => {
                 autoCapitalize="characters"
                 autoCorrect="off"
                 spellCheck={false}
-                className="min-w-0 flex-1 rounded-lg border border-line/60 bg-surface/50 px-3 py-1.5 text-sm font-semibold tracking-[0.18em] text-fg placeholder:font-normal placeholder:tracking-normal placeholder:text-faint focus:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-line/60 bg-surface/50 px-3 py-2 text-base font-semibold tracking-[0.18em] text-fg placeholder:font-normal placeholder:tracking-normal placeholder:text-muted focus:border-accent/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
               />
               <button
                 type="submit"
                 disabled={disabled}
-                className="shrink-0 rounded-lg bg-aurora px-3 py-1.5 text-sm font-semibold text-accent-ink shadow-glow transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-95 disabled:opacity-50"
+                className="min-h-[44px] min-w-[44px] shrink-0 rounded-lg bg-aurora px-3 py-2 text-sm font-semibold text-accent-ink shadow-glow transition [touch-action:manipulation] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 active:scale-95 disabled:opacity-50 motion-reduce:transition-none"
               >
                 {loading ? 'Finding the room…' : 'Join'}
               </button>
