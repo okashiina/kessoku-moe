@@ -1,0 +1,94 @@
+.backstage {
+  max-width: 1400px;
+  margin: auto;
+  padding: 110px 5% 90px;
+  scroll-margin-top: 24px;
+}
+
+.sectionIntro {
+  display: flex;
+  justify-content: space-between;
+  gap: 60px;
+  align-items: flex-end;
+}
+
+.sectionIntro h2 {
+  font-size: clamp(34px, 4vw, 58px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+}
+
+.sectionIntro p {
+  max-width: 320px;
+  color: #c9bdc8;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+.featureIndex {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  margin-top: 50px;
+}
+
+.featureIndex a {
+  border-top: 1px solid #5a4a57;
+  padding-top: 26px;
+}
+
+.featureIndex a > svg {
+  color: var(--pink);
+  width: 26px;
+  height: 26px;
+}
+
+.featureIndex h3 {
+  margin-top: 20px;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+}
+
+.featureIndex p {
+  color: #c9bdc8;
+  line-height: 1.7;
+  margin-top: 10px;
+  max-width: 440px;
+}
+
+.featureIndex span {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-top: 22px;
+  min-height: 44px;
+  color: var(--pink);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+@media (max-width: 700px) {
+  .backstage {
+    padding: 65px 6%;
+  }
+
+  .sectionIntro {
+    display: block;
+  }
+
+  .sectionIntro p {
+    margin-top: 24px;
+  }
+
+  .featureIndex {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    margin-top: 32px;
+  }
+
+  .featureIndex h3 {
+    font-size: 23px;
+  }
+}

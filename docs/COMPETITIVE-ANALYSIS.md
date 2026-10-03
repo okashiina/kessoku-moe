@@ -1,5 +1,18 @@
 # Competitive Analysis — anime streaming apps → refining "kessoku moe"
 
+## 2026-10-03 product update
+
+Cartoon discovery now sits beside anime and manga: TVMaze metadata, global search,
+ranked and genre-based discovery, paginated browsing, season/episode streams where
+available, and a companion that receives cartoon context. Continue watching
+remembers the selected cartoon episode locally; timestamp and cross-device cartoon
+resume are not supplied by the embed pipeline. The landing page exposes a short
+scrollable catalog preview. Home and Cartoon share the featured banner and content
+patterns, with a persistent safe-area-aware mobile dock outside watch/reader routes.
+
+The competitor research below remains dated 2026-06-02; this update describes our
+implementation and does not assert new claims about other services.
+
 Research date: 2026-06-02. Sources: each site's public pages (most are Cloudflare/anti-bot
 gated, so detail is corroborated with GitHub source, reverse-engineering repos, FMHY,
 EverythingMoe, r/animepiracy, and security scanners). Confidence noted per claim.

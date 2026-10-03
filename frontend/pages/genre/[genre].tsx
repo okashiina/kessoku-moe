@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 
 import { searchGenre } from '@animeflix/api';
 import { AnimeInfoFragment } from '@animeflix/api/aniList';
-import { CollectionIcon } from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
@@ -51,51 +50,122 @@ const Genre = ({
 
       <Header />
 
-      <main className="mx-auto max-w-screen-2xl px-4 pb-16 sm:px-6 lg:px-8">
-        <header className="mt-8 animate-rise">
-          <p className="font-sans text-xs font-semibold uppercase tracking-[0.25em] text-accent">
-            Browse
-          </p>
-          <div className="mt-2 flex items-center gap-3">
-            <span
-              className="h-7 w-1 shrink-0 rounded-full bg-aurora"
-              aria-hidden
-            />
-            <h1 className="font-display text-2xl font-extrabold tracking-tight text-fg sm:text-3xl lg:text-4xl">
-              Genre <span className="font-normal text-faint">·</span>{' '}
-              <span className="text-accent">{genreText}</span>
-            </h1>
-          </div>
-          {hasResults && (
-            <p className="mt-2 pl-4 text-sm text-muted">
-              {searchResults.length}{' '}
-              {searchResults.length === 1 ? 'title' : 'titles'} found
-            </p>
-          )}
-        </header>
+      <div className="genre-page">
+        <main className="genre-main">
+          <header className="genre-heading">
+            <p className="genre-kicker">Genre</p>
+            <h1>{genreText}</h1>
+            {hasResults && (
+              <p className="genre-description">
+                {searchResults.length}{' '}
+                {searchResults.length === 1 ? 'title' : 'titles'} found
+              </p>
+            )}
+          </header>
 
-        {hasResults ? (
-          <div className="mt-8 grid animate-rise grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-            {searchResults.map((anime) => (
-              <Card key={anime.id} anime={anime} />
-            ))}
-          </div>
-        ) : (
-          <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/40 px-6 py-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-2 text-faint">
-              <CollectionIcon className="h-7 w-7" aria-hidden />
-            </span>
-            <h2 className="mt-5 font-display text-xl font-bold text-fg">
-              Nothing here yet
-            </h2>
-            <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
-              We couldn&apos;t find any titles in{' '}
-              <span className="font-medium text-fg">{genreText}</span>. Try
-              another genre.
-            </p>
-          </div>
-        )}
-      </main>
+          {hasResults ? (
+            <div className="genre-grid">
+              {searchResults.map((anime) => (
+                <Card key={anime.id} anime={anime} fluid />
+              ))}
+            </div>
+          ) : (
+            <div className="genre-empty">
+              <h2>Nothing in {genreText} yet</h2>
+              <p>
+                We could not find any titles for {genreText}. Try another genre
+                from browse.
+              </p>
+            </div>
+          )}
+        </main>
+      </div>
+
+      <style jsx>{`
+        .genre-page {
+          background: #17141c;
+          min-height: 100dvh;
+        }
+        .genre-main {
+          max-width: 1440px;
+          margin: auto;
+          padding: 42px 5% 80px;
+          color: #f4ecef;
+        }
+        .genre-heading {
+          margin-bottom: 32px;
+        }
+        .genre-kicker {
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          color: #f591ba;
+        }
+        .genre-heading h1 {
+          font-family: 'Nunito', sans-serif;
+          font-size: clamp(38px, 4.5vw, 64px);
+          font-weight: 800;
+          letter-spacing: -0.05em;
+          line-height: 1.1;
+          color: #f4ecef;
+          margin-top: 8px;
+        }
+        .genre-description {
+          color: #bfb2c1;
+          margin-top: 12px;
+          font-size: 15px;
+        }
+        .genre-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px 22px;
+          justify-items: stretch;
+          align-items: start;
+        }
+        .genre-grid :global([class*='text-faint']) {
+          color: #bfb2c1;
+        }
+        .genre-empty {
+          min-height: 340px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          gap: 16px;
+        }
+        .genre-empty h2 {
+          font-family: 'Nunito', sans-serif;
+          font-size: 26px;
+          font-weight: 800;
+        }
+        .genre-empty p {
+          max-width: 420px;
+          color: #bfb2c1;
+          line-height: 1.7;
+        }
+        @media (min-width: 768px) {
+          .genre-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+        }
+        @media (min-width: 1024px) {
+          .genre-grid {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+          }
+        }
+        @media (max-width: 639px) {
+          .genre-main {
+            padding: 30px 5% max(48px, env(safe-area-inset-bottom));
+          }
+          .genre-heading {
+            margin-bottom: 24px;
+          }
+          .genre-heading h1 {
+            font-size: 38px;
+          }
+        }
+      `}</style>
     </>
   );
 };

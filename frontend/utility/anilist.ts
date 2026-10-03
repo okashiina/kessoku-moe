@@ -64,6 +64,7 @@ export interface MediaInfo {
   id: number;
   title: { romaji: string | null; english: string | null };
   coverImage: {
+    extraLarge?: string | null;
     large: string | null;
     medium: string | null;
     color: string | null;
@@ -94,7 +95,7 @@ export interface AiringEntry {
 const INFO_FIELDS = `
   id
   title { romaji english }
-  coverImage { large medium color }
+  coverImage { extraLarge large medium color }
   format
   episodes
   duration

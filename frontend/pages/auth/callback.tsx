@@ -70,7 +70,7 @@ const AniListCallback = () => {
               <button
                 type="button"
                 onClick={() => router.replace('/home')}
-                className="rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition active:scale-95"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition [touch-action:manipulation] active:scale-95 motion-reduce:active:scale-100"
               >
                 Back home
               </button>

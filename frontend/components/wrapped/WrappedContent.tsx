@@ -11,6 +11,9 @@ interface WrappedContentProps {
   stats: WrappedStats;
 }
 
+const reveal =
+  'animate-rise motion-reduce:animate-none motion-reduce:opacity-100';
+
 const WrappedContent: React.FC<WrappedContentProps> = ({ stats }) => {
   const {
     chaptersRead,
@@ -28,10 +31,12 @@ const WrappedContent: React.FC<WrappedContentProps> = ({ stats }) => {
   const hasAnime = animeSeries > 0;
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* Headline numbers. The biggest of chapters/episodes takes the aurora
-          card so the page has one clear focal figure, not an even grid. */}
-      <section className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="flex flex-col gap-12">
+      {/* Headline numbers. The biggest of chapters/episodes takes the pink
+          plate so the page has one clear focal figure, not an even grid. */}
+      <section
+        className={`flex flex-col gap-8 border-b border-[#463b49] pb-10 ${reveal}`}
+      >
         {hasManga && (
           <StatCard
             value={chaptersRead}
@@ -55,21 +60,17 @@ const WrappedContent: React.FC<WrappedContentProps> = ({ stats }) => {
             value={streakDays}
             label={streakDays === 1 ? 'Day streak' : 'Days on a streak'}
             hint="reading or watching, back to back"
-            className={!hasManga || !hasAnime ? '' : 'col-span-2'}
           />
         )}
       </section>
 
       {/* Headliners: the series you gave the most to. */}
       {(topManga || topAnime) && (
-        <section>
-          <div className="mb-3 flex items-center gap-2.5">
-            <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-            <h2 className="font-display text-lg font-bold tracking-tight text-fg">
-              Your headliners
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <section className={reveal} style={{ animationDelay: '80ms' }}>
+          <h2 className="font-display text-2xl font-extrabold tracking-tight text-[#f4ecef] sm:text-3xl">
+            Your headliners
+          </h2>
+          <div className="mt-6 grid gap-10 sm:grid-cols-2">
             {topManga && <Headliner highlight={topManga} />}
             {topAnime && <Headliner highlight={topAnime} />}
           </div>
@@ -78,14 +79,11 @@ const WrappedContent: React.FC<WrappedContentProps> = ({ stats }) => {
 
       {/* Shelf breakdown by status. */}
       {(hasManga || hasAnime) && (
-        <section>
-          <div className="mb-3 flex items-center gap-2.5">
-            <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-            <h2 className="font-display text-lg font-bold tracking-tight text-fg">
-              Your shelf
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+        <section className={reveal} style={{ animationDelay: '160ms' }}>
+          <h2 className="font-display text-2xl font-extrabold tracking-tight text-[#f4ecef] sm:text-3xl">
+            Your shelf
+          </h2>
+          <div className="mt-6 flex flex-col gap-10 sm:flex-row sm:gap-12">
             {hasManga && (
               <StatusBars
                 title="Manga"

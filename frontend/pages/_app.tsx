@@ -1,10 +1,13 @@
 import '@styles/globals.css';
+import '@styles/fonts.css';
 import { AppProps } from 'next/app';
+import Head from 'next/head';
 import Router from 'next/router';
 
 import { DefaultSeo } from 'next-seo';
 import { Provider } from 'react-redux';
 
+import MobileDock from '@components/MobileDock';
 import progressBar from '@components/Progress';
 import useAniListMangaSync from '@hooks/useAniListMangaSync';
 import useAniListSync from '@hooks/useAniListSync';
@@ -34,6 +37,13 @@ function MyApp({ Component, pageProps }: AppProps) {
 
   return (
     <>
+      <Head>
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+          key="viewport"
+        />
+      </Head>
       <DefaultSeo
         title="kessoku moe — watch anime free"
         description="kessoku moe — stream anime shows, movies, and series free, ad-light, on your phone, tablet, or desktop. dark, cute, a little rock."
@@ -45,7 +55,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           },
           {
             name: 'theme-color',
-            content: '#0B0B14',
+            content: '#17141c',
           },
           {
             name: 'apple-mobile-web-app-capable',
@@ -53,7 +63,7 @@ function MyApp({ Component, pageProps }: AppProps) {
           },
           {
             name: 'apple-mobile-web-app-status-bar-style',
-            content: '#0B0B14',
+            content: 'black-translucent',
           },
         ]}
         twitter={{
@@ -72,6 +82,7 @@ function MyApp({ Component, pageProps }: AppProps) {
       />
       <Provider store={reduxStore}>
         <Component {...pageProps} />
+        <MobileDock />
       </Provider>
     </>
   );

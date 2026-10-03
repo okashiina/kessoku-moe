@@ -16,11 +16,11 @@
     }
   ],
   "start_url": "/",
-  "background_color": "#0B0B14",
+  "background_color": "#17141c",
   "display": "standalone",
   "display_override": ["fullscreen", "minimal-ui"],
   "scope": "/",
-  "theme_color": "#0B0B14",
+  "theme_color": "#17141c",
   "description": "kessoku moe — watch anime free. dark, gemoy, sedikit rock.",
   "orientation": "portrait"
 }

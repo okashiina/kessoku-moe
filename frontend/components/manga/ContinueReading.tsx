@@ -27,15 +27,14 @@ const ContinueReading: React.FC = () => {
 
   return (
     <section className="mt-8">
-      <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+      <div className="mb-3">
+        <h2 className="font-display text-lg font-extrabold tracking-tight text-fg">
           Continue reading
         </h2>
       </div>
 
-      <div className="edge-fade-x">
-        <div className="flex snap-x gap-4 overflow-x-auto px-4 pb-3 scrollbar-hide sm:px-6 lg:px-8">
+      <div className="edge-fade-x -mx-[5%] px-[5%]">
+        <div className="flex snap-x gap-4 overflow-x-auto pb-3 scrollbar-hide">
           {items.map(({ id, entry }) => {
             const pct =
               entry.pages > 0
@@ -50,11 +49,11 @@ const ContinueReading: React.FC = () => {
             return (
               <div
                 key={id}
-                className="relative w-60 shrink-0 snap-start overflow-hidden rounded-2xl bg-surface shadow-card ring-1 ring-line/40"
+                className="relative w-60 shrink-0 snap-start overflow-hidden rounded-lg bg-surface ring-1 ring-line/40"
               >
                 <Link href={href} passHref>
                   <a className="flex gap-3 p-3">
-                    <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-canvas-2">
+                    <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-[5px] bg-canvas-2">
                       {entry.cover && (
                         <Image
                           alt=""
@@ -73,9 +72,9 @@ const ContinueReading: React.FC = () => {
                         {entry.pages > 0 &&
                           ` · pg ${entry.page + 1}/${entry.pages}`}
                       </p>
-                      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-line/50">
+                      <div className="mt-2 h-1 w-full overflow-hidden rounded-[5px] bg-line/50">
                         <div
-                          className="h-full rounded-full bg-aurora"
+                          className="h-full rounded-[5px] bg-accent"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -86,7 +85,7 @@ const ContinueReading: React.FC = () => {
                   type="button"
                   aria-label="Remove from continue reading"
                   onClick={() => removeMangaContinue(id)}
-                  className="absolute right-1 top-1 rounded-full bg-canvas/70 p-2 text-faint backdrop-blur-sm transition [touch-action:manipulation] hover:text-fg"
+                  className="absolute right-1 top-1 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[5px] bg-canvas/80 text-faint transition [touch-action:manipulation] hover:text-fg"
                 >
                   <XIcon className="h-4 w-4" />
                 </button>

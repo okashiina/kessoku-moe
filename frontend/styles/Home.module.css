@@ -1,0 +1,804 @@
+.main {
+  max-width: 1440px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 42px 5% 80px;
+}
+
+.section {
+  margin-top: 2.5rem;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* HomePoster — physical print, not a UI card                          */
+/* ------------------------------------------------------------------ */
+
+.posterFrame {
+  position: relative;
+  width: 148px;
+  flex-shrink: 0;
+}
+
+.posterFeatured {
+  width: calc(148px * 1.35);
+}
+
+.posterBookmark {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  z-index: 4;
+}
+
+.posterShadow {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background-color: #100b13;
+  transform: translate(8px, 10px);
+  pointer-events: none;
+}
+
+.posterLink {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.posterPrint {
+  border-radius: 2px;
+  transition: transform 0.35s ease;
+  transform-origin: center center;
+}
+
+.posterTiltLeft .posterPrint {
+  transform: rotate(-3.5deg);
+}
+
+.posterTiltRight .posterPrint {
+  transform: rotate(2.5deg);
+}
+
+.posterTiltNone .posterPrint {
+  transform: rotate(0deg);
+}
+
+.posterFrame:hover .posterPrint,
+.posterFrame:focus-within .posterPrint {
+  transform: rotate(0deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .posterTiltLeft .posterPrint,
+  .posterTiltRight .posterPrint,
+  .posterFrame:hover .posterPrint,
+  .posterFrame:focus-within .posterPrint {
+    transform: none;
+    transition: none;
+  }
+}
+
+.posterArt {
+  overflow: hidden;
+  border-radius: 2px 2px 0 0;
+  background-color: #17141c;
+}
+
+.posterFallback {
+  display: block;
+  width: 100%;
+  padding-bottom: 150%;
+  background-color: #17141c;
+}
+
+.posterTicket {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  margin-top: -14px;
+  padding: 8px 10px 10px;
+  border-radius: 2px;
+  background-color: #f591ba;
+  color: #17141c;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1.25;
+  min-height: 44px;
+}
+
+/* Small poster (Because you watched) */
+.becausePoster .posterFrame {
+  width: 72px;
+}
+
+.becausePoster .posterBookmark {
+  display: none;
+}
+
+.becausePoster .posterTicket {
+  display: none;
+}
+
+.becausePoster .posterShadow {
+  transform: translate(4px, 5px);
+}
+
+/* Native poster rail: scroll and focus work without animation code. */
+.posterRailHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.posterRailTitle {
+  min-width: 0;
+  font-family: Nunito, sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: #f4ecef;
+}
+
+.posterRailControls {
+  display: flex;
+  gap: 6px;
+}
+
+.posterRailControls button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #5a495f;
+  border-radius: 6px;
+  color: #f4ecef;
+}
+
+.posterRailControls button:hover {
+  border-color: #f591ba;
+  color: #f591ba;
+}
+
+.posterRail {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 2px 2px 12px;
+  scrollbar-width: thin;
+}
+
+.posterRailItem {
+  display: flex;
+  width: clamp(130px, 15vw, 178px);
+  flex: 0 0 auto;
+  flex-direction: column;
+  min-width: 0;
+  color: #f4ecef;
+}
+
+.posterRailArt {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 7px;
+  background: #28212e;
+}
+
+.posterRailPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  color: #aa9dad;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-align: center;
+}
+
+.posterRailArt img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.posterRailName {
+  overflow: hidden;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posterRailItem:hover .posterRailName,
+.posterRailItem:focus-visible .posterRailName {
+  color: #f591ba;
+}
+
+.posterRailMeta {
+  overflow: hidden;
+  margin-top: 3px;
+  color: #bfb2c1;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recommended for you */
+.recommendationHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.recommendationHeading h2 {
+  color: #f4ecef;
+  font-family: Nunito, sans-serif;
+  font-size: clamp(22px, 2.2vw, 28px);
+  font-weight: 800;
+}
+
+.recommendationHeading p {
+  margin-top: 3px;
+  color: #bfb2c1;
+  font-size: 13px;
+}
+
+.recommendationCount {
+  flex: 0 0 auto;
+  color: #f591ba;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.recommendationLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(285px, 0.85fr);
+  gap: 12px;
+}
+
+.recommendationFeature {
+  --recommendation-enter-x: 18px;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(145px, 205px) minmax(0, 1fr);
+  gap: 20px;
+  min-width: 0;
+  min-height: 292px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid #5a495f;
+  border-radius: 12px;
+  background: radial-gradient(circle at 25% 10%, #4b304c, #241b2b 55%, #1d1724);
+}
+
+.recommendationBackward {
+  --recommendation-enter-x: -18px;
+}
+
+.recommendationCover {
+  position: relative;
+  min-height: 258px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #392c40;
+  box-shadow: 7px 8px 0 rgb(11 8 14 / 35%);
+  animation: recommendationEnter 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.recommendationCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10px 50px 10px 0;
+  animation: recommendationEnter 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes recommendationEnter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--recommendation-enter-x));
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recommendationCover,
+  .recommendationCopy {
+    animation: none;
+  }
+}
+
+.recommendationEyebrow {
+  color: #f591ba;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.recommendationCopy h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 9px;
+  color: #f4ecef;
+  font-family: Nunito, sans-serif;
+  font-size: clamp(24px, 2.8vw, 38px);
+  font-weight: 800;
+  line-height: 1.1;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.recommendationMeta {
+  margin-top: 11px;
+  color: #c9bdc8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.recommendationCta {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 0 16px;
+  border-radius: 6px;
+  background: #f591ba;
+  color: #17141c;
+  font-size: 13px;
+  font-weight: 800;
+  transition: background-color 0.15s ease;
+}
+
+.recommendationCta:hover,
+.recommendationCta:focus-visible {
+  background: #ffabc9;
+  outline: none;
+}
+
+.recommendationControls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.recommendationControls button {
+  touch-action: manipulation;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #6d5972;
+  border-radius: 7px;
+  background: rgb(23 19 29 / 60%);
+  color: #f4ecef;
+}
+
+.recommendationControls button:hover,
+.recommendationControls button:focus-visible {
+  border-color: #f591ba;
+  color: #f591ba;
+  outline: none;
+}
+
+.recommendationQueue {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recommendationQueueTitle {
+  margin: 2px 0 1px;
+  color: #aa9dad;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.recommendationQueueItem {
+  display: flex;
+  min-width: 0;
+  min-height: 77px;
+  align-items: center;
+  gap: 11px;
+  padding: 7px 10px 7px 7px;
+  border: 1px solid #493b4d;
+  border-radius: 9px;
+  background: #251d2b;
+  color: #a99bab;
+  text-align: left;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.recommendationQueueItem:hover,
+.recommendationQueueItem:focus-visible {
+  border-color: #f591ba;
+  background: #312438;
+  outline: none;
+}
+
+.recommendationQueueCover {
+  position: relative;
+  width: 43px;
+  height: 61px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #3a2d43;
+}
+
+.recommendationQueuePlaceholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #c9bdc8;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.recommendationQueueCover img {
+  position: relative;
+  z-index: 1;
+}
+
+.recommendationQueueCopy {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.recommendationQueueCopy strong {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #f4ecef;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.recommendationQueueCopy small {
+  color: #aa9dad;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .recommendationLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .recommendationQueue {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .recommendationQueueTitle {
+    display: none;
+  }
+
+  .recommendationQueueItem {
+    min-width: 230px;
+    flex: 0 0 230px;
+  }
+}
+
+@media (max-width: 600px) {
+  .recommendationFeature {
+    grid-template-columns: 102px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 225px;
+    padding: 12px;
+  }
+
+  .recommendationCover {
+    min-height: 200px;
+  }
+
+  .recommendationCopy {
+    justify-content: flex-start;
+    padding: 12px 0 52px;
+  }
+
+  .recommendationCopy h3 {
+    font-size: 22px;
+  }
+
+  .recommendationCta {
+    margin-top: 12px;
+    padding: 0 10px;
+  }
+
+  .recommendationControls {
+    right: 12px;
+    bottom: 12px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Continue watching — GSAP card fan                                    */
+/* ------------------------------------------------------------------ */
+
+.continueFan {
+  width: 100%;
+}
+
+/* ------------------------------------------------------------------ */
+/* Recommended / My List / Watch Later horizontal scrollers          */
+/* ------------------------------------------------------------------ */
+
+.posterScroller {
+  display: flex;
+  align-items: flex-end;
+  gap: 22px;
+  overflow-x: auto;
+  padding-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.posterScrollerOverlap {
+  gap: 0;
+}
+
+.posterScrollerOverlap > * {
+  margin-left: -18px;
+}
+
+.posterScrollerOverlap > *:first-child {
+  margin-left: 0;
+}
+
+/* My List grid → horizontal on mobile, flex wrap on desktop */
+.myListRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 22px;
+}
+
+.watchLaterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 22px;
+}
+
+/* Because-you-watched numbered rows */
+.becauseList {
+  display: flex;
+  flex-direction: column;
+}
+
+.becauseRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgb(70 59 73 / 50%);
+}
+
+.becauseRow:last-child {
+  border-bottom: none;
+}
+
+.becauseNum {
+  flex-shrink: 0;
+  width: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #f591ba;
+}
+
+.becausePoster {
+  flex-shrink: 0;
+}
+
+/* Trending ranked list */
+.trendingList {
+  display: flex;
+  flex-direction: column;
+}
+
+.trendingRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 44px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgb(70 59 73 / 50%);
+}
+
+.trendingRow:last-child {
+  border-bottom: none;
+}
+
+.trendingRank {
+  flex-shrink: 0;
+  width: 2rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #f591ba;
+}
+
+.trendingCover {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  border-radius: 2px;
+  box-shadow: 4px 5px 0 #100b13;
+  overflow: hidden;
+  background-color: #17141c;
+}
+
+.trendingCoverArt {
+  overflow: hidden;
+}
+
+/* This season poster grid */
+.thisSeasonGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 22px;
+  align-items: flex-end;
+}
+
+.thisSeasonFeatured {
+  /* featured width handled by HomePoster featured prop */
+}
+
+/* Airing ticket grid */
+.airingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 900px) {
+  .airingGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Just dropped — overlapping on desktop */
+.justDroppedRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px 22px;
+  align-items: flex-end;
+}
+
+@media (min-width: 768px) {
+  .justDroppedRow {
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+
+  .justDroppedRow > * {
+    margin-left: -22px;
+  }
+
+  .justDroppedRow > *:first-child {
+    margin-left: 0;
+  }
+}
+
+/* Popular + All-time split */
+.splitColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+}
+
+.splitColumns > * {
+  min-width: 0;
+}
+
+@media (min-width: 800px) {
+  .splitColumns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 22px;
+  }
+}
+
+.compactList {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.compactRow {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 4px 0;
+}
+
+.compactThumb {
+  position: relative;
+  width: 36px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Genres */
+.genreWideRow {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+@media (min-width: 768px) {
+  .genreWideRow {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.genreTile {
+  display: flex;
+  align-items: center;
+  min-height: 88px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid #5a495f;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c9bdc8;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.genreTile:hover {
+  color: #f4ecef;
+  border-color: #f591ba;
+}
+
+.genreChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

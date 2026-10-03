@@ -24,10 +24,15 @@ const CompanionFab: React.FC<{
   animeId: number;
   episode: number;
   total: number;
-}> = ({ seed, animeId, episode, total }) => {
+  mediaKind?: 'anime' | 'cartoon';
+}> = ({ seed, animeId, episode, total, mediaKind }) => {
   const reduced = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [hint, setHint] = useState(false);
+  const [sheetViewport, setSheetViewport] = useState<{
+    bottom: number;
+    height: number;
+  } | null>(null);
   const dragControls = useDragControls();
 
   // One-time nudge, mirroring the player's hint pattern: shown once ever, then
@@ -63,18 +68,56 @@ const CompanionFab: React.FC<{
     setOpen(true);
   };
 
-  // Lock the page behind the sheet + let Escape close it.
+  // Lock the page behind the sheet and keep the composer above the iOS keyboard.
   useEffect(() => {
     if (!open) return undefined;
-    const prev = document.body.style.overflow;
+    const { scrollY } = window;
+    const prev = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+    };
     document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    const { visualViewport } = window;
+    const updateSheetViewport = () => {
+      if (!visualViewport) return;
+      const bottom = Math.max(
+        0,
+        window.innerHeight - visualViewport.height - visualViewport.offsetTop
+      );
+      const height = Math.max(
+        0,
+        Math.min(window.innerHeight * 0.85, visualViewport.height - 8)
+      );
+      setSheetViewport({ bottom, height });
+    };
+    updateSheetViewport();
+    visualViewport?.addEventListener('resize', updateSheetViewport);
+    visualViewport?.addEventListener('scroll', updateSheetViewport);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
     };
     window.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prev.overflow;
+      document.body.style.position = prev.position;
+      document.body.style.top = prev.top;
+      document.body.style.left = prev.left;
+      document.body.style.right = prev.right;
+      document.body.style.width = prev.width;
+      visualViewport?.removeEventListener('resize', updateSheetViewport);
+      visualViewport?.removeEventListener('scroll', updateSheetViewport);
       window.removeEventListener('keydown', onKey);
+      window.scrollTo(0, scrollY);
+      setSheetViewport(null);
     };
   }, [open]);
 
@@ -85,7 +128,10 @@ const CompanionFab: React.FC<{
       {!open && (
         <div
           className="fixed right-4 z-40 lg:hidden"
-          style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+          style={{
+            bottom:
+              'calc(var(--mobile-dock-clearance, env(safe-area-inset-bottom, 0px)) + 1rem)',
+          }}
         >
           <AnimatePresence>
             {hint && (
@@ -106,22 +152,8 @@ const CompanionFab: React.FC<{
             type="button"
             onClick={openSheet}
             aria-label="Open watch companion"
-            className="relative grid h-14 w-14 place-items-center rounded-full bg-aurora text-accent-ink shadow-glow transition active:scale-95"
+            className="relative grid h-14 w-14 place-items-center rounded-full bg-aurora text-accent-ink shadow-glow transition [touch-action:manipulation] active:scale-95 motion-reduce:transition-none"
           >
-            {/* Breathing ring — the "someone's here to help" pulse. Off when the
-                viewer asked for reduced motion. */}
-            {!reduced && (
-              <motion.span
-                aria-hidden
-                className="absolute inset-0 rounded-full bg-accent/40"
-                animate={{ scale: [1, 1.35, 1], opacity: [0.5, 0, 0.5] }}
-                transition={{
-                  duration: 2.6,
-                  repeat: Infinity,
-                  ease: 'easeOut',
-                }}
-              />
-            )}
             <ChatAlt2Icon className="relative h-7 w-7" />
           </button>
         </div>
@@ -148,6 +180,7 @@ const CompanionFab: React.FC<{
             aria-modal="true"
             aria-label="Watch companion"
             className="supports-[height:1dvh]:h-[85dvh] fixed inset-x-0 bottom-0 z-50 flex h-[85vh] flex-col overflow-hidden rounded-t-3xl border-t border-line/60 bg-canvas-2 shadow-card lg:hidden"
+            style={sheetViewport ?? undefined}
             initial={reduced ? { opacity: 0 } : { y: '100%' }}
             animate={reduced ? { opacity: 1 } : { y: 0 }}
             exit={reduced ? { opacity: 0 } : { y: '100%' }}
@@ -165,14 +198,14 @@ const CompanionFab: React.FC<{
                 keeps its own header, so this stays just a handle + close. */}
             <div
               onPointerDown={(e) => dragControls.start(e)}
-              className="relative flex shrink-0 cursor-grab touch-none items-center justify-center pb-1 pt-3 active:cursor-grabbing"
+              className="relative flex min-h-[48px] shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing"
             >
               <span className="h-1.5 w-10 rounded-full bg-line" aria-hidden />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close watch companion"
-                className="absolute right-3 top-2.5 grid h-8 w-8 place-items-center rounded-full text-muted transition hover:bg-surface hover:text-fg"
+                className="absolute right-2 top-0.5 grid h-11 w-11 place-items-center rounded-full text-muted transition [touch-action:manipulation] hover:bg-surface hover:text-fg focus-visible:ring-2 focus-visible:ring-accent motion-reduce:transition-none"
               >
                 <XIcon className="h-5 w-5" />
               </button>
@@ -184,6 +217,7 @@ const CompanionFab: React.FC<{
                 animeId={animeId}
                 episode={episode}
                 total={total}
+                mediaKind={mediaKind}
                 variant="dock"
               />
             </div>

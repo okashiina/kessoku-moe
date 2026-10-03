@@ -249,7 +249,7 @@ const RoomChat: React.FC<{
               type="button"
               onClick={() => setMode('chat')}
               aria-pressed={mode === 'chat'}
-              className={`rounded-full px-2 py-0.5 transition ${
+              className={`min-h-[44px] rounded-full px-3 py-1 transition [touch-action:manipulation] ${
                 mode === 'chat'
                   ? 'bg-aurora text-accent-ink'
                   : 'text-muted hover:text-fg'
@@ -261,7 +261,7 @@ const RoomChat: React.FC<{
               type="button"
               onClick={() => setMode('danmaku')}
               aria-pressed={mode === 'danmaku'}
-              className={`rounded-full px-2 py-0.5 transition ${
+              className={`min-h-[44px] rounded-full px-3 py-1 transition [touch-action:manipulation] ${
                 mode === 'danmaku'
                   ? 'bg-aurora text-accent-ink'
                   : 'text-muted hover:text-fg'
@@ -275,15 +275,15 @@ const RoomChat: React.FC<{
 
         {/* Reactions fly over the video; the danmaku toggle hides/shows comments.
             Both controls live here so the player itself stays uncluttered. */}
-        <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
-          <div className="flex items-center gap-0.5">
+        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 px-0.5">
+          <div className="flex flex-wrap items-center gap-0.5">
             {REACTIONS.map((e) => (
               <button
                 key={e}
                 type="button"
                 aria-label={`React ${e}`}
                 onClick={() => sendReaction(e)}
-                className="grid h-7 w-7 place-items-center rounded-md text-base transition hover:scale-125 hover:bg-surface/70 active:scale-95"
+                className="grid h-11 w-11 place-items-center rounded-md text-base transition [touch-action:manipulation] hover:bg-surface/70 active:scale-95 motion-reduce:transition-none"
               >
                 {e}
               </button>
@@ -294,7 +294,7 @@ const RoomChat: React.FC<{
             onClick={toggleDanmaku}
             aria-pressed={danmakuOn}
             title={danmakuOn ? 'Hide danmaku' : 'Show danmaku'}
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold transition ${
+            className={`min-h-[44px] shrink-0 rounded-full border px-2 py-1 text-xs font-semibold transition [touch-action:manipulation] ${
               danmakuOn
                 ? 'border-accent/40 text-accent'
                 : 'border-line/60 text-faint hover:text-muted'
@@ -311,7 +311,7 @@ const RoomChat: React.FC<{
             disabled={asking || !input.trim()}
             aria-label="Ask the companion"
             title="Ask the companion"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-line/60 bg-surface/50 text-muted transition hover:border-accent/50 hover:text-accent active:scale-95 disabled:opacity-40"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-line/60 bg-surface/50 text-muted transition [touch-action:manipulation] hover:border-accent/50 hover:text-accent active:scale-95 disabled:opacity-40"
           >
             <SparklesIcon
               className={`h-4 w-4 ${asking ? 'animate-pulse' : ''}`}
@@ -330,14 +330,14 @@ const RoomChat: React.FC<{
             placeholder={
               mode === 'danmaku' ? 'Fly a danmaku…' : 'Message the room…'
             }
-            className="max-h-20 min-h-[2.25rem] flex-1 resize-none rounded-lg border border-line/60 bg-surface/50 px-2.5 py-1.5 text-xs text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
+            className="max-h-20 min-h-[44px] min-w-0 flex-1 resize-none rounded-lg border border-line/60 bg-surface/50 px-2.5 py-1.5 text-base text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
           />
           <button
             type="button"
             onClick={send}
             disabled={!input.trim()}
             aria-label={mode === 'danmaku' ? 'Fly danmaku' : 'Send to the room'}
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-aurora text-accent-ink shadow-glow transition active:scale-95 disabled:opacity-40"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-aurora text-accent-ink shadow-glow transition [touch-action:manipulation] active:scale-95 disabled:opacity-40"
           >
             <PaperAirplaneIcon className="h-4 w-4 rotate-90" />
           </button>

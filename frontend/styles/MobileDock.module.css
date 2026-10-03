@@ -1,0 +1,119 @@
+.spacer,
+.dock {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .spacer {
+    display: block;
+    height: var(--mobile-dock-clearance);
+    pointer-events: none;
+  }
+
+  .dock {
+    position: fixed;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    z-index: 60;
+    display: block;
+    max-width: 500px;
+    margin: 0 auto;
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+  }
+
+  .glass {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    min-height: 68px;
+    padding: 5px;
+    overflow: hidden;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 24px;
+    background: rgb(36 27 43 / 76%);
+    box-shadow: 0 12px 38px rgb(0 0 0 / 38%), inset 0 1px 0 rgb(255 255 255 / 18%);
+    -webkit-backdrop-filter: blur(28px) saturate(1.55);
+    backdrop-filter: blur(28px) saturate(1.55);
+  }
+
+  .glass::before {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 45%;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgb(255 255 255 / 12%), transparent);
+    content: '';
+    pointer-events: none;
+  }
+
+  .tab {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 56px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border-radius: 19px;
+    color: #e0d6e2;
+    font-size: 10px;
+    font-weight: 750;
+    line-height: 1.1;
+    white-space: nowrap;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    transition: background 180ms ease, color 180ms ease, transform 180ms ease;
+  }
+
+  .tab:hover,
+  .tab:focus-visible {
+    color: #fff;
+    background: rgb(255 255 255 / 10%);
+  }
+
+  .tab:focus-visible {
+    outline: 2px solid #ffd0e3;
+    outline-offset: -3px;
+  }
+
+  .tab:active {
+    transform: scale(0.94);
+  }
+
+  .tabActive {
+    color: #fff0f6;
+    background: linear-gradient(180deg, rgb(245 145 186 / 33%), rgb(245 145 186 / 17%));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 21%), 0 4px 14px rgb(18 10 22 / 24%);
+  }
+
+  .icon {
+    width: 21px;
+    height: 21px;
+    stroke-width: 1.9;
+  }
+}
+
+@media (max-width: 350px) {
+  .dock { right: 7px; left: 7px; }
+  .icon { width: 19px; height: 19px; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass {
+    background: #2c2234;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass { background: #2c2234; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dock,
+  .tab { transition: none; }
+}

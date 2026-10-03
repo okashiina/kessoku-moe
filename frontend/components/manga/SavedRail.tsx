@@ -22,21 +22,20 @@ const SavedRail: React.FC = () => {
 
   return (
     <section className="mt-10">
-      <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 shrink-0 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+      <div className="mb-3">
+        <h2 className="font-display text-lg font-extrabold tracking-tight text-fg">
           My list
         </h2>
       </div>
 
-      <div className="edge-fade-x">
-        <div className="flex snap-x gap-4 overflow-x-auto px-4 pb-3 scrollbar-hide sm:px-6 lg:px-8">
+      <div className="edge-fade-x -mx-[5%] px-[5%]">
+        <div className="flex snap-x gap-4 overflow-x-auto pb-3 scrollbar-hide">
           {saved.map((m) => (
             <Link key={m.id} href={`/manga/${m.id}`} passHref>
               <a className="group block w-36 shrink-0 snap-start sm:w-44">
                 <div
                   style={{ aspectRatio: '2 / 3' }}
-                  className="relative w-full overflow-hidden rounded-2xl bg-surface shadow-card ring-1 ring-line/40 transition group-hover:-translate-y-1 group-hover:shadow-lift group-hover:ring-2 group-hover:ring-accent/50"
+                  className="relative w-full overflow-hidden rounded-lg bg-surface ring-1 ring-line/40 transition group-hover:-translate-y-1 group-hover:ring-2 group-hover:ring-accent/50"
                 >
                   {m.cover && (
                     <Image

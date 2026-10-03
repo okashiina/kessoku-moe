@@ -40,15 +40,19 @@ const Toggle: React.FC<{
     aria-checked={checked}
     aria-label={label}
     onClick={() => onChange(!checked)}
-    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas ${
-      checked ? 'bg-aurora shadow-glow' : 'bg-surface-2'
-    }`}
+    className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
   >
     <span
-      className={`inline-block h-4 w-4 transform rounded-full bg-fg transition-transform duration-200 motion-reduce:transition-none ${
-        checked ? 'translate-x-6' : 'translate-x-1'
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+        checked ? 'bg-accent' : 'bg-surface-2'
       }`}
-    />
+    >
+      <span
+        className={`inline-block h-4 w-4 transform rounded-full bg-fg transition-transform duration-200 motion-reduce:transition-none ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </span>
   </button>
 );
 
@@ -60,7 +64,7 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({
     <h2 className="mb-2.5 text-[0.7rem] font-semibold uppercase tracking-wide text-faint">
       {title}
     </h2>
-    <div className="divide-y divide-line/40 overflow-hidden rounded-2xl border border-line/50 bg-surface/30">
+    <div className="divide-y divide-[#463b49] overflow-hidden rounded-lg border border-[#463b49] bg-surface">
       {children}
     </div>
   </section>
@@ -370,9 +374,8 @@ const Settings = () => {
       <Header />
 
       <main className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 sm:px-6">
-        <div className="mb-8 flex items-center gap-2.5">
-          <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-          <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+        <div className="mb-8">
+          <h1 className="font-display text-[clamp(32px,4vw,48px)] font-extrabold tracking-[-0.05em] text-fg">
             Settings
           </h1>
         </div>
@@ -404,7 +407,7 @@ const Settings = () => {
               <button
                 type="button"
                 onClick={logout}
-                className="shrink-0 rounded-full border border-line/70 px-3.5 py-1.5 text-xs font-semibold text-muted transition hover:border-line hover:text-fg"
+                className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[5px] border border-[#66516a] px-4 text-sm font-bold text-[#f4ecef] transition [touch-action:manipulation]"
               >
                 Disconnect
               </button>
@@ -425,7 +428,7 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => setBenefitsOpen(true)}
-                  className="shrink-0 rounded-full bg-aurora px-4 py-2 text-sm font-semibold text-accent-ink shadow-glow transition hover:brightness-110 active:scale-95"
+                  className="inline-flex min-h-[44px] shrink-0 items-center justify-center rounded-[5px] bg-accent px-4 text-sm font-bold text-accent-ink transition [touch-action:manipulation] active:scale-95 motion-reduce:active:scale-100"
                 >
                   Connect AniList
                 </button>
@@ -474,7 +477,7 @@ const Settings = () => {
               </p>
             </div>
             <div
-              className="flex gap-1 rounded-full bg-surface-2/60 p-1"
+              className="flex gap-1 rounded-[5px] bg-surface-2 p-1"
               role="group"
               aria-label="Title language"
             >
@@ -484,9 +487,9 @@ const Settings = () => {
                   type="button"
                   onClick={() => setTitleLang(o.id)}
                   aria-pressed={lang === o.id}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                  className={`min-h-[44px] rounded-[5px] px-4 text-sm font-bold transition [touch-action:manipulation] ${
                     lang === o.id
-                      ? 'bg-aurora text-accent-ink shadow-glow'
+                      ? 'bg-accent text-accent-ink'
                       : 'text-muted hover:text-fg'
                   }`}
                 >

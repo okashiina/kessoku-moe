@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AnimeInfoFragment } from '@animeflix/api/aniList';
 
 import ContinueWatchingCard from '@components/anime/ContinueWatchingCard';
 import useWatchHistory from '@hooks/useWatchHistory';
+import styles from '@styles/Home.module.css';
 import { getAllAnimeByIds } from '@utility/animeByIds';
 
 const ContinueWatchingRail: React.FC = () => {
   const items = useWatchHistory();
-  const railRef = useRef<HTMLDivElement>(null);
   const [animeById, setAnimeById] = useState<Record<number, AnimeInfoFragment>>(
     {}
   );
@@ -24,8 +24,6 @@ const ContinueWatchingRail: React.FC = () => {
     let cancelled = false;
 
     if (ids.length > 0) {
-      // No 30-cap: resolve every in-progress title so a large synced list
-      // doesn't crowd out (or drop) the genuinely most-recent watches.
       getAllAnimeByIds(ids)
         .then((media) => {
           if (cancelled) return;
@@ -43,8 +41,6 @@ const ContinueWatchingRail: React.FC = () => {
     };
   }, [idKey]);
 
-  if (items.length === 0) return null;
-
   const cards = items
     .map((item) => ({ item, anime: animeById[item.id] }))
     .filter((row) => row.anime);
@@ -52,29 +48,25 @@ const ContinueWatchingRail: React.FC = () => {
   if (cards.length === 0) return null;
 
   return (
-    <section className="mt-10 first:mt-8">
-      <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
+    <section className={styles.section} aria-label="Continue watching">
+      <div className={styles.sectionHeading}>
         <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
           Continue watching
         </h2>
       </div>
 
-      <div className="edge-fade-x">
-        <div
-          tabIndex={0}
-          ref={railRef}
-          onMouseEnter={() => railRef.current?.focus()}
-          className="flex snap-x gap-4 overflow-x-auto overflow-y-hidden scroll-smooth px-4 pb-3 outline-none scrollbar-hide sm:px-6 lg:px-8"
-        >
-          {cards.map(({ item, anime }) => (
-            <ContinueWatchingCard
-              key={item.id}
-              anime={anime}
-              entry={item.entry}
-            />
-          ))}
-        </div>
+      <div
+        tabIndex={0}
+        aria-label="Continue watching titles, scroll horizontally for more"
+        className="flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden pb-2 outline-none scrollbar-hide focus-visible:ring-2 focus-visible:ring-accent"
+      >
+        {cards.map(({ item, anime }) => (
+          <ContinueWatchingCard
+            key={item.id}
+            anime={anime}
+            entry={item.entry}
+          />
+        ))}
       </div>
     </section>
   );

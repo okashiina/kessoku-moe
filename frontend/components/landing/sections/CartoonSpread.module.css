@@ -1,0 +1,161 @@
+.cartoonSpread {
+  --pink: var(--brand-pink, #f591ba);
+  --paper: var(--brand-paper, #f4ecef);
+  --ink: var(--brand-ink, #17141c);
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 88px 7%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+  column-gap: 8%;
+  row-gap: 44px;
+  border-top: 1px solid #39333e;
+}
+
+.catalog {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.catalog button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.copy {
+  max-width: 620px;
+}
+
+.kicker {
+  color: var(--pink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  margin-bottom: 20px;
+}
+
+.copy h2 {
+  font-family: "Nunito", sans-serif;
+  font-size: clamp(42px, 5vw, 68px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.description {
+  max-width: 530px;
+  margin: 22px 0 24px;
+  color: #c9bdc8;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.primary {
+  min-height: 52px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 0 22px;
+  border-radius: 5px;
+  background: var(--pink);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  transition: background-color 150ms ease;
+}
+
+.primary:hover {
+  background: #ffadd0;
+}
+
+.primary:focus-visible {
+  outline: 3px solid var(--paper);
+  outline-offset: 4px;
+}
+
+.primary svg {
+  width: 20px;
+  height: 20px;
+}
+
+.ticket {
+  position: relative;
+  min-height: 330px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  background: var(--paper);
+  color: var(--ink);
+  transform: rotate(2deg);
+  box-shadow: 14px 20px 0 #f591ba22;
+}
+
+.ticketTop,
+.ticketBottom {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.ticketTitle {
+  position: relative;
+  z-index: 1;
+  font-family: "Nunito", sans-serif;
+  font-size: clamp(48px, 6vw, 82px);
+  font-weight: 800;
+  line-height: 0.88;
+  letter-spacing: -0.07em;
+}
+
+.ticketRule {
+  width: 100%;
+  border-top: 2px dashed #17141c66;
+}
+
+.ticketMark {
+  position: absolute;
+  right: -14px;
+  bottom: -80px;
+  color: var(--pink);
+  font-family: "Nunito", sans-serif;
+  font-size: 250px;
+  font-weight: 800;
+  line-height: 1;
+  transform: rotate(-13deg);
+}
+
+@media (max-width: 700px) {
+  .cartoonSpread {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    padding: 64px 6%;
+  }
+
+  .kicker {
+    font-size: 10px;
+  }
+
+  .description {
+    font-size: 15px;
+  }
+
+  .ticket {
+    min-height: 250px;
+    padding: 24px;
+    transform: rotate(1deg);
+  }
+
+  .ticketTitle {
+    font-size: clamp(52px, 15vw, 72px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary {
+    transition: none;
+  }
+}

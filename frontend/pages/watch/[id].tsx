@@ -369,6 +369,13 @@ const Watch = ({
     prequels,
   };
 
+  const asideTabBtn = (active: boolean) =>
+    `inline-flex min-h-[44px] items-center gap-2 rounded-[5px] px-[17px] py-[10px] text-sm font-bold transition duration-200 [touch-action:manipulation] ${
+      active
+        ? 'bg-accent text-accent-ink'
+        : 'text-[#bfb2c1] hover:bg-[#332735] hover:text-fg'
+    }`;
+
   return (
     <>
       <NextSeo
@@ -397,7 +404,7 @@ const Watch = ({
 
       <Header />
 
-      <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-4 sm:px-6 lg:px-8">
+      <main className="mx-auto w-full max-w-[1440px] px-[5%] pb-20 pt-[30px] sm:pt-[42px]">
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
           {/* Player column */}
           <div className="min-w-0">
@@ -434,12 +441,12 @@ const Watch = ({
 
             <div className="mt-5">
               {anime.format !== 'MOVIE' && (
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-faint">
                   Episode {episode}
                 </p>
               )}
               <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-                <h1 className="font-display text-2xl font-bold leading-tight text-fg sm:text-3xl">
+                <h1 className="font-display text-2xl font-extrabold leading-tight tracking-tight text-fg sm:text-3xl">
                   {pickTitle(anime.title, titleLang)}
                 </h1>
                 <div className="flex items-center gap-2">
@@ -458,8 +465,8 @@ const Watch = ({
             )}
 
             {nextAiringEpisode ? (
-              <p className="mt-4 rounded-xl border border-line/60 bg-surface/40 p-3 text-sm text-muted">
-                <span className="font-semibold text-fg">
+              <p className="mt-4 rounded-lg border border-[#463b49] bg-surface/40 p-3 text-sm text-[#bfb2c1]">
+                <span className="font-bold text-fg">
                   Episode {nextAiringEpisode.episode}
                 </span>{' '}
                 airs {convertToDate(nextAiringEpisode.airingAt * 1000)}. New
@@ -476,16 +483,18 @@ const Watch = ({
               <EpisodeRating animeId={animeId} episode={episode} />
             </div>
 
-            <Episode
-              title={anime.title.romaji || anime.title.english}
-              altTitle={anime.title.english}
-            />
+            <div className="[&_h2]:font-extrabold [&_h2]:tracking-tight">
+              <Episode
+                title={anime.title.romaji || anime.title.english}
+                altTitle={anime.title.english}
+              />
+            </div>
 
             <div className="mt-6">
-              <h2 className="font-display text-lg font-bold text-fg">
+              <h2 className="font-display text-lg font-extrabold tracking-tight text-fg">
                 Synopsis
               </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted line-clamp-6 md:line-clamp-none">
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#bfb2c1] line-clamp-6 md:line-clamp-none">
                 {anime.description?.replace(/<\w*\\?>/g, '')}
               </p>
             </div>
@@ -504,40 +513,28 @@ const Watch = ({
 
           {/* Right rail: recommendations or the AI watch companion */}
           <aside className="mt-10 lg:mt-0">
-            <div className="mb-3 inline-flex rounded-full border border-line/60 p-0.5 text-xs font-semibold">
+            <div className="mb-3 flex gap-2 overflow-x-auto">
               <button
                 type="button"
                 onClick={() => setAsideTab('recommended')}
-                className={`rounded-full px-3 py-1 transition ${
-                  asideTab === 'recommended'
-                    ? 'bg-aurora text-accent-ink shadow-glow'
-                    : 'text-muted hover:text-fg'
-                }`}
+                className={asideTabBtn(asideTab === 'recommended')}
               >
                 Recommended
               </button>
               <button
                 type="button"
                 onClick={() => setAsideTab('companion')}
-                className={`flex items-center gap-1 rounded-full px-3 py-1 transition ${
-                  asideTab === 'companion'
-                    ? 'bg-aurora text-accent-ink shadow-glow'
-                    : 'text-muted hover:text-fg'
-                }`}
+                className={asideTabBtn(asideTab === 'companion')}
               >
-                <SparklesIcon className="h-3.5 w-3.5" />
+                <SparklesIcon className="h-5 w-5 shrink-0" aria-hidden />
                 Companion
               </button>
               <button
                 type="button"
                 onClick={() => setAsideTab('room')}
-                className={`relative flex items-center gap-1 rounded-full px-3 py-1 transition ${
-                  asideTab === 'room'
-                    ? 'bg-aurora text-accent-ink shadow-glow'
-                    : 'text-muted hover:text-fg'
-                }`}
+                className={`relative ${asideTabBtn(asideTab === 'room')}`}
               >
-                <UserGroupIcon className="h-3.5 w-3.5" />
+                <UserGroupIcon className="h-5 w-5 shrink-0" aria-hidden />
                 Together
                 {roomUnread > 0 && asideTab !== 'room' && (
                   <span className="absolute -right-1 -top-1 grid h-4 min-w-[1rem] animate-pulse place-items-center rounded-full bg-accent px-1 text-[10px] font-bold leading-none text-accent-ink">
@@ -548,12 +545,14 @@ const Watch = ({
             </div>
 
             {asideTab === 'recommended' && (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-3">
                 {recommended.map((recommendation) => (
-                  <RecommendationCard
-                    anime={recommendation}
+                  <div
                     key={recommendation.id}
-                  />
+                    className="min-h-[44px] overflow-hidden rounded-lg border border-[#463b49] bg-surface/40 [&_a]:min-h-[44px] [&_a]:rounded-none [&_a]:hover:bg-surface-2"
+                  >
+                    <RecommendationCard anime={recommendation} />
+                  </div>
                 ))}
               </div>
             )}

@@ -17,12 +17,9 @@ const Section: React.FC<SectionProps> = ({ anime, episodes }) => {
 
   return (
     <section className="mt-10">
-      <div className="mb-3 flex items-center gap-2.5 px-4 sm:px-6 lg:px-8">
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-          Episodes
-        </h2>
-      </div>
+      <h2 className="mb-3 px-4 font-display text-xl font-extrabold tracking-tight text-fg sm:px-6 sm:text-2xl lg:px-8">
+        Episodes
+      </h2>
 
       <div className="edge-fade-x">
         <div

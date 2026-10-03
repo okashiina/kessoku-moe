@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 
 import { SearchIcon } from '@heroicons/react/outline';
 
+import useCartoonSuggest from '@hooks/useCartoonSuggest';
 import useMangaSuggest, { MangaSuggestion } from '@hooks/useMangaSuggest';
 import useSearchSuggest, { Suggestion } from '@hooks/useSearchSuggest';
 import { pickTitle, useTitleLang } from '@utility/titleLang';
@@ -43,10 +44,15 @@ const SearchAutosuggest: React.FC = () => {
     useSearchSuggest(term);
   const { results: mangaResults, loading: mangaLoading } =
     useMangaSuggest(term);
+  const { results: cartoonResults, loading: cartoonLoading } =
+    useCartoonSuggest(term);
   const trimmed = term.trim();
   const showPanel = open && trimmed.length >= 2;
-  const loading = animeLoading || mangaLoading;
-  const hasResults = animeResults.length > 0 || mangaResults.length > 0;
+  const loading = animeLoading || mangaLoading || cartoonLoading;
+  const hasResults =
+    animeResults.length > 0 ||
+    mangaResults.length > 0 ||
+    cartoonResults.length > 0;
 
   // Flat list (anime first, then manga) that the keyboard highlight walks.
   const flat = useMemo<FlatItem[]>(
@@ -59,8 +65,12 @@ const SearchAutosuggest: React.FC = () => {
         key: `manga-${m.id}`,
         href: `/manga/${m.id}`,
       })),
+      ...cartoonResults.map((show) => ({
+        key: `cartoon-${show.id}`,
+        href: `/cartoon/${show.id}`,
+      })),
     ],
-    [animeResults, mangaResults]
+    [animeResults, mangaResults, cartoonResults]
   );
 
   // Reset the keyboard highlight whenever the result set changes.
@@ -111,13 +121,13 @@ const SearchAutosuggest: React.FC = () => {
       ref={wrapRef}
       className="relative ml-auto w-full min-w-0 max-w-xs sm:max-w-sm"
     >
-      <div className="flex min-w-0 items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-3.5 py-2 text-muted backdrop-blur-sm transition duration-200 focus-within:border-accent/70 focus-within:bg-surface-2 focus-within:text-fg">
+      <div className="flex min-h-[44px] min-w-0 items-center gap-2 rounded-full border border-line/70 bg-surface/70 px-3.5 py-2 text-muted backdrop-blur-sm transition duration-200 focus-within:border-accent/70 focus-within:bg-surface-2 focus-within:text-fg">
         <SearchIcon className="h-4 w-4 shrink-0" aria-hidden />
         <input
           type="search"
           role="combobox"
-          className="w-full min-w-0 bg-transparent text-sm text-fg placeholder-faint outline-none"
-          placeholder="Search anime &amp; manga..."
+          className="w-full min-w-0 bg-transparent text-base text-fg placeholder-faint outline-none"
+          placeholder="Search anime, manga &amp; cartoons..."
           value={term}
           onChange={(e) => {
             setTerm(e.target.value);
@@ -125,7 +135,7 @@ const SearchAutosuggest: React.FC = () => {
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          aria-label="Search anime and manga"
+          aria-label="Search anime, manga, and cartoons"
           aria-autocomplete="list"
           aria-expanded={showPanel}
           aria-controls="search-suggest-list"
@@ -139,10 +149,14 @@ const SearchAutosuggest: React.FC = () => {
         <div
           id="search-suggest-list"
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 origin-top animate-fade-in overflow-hidden rounded-2xl border border-line/60 bg-canvas/95 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          className="absolute left-0 right-0 top-full z-50 mt-2 flex origin-top animate-fade-in flex-col overflow-hidden rounded-2xl border border-line/60 bg-canvas/95 shadow-lift ring-1 ring-line/40 backdrop-blur-xl"
+          style={{
+            maxHeight:
+              'max(44px, calc(var(--mobile-visible-height, 100dvh) - 10rem - env(safe-area-inset-top, 0px)))',
+          }}
         >
           {hasResults ? (
-            <div className="max-h-[70vh] overflow-y-auto py-1.5">
+            <div className="max-h-[60vh] min-h-0 flex-1 overflow-y-auto py-1.5">
               {animeResults.length > 0 && (
                 <>
                   <p className="px-3 pb-1 pt-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-faint">
@@ -268,6 +282,62 @@ const SearchAutosuggest: React.FC = () => {
                   </ul>
                 </>
               )}
+              {cartoonResults.length > 0 && (
+                <>
+                  <p className="px-3 pb-1 pt-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-faint">
+                    Cartoons
+                  </p>
+                  <ul>
+                    {cartoonResults.map((show) => {
+                      const key = `cartoon-${show.id}`;
+                      const isActive = key === activeKey;
+                      return (
+                        <li key={key} role="presentation">
+                          <button
+                            id={`search-suggest-${key}`}
+                            type="button"
+                            role="option"
+                            aria-selected={isActive}
+                            onMouseEnter={() =>
+                              setActive(
+                                flat.findIndex((item) => item.key === key)
+                              )
+                            }
+                            onClick={() => go(`/cartoon/${show.id}`)}
+                            className={`flex min-h-[64px] w-full items-center gap-3 px-3 py-2 text-left transition [touch-action:manipulation] ${
+                              isActive ? 'bg-surface-2' : 'hover:bg-surface/60'
+                            }`}
+                          >
+                            <span className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-surface ring-1 ring-line/40">
+                              {show.cover && (
+                                // eslint-disable-next-line @next/next/no-img-element -- Resized, transient search thumbnail.
+                                <img
+                                  src={show.cover}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className={`block truncate text-sm font-medium ${
+                                  isActive ? 'text-accent' : 'text-fg'
+                                }`}
+                              >
+                                {show.name}
+                              </span>
+                              <span className="mt-0.5 block truncate text-xs text-faint">
+                                Cartoon{show.year ? ` · ${show.year}` : ''}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
             </div>
           ) : (
             <p className="px-4 py-4 text-sm text-muted">
@@ -278,7 +348,7 @@ const SearchAutosuggest: React.FC = () => {
           <button
             type="button"
             onClick={submitFull}
-            className="flex w-full items-center justify-between gap-2 border-t border-line/50 bg-surface/40 px-4 py-2.5 text-left text-xs font-medium text-muted transition hover:text-fg"
+            className="flex min-h-[44px] w-full shrink-0 items-center justify-between gap-2 border-t border-line/50 bg-surface/40 px-4 py-2.5 text-left text-xs font-medium text-muted transition hover:text-fg"
           >
             <span>
               See all results for{' '}

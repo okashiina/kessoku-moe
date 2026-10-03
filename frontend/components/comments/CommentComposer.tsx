@@ -44,7 +44,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
         placeholder={placeholder}
         rows={3}
         aria-label={submitLabel === 'Post' ? 'Write a comment' : submitLabel}
-        className="min-h-[4.5rem] w-full resize-y rounded-xl border border-line bg-surface px-3.5 py-3 text-base leading-relaxed text-fg placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+        className="min-h-[4.5rem] w-full resize-y rounded-[5px] border border-[#66516a] bg-surface px-3.5 py-3 text-base leading-relaxed text-fg placeholder:text-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       />
 
       <div className="flex items-center justify-between gap-3">
@@ -62,7 +62,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
               type="button"
               onClick={onCancel}
               style={{ touchAction: 'manipulation' }}
-              className="inline-flex min-h-[44px] items-center rounded-full px-4 text-sm font-semibold text-muted transition-colors hover:text-fg"
+              className="inline-flex min-h-[44px] items-center rounded-[5px] border border-[#66516a] px-4 text-sm font-bold text-[#bfb2c1] transition-colors hover:bg-[#332735] hover:text-[#f4ecef]"
             >
               Cancel
             </button>
@@ -73,7 +73,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             onClick={handleSubmit}
             disabled={!canSubmit}
             style={{ touchAction: 'manipulation' }}
-            className="inline-flex min-h-[44px] items-center rounded-full bg-aurora px-5 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:brightness-100 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100"
+            className="inline-flex min-h-[44px] items-center rounded-[5px] bg-accent px-5 text-sm font-bold text-accent-ink transition duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 motion-reduce:transition-none motion-reduce:active:scale-100"
           >
             {busy ? 'Posting…' : submitLabel}
           </button>

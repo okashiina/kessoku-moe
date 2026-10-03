@@ -425,7 +425,7 @@ const RoomUI: React.FC<{
           onChange={(e) => setNick(e.target.value)}
           maxLength={24}
           placeholder="what should the room call you?"
-          className="w-full rounded-lg border border-line/60 bg-surface/50 px-3 py-2 text-sm text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
+          className="min-h-[44px] w-full rounded-lg border border-line/60 bg-surface/50 px-3 py-2 text-base text-fg placeholder:text-faint focus:border-accent/60 focus:outline-none"
         />
       </label>
 
@@ -482,7 +482,7 @@ const RoomUI: React.FC<{
               if (e.key === 'Enter') onJoin();
             }}
             placeholder="Room code"
-            className="min-w-0 flex-1 rounded-lg border border-line/60 bg-surface/50 px-3 py-2 text-sm font-semibold tracking-[0.18em] text-fg placeholder:font-normal placeholder:tracking-normal placeholder:text-faint focus:border-accent/60 focus:outline-none"
+            className="min-h-[44px] min-w-0 flex-1 rounded-lg border border-line/60 bg-surface/50 px-3 py-2 text-base font-semibold tracking-[0.18em] text-fg placeholder:font-normal placeholder:tracking-normal placeholder:text-faint focus:border-accent/60 focus:outline-none"
           />
           <button
             type="button"

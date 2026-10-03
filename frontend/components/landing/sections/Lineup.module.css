@@ -1,0 +1,200 @@
+.lineup {
+  --pink: var(--brand-pink);
+  --ink: var(--brand-ink);
+  background: #221c26;
+  display: grid;
+  grid-template-columns: 0.75fr 1.6fr;
+  align-items: center;
+  gap: 6%;
+  padding: 90px max(5%, calc((100vw - 1380px) / 2));
+  min-height: 690px;
+}
+
+.lineup h2,
+.lineup h3 {
+  font-family: "Nunito", sans-serif;
+}
+
+.lineup a,
+.lineup button {
+  touch-action: manipulation;
+}
+
+.lineup svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.kicker {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lineupHeading h2 {
+  font-size: clamp(34px, 4vw, 58px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  margin: 24px 0;
+}
+
+.lineupHeading > p:last-child {
+  color: #c9bdc8;
+  line-height: 1.6;
+}
+
+.headliner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 34px;
+}
+
+.headlinerArt {
+  position: relative;
+  aspect-ratio: 2/3;
+  transform: rotate(-3deg);
+  box-shadow: 12px 24px 40px #100b1377;
+}
+
+.ticketLabel {
+  position: absolute;
+  bottom: 20px;
+  left: -12px;
+  background: var(--pink);
+  color: var(--ink);
+  padding: 10px 14px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  z-index: 1;
+}
+
+.headlinerInfo h3 {
+  font-size: clamp(23px, 2.3vw, 36px);
+  font-weight: 800;
+  line-height: 1.15;
+  margin: 20px 0;
+  letter-spacing: -0.035em;
+  overflow-wrap: anywhere;
+}
+
+.meta {
+  color: #c9bdc8;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.textLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.headlinerInfo > .textLink {
+  color: var(--pink);
+  margin-top: 18px;
+}
+
+.textLink:hover {
+  color: var(--pink);
+}
+
+.picker {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.picker button {
+  position: relative;
+  width: 60px;
+  height: 82px;
+  min-width: 44px;
+  min-height: 44px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.picker button[aria-pressed="true"] {
+  opacity: 1;
+  border-color: var(--pink);
+  transform: translateY(-5px);
+}
+
+.picker button:hover,
+.picker button:focus-visible {
+  opacity: 1;
+}
+
+.note {
+  font-size: 12px;
+  color: #b5a8b6;
+  margin-top: 16px;
+  line-height: 1.6;
+}
+
+@media (max-width: 1050px) {
+  .lineup {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .lineupHeading h2 br {
+    display: none;
+  }
+
+  .headliner {
+    max-width: 720px;
+    width: 100%;
+    margin: auto;
+  }
+
+  .headlinerArt {
+    max-height: 440px;
+  }
+}
+
+@media (max-width: 700px) {
+  .kicker {
+    font-size: 10px;
+  }
+
+  .lineup {
+    padding: 60px 6%;
+  }
+
+  .headliner {
+    grid-template-columns: 1fr;
+    gap: 34px;
+  }
+
+  .headlinerArt {
+    width: 76%;
+    margin: auto;
+  }
+
+  .headlinerInfo h3 {
+    font-size: 30px;
+  }
+
+  .headlinerInfo > .kicker {
+    display: none;
+  }
+
+  .picker button {
+    width: 66px;
+    height: 90px;
+  }
+}

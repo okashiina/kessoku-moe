@@ -21,10 +21,10 @@ const Headliner: React.FC<HeadlinerProps> = ({ highlight }) => {
 
   return (
     <Link href={href} passHref>
-      <a className="group flex items-stretch gap-4 overflow-hidden rounded-2xl border border-line/50 bg-surface/40 p-4 transition [touch-action:manipulation] hover:border-accent/50 active:scale-[0.99] active:border-accent/50 motion-reduce:active:scale-100">
+      <a className="group block min-h-[44px] transition [touch-action:manipulation] motion-reduce:transition-none">
         <div
           style={{ aspectRatio: '2 / 3' }}
-          className="relative w-20 shrink-0 overflow-hidden rounded-xl bg-canvas-2 ring-1 ring-line/40 sm:w-24"
+          className="relative w-full max-w-[220px] overflow-hidden rounded-[8px] bg-[#221c26] shadow-[12px_24px_40px_#100b1377] transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none"
         >
           {highlight.cover ? (
             <Image
@@ -35,27 +35,25 @@ const Headliner: React.FC<HeadlinerProps> = ({ highlight }) => {
             />
           ) : (
             <span
-              className="flex h-full w-full items-center justify-center text-2xl text-faint"
+              className="flex h-full w-full items-end bg-[#221c26] p-3"
               aria-hidden
             >
-              ♪
+              <span className="h-1 w-8 rounded-full bg-[#463b49]" />
             </span>
           )}
-        </div>
-        <div className="flex min-w-0 flex-col justify-center">
-          <span className="text-xs font-semibold uppercase tracking-wide text-accent">
+          <span className="absolute bottom-3 left-0 bg-[#f591ba] px-3 py-1.5 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#17141c]">
             {verb}
           </span>
-          <p className="mt-1 font-display text-lg font-bold leading-snug text-fg line-clamp-2 group-hover:text-accent group-active:text-accent">
-            {highlight.title || `Your top ${highlight.kind}`}
-          </p>
-          <p className="mt-1 text-sm text-muted">
-            <span className="font-semibold tabular-nums text-fg">
-              {highlight.count}
-            </span>{' '}
-            {unit} in
-          </p>
         </div>
+        <h3 className="mt-4 font-display text-xl font-extrabold leading-snug tracking-tight text-[#f4ecef] line-clamp-2 group-hover:text-[#f591ba] group-active:text-[#f591ba] sm:text-2xl">
+          {highlight.title || `Your top ${highlight.kind}`}
+        </h3>
+        <p className="mt-2 text-sm text-[#bfb2c1]">
+          <span className="font-bold tabular-nums text-[#f4ecef]">
+            {highlight.count}
+          </span>{' '}
+          {unit} in
+        </p>
       </a>
     </Link>
   );

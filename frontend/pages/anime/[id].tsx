@@ -11,8 +11,6 @@ import {
   MediaType,
 } from '@animeflix/api/aniList';
 import { EpisodesListFragment } from '@animeflix/api/kitsu';
-import { ClockIcon } from '@heroicons/react/outline';
-import { EmojiSadIcon } from '@heroicons/react/solid';
 import { NextSeo } from 'next-seo';
 
 import Banner from '@components/anime/Banner';
@@ -160,13 +158,16 @@ export const getServerSideProps: GetServerSideProps<AnimeProps> = async (
   };
 };
 
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
+const EmptyState: React.FC<{ heading: string; detail: string }> = ({
+  heading,
+  detail,
+}) => (
   <div className="mt-10 px-4 sm:px-6 lg:px-8">
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-line/60 bg-surface/40 px-6 py-12 text-center">
-      <EmojiSadIcon className="h-10 w-10 text-faint" aria-hidden />
-      <p className="font-display text-lg font-semibold text-fg sm:text-xl">
-        {message}
-      </p>
+    <div className="border-t border-line py-10 text-center">
+      <h2 className="font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
+        {heading}
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted">{detail}</p>
     </div>
   </div>
 );
@@ -206,20 +207,13 @@ const premiereLabel = (
 
 const ComingSoon: React.FC<{ label: string | null }> = ({ label }) => (
   <div className="mt-10 px-4 sm:px-6 lg:px-8">
-    <div className="flex flex-col items-center justify-center gap-2.5 rounded-2xl border border-line/60 bg-surface/40 px-6 py-12 text-center">
-      <ClockIcon className="h-10 w-10 text-accent" aria-hidden />
-      <p className="font-display text-lg font-semibold text-fg sm:text-xl">
+    <div className="border-t border-line py-10 text-center">
+      <h2 className="font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
         Not aired yet
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted">
+        {label ? `Premieres ${label}.` : 'This title has not started airing.'}
       </p>
-      {label ? (
-        <p className="text-sm text-muted">
-          Premieres <span className="font-semibold text-fg">{label}</span>
-        </p>
-      ) : (
-        <p className="text-sm text-muted">
-          This title hasn&apos;t started airing.
-        </p>
-      )}
     </div>
   </div>
 );
@@ -251,22 +245,19 @@ const StudioRow: React.FC<{
 
   return (
     <section className="mt-10 px-4 sm:px-6 lg:px-8">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-          Studio
-        </h2>
-      </div>
+      <h2 className="mb-3 font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
+        Studio
+      </h2>
 
       <div className="flex flex-wrap gap-2">
         {ordered.map((edge) => (
           <Link key={edge.node.id} href={`/studio/${edge.node.id}`} passHref>
-            <a className="group inline-flex items-center gap-2 rounded-full border border-line/60 bg-surface px-3.5 py-1.5 text-sm font-medium text-muted transition duration-200 hover:border-accent/60 hover:bg-surface-2 hover:text-fg">
-              <span className="font-display text-fg group-hover:text-accent">
+            <a className="group inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-line bg-surface px-3.5 text-sm font-medium text-muted transition duration-200 hover:text-accent">
+              <span className="text-fg group-hover:text-accent">
                 {edge.node.name}
               </span>
               {edge.isMain && (
-                <span className="rounded-full bg-aurora px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-ink">
+                <span className="rounded-[5px] bg-accent px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-ink">
                   Main
                 </span>
               )}
@@ -291,12 +282,9 @@ const CastSection: React.FC<{
 
   return (
     <section className="mt-10 px-4 sm:px-6 lg:px-8">
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="h-5 w-1 rounded-full bg-aurora" aria-hidden />
-        <h2 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
-          Cast
-        </h2>
-      </div>
+      <h2 className="mb-3 font-display text-xl font-extrabold tracking-tight text-fg sm:text-2xl">
+        Cast
+      </h2>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {edges.map((edge) => {
@@ -309,7 +297,7 @@ const CastSection: React.FC<{
           return (
             <div
               key={character.id}
-              className="flex items-stretch justify-between gap-3 rounded-2xl border border-line/60 bg-surface p-2.5"
+              className="flex min-h-[44px] items-stretch justify-between gap-3 rounded-lg border border-line bg-surface p-2.5"
             >
               {/* Character side — opens the character's page (bio + where they
                   appear), mirroring the VA link on the right. */}
@@ -380,7 +368,7 @@ const Anime = ({
   return (
     <>
       <NextSeo
-        title={`${anime.title.romaji || anime.title.english} | Animeflix`}
+        title={`${anime.title.romaji || anime.title.english} | kessoku moe`}
         description={anime.description}
         openGraph={{
           images: [
@@ -434,7 +422,10 @@ const Anime = ({
               )}
             />
           ) : (
-            <EmptyState message="No episodes found" />
+            <EmptyState
+              heading="No episodes found"
+              detail="Episode data is not available for this title yet."
+            />
           ))}
 
         <RelatedSection items={related} />
@@ -446,10 +437,13 @@ const Anime = ({
         {recommended.length > 0 ? (
           <Section animeList={recommended} title="Recommended" />
         ) : (
-          <EmptyState message="No recommendations found" />
+          <EmptyState
+            heading="No recommendations found"
+            detail="AniList did not return any similar titles for this show."
+          />
         )}
 
-        <div className="px-4 sm:px-6 lg:px-8">
+        <div className="mt-10 border-t border-line px-4 pt-10 sm:px-6 lg:px-8">
           <CommentsSection
             anilistId={anime.id}
             targetType="anime"

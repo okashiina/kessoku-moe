@@ -1,14 +1,28 @@
+import { useEffect, useRef, useState } from 'react';
+
 import { GetServerSideProps, InferGetServerSidePropsType } from 'next';
+import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  AdjustmentsIcon,
+  XIcon,
+} from '@heroicons/react/outline';
 import { NextSeo } from 'next-seo';
 
 import Card from '@components/anime/Card';
 import AnimeVibeSearch from '@components/anime/VibeSearch';
+import WatchlistButton from '@components/anime/WatchlistButton';
 import Header from '@components/Header';
 import progressBar from '@components/Progress';
 import { ANILIST_ENDPOINT, requestWithRetry } from '@utility/anilist';
 import { cached } from '@utility/ssrCache';
+import { useTitle } from '@utility/titleLang';
+
+import styles from '../styles/Browse.module.css';
 
 // ---------------------------------------------------------------------------
 // AniList GraphQL (fetched directly in getServerSideProps — no auth needed).
@@ -27,6 +41,7 @@ interface AniListMedia {
   duration: number | null;
   meanScore: number | null;
   genres: string[] | null;
+  bannerImage: string | null;
   seasonYear: number | null;
 }
 
@@ -77,6 +92,7 @@ const BROWSE_QUERY = /* GraphQL */ `
         duration
         meanScore
         genres
+        bannerImage
         seasonYear
       }
     }
@@ -141,6 +157,7 @@ interface BrowseProps {
   media: AniListMedia[];
   hasNextPage: boolean;
   currentPage: number;
+  loadError: boolean;
 }
 
 export const getServerSideProps: GetServerSideProps<BrowseProps> = async (
@@ -171,6 +188,7 @@ export const getServerSideProps: GetServerSideProps<BrowseProps> = async (
   let media: AniListMedia[] = [];
   let hasNextPage = false;
   let currentPage = page;
+  let loadError = false;
 
   try {
     // graphql-request (not global fetch) so this works on the Node 16 runtime;
@@ -190,7 +208,7 @@ export const getServerSideProps: GetServerSideProps<BrowseProps> = async (
       currentPage = json.Page.pageInfo?.currentPage ?? page;
     }
   } catch {
-    // Swallow network/parse errors — render the friendly empty state instead.
+    loadError = true;
   }
 
   return {
@@ -198,6 +216,7 @@ export const getServerSideProps: GetServerSideProps<BrowseProps> = async (
       media,
       hasNextPage,
       currentPage,
+      loadError,
     },
   };
 };
@@ -258,10 +277,30 @@ const Browse = ({
   media,
   hasNextPage,
   currentPage,
+  loadError,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) => {
   const router = useRouter();
 
-  progressBar.finish();
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  const featuredTitle = useTitle(media[0]?.title);
+  useEffect(() => {
+    progressBar.finish();
+    const start = () => setLoading(true);
+    const finish = () => {
+      setLoading(false);
+      progressBar.finish();
+    };
+    router.events.on('routeChangeStart', start);
+    router.events.on('routeChangeComplete', finish);
+    router.events.on('routeChangeError', finish);
+    return () => {
+      router.events.off('routeChangeStart', start);
+      router.events.off('routeChangeComplete', finish);
+      router.events.off('routeChangeError', finish);
+    };
+  }, [router.events]);
 
   const q = router.query;
   const activeGenre = firstParam(q.genre);
@@ -269,222 +308,315 @@ const Browse = ({
   const activeSeason = firstParam(q.season).toUpperCase();
   const activeFormat = firstParam(q.format).toUpperCase();
   const activeStatus = firstParam(q.status).toUpperCase();
-  const activeSort = firstParam(q.sort).toUpperCase() || 'POPULARITY_DESC';
+  const requestedSort = firstParam(q.sort).toUpperCase();
+  const activeSort = SORTS.some((sort) => sort.value === requestedSort)
+    ? requestedSort
+    : 'POPULARITY_DESC';
 
-  // Push a new query, resetting to page 1 whenever a filter changes.
   const setFilter = (key: string, value: string) => {
     const next: Record<string, string> = {};
-
-    // Carry over existing filters (except the one being changed and page).
     Object.entries(q).forEach(([k, v]) => {
-      if (k === 'page' || k === key) return;
-      const str = firstParam(v as string | string[] | undefined);
-      if (str) next[k] = str;
+      if (k !== 'page' && k !== key && firstParam(v)) next[k] = firstParam(v);
     });
-
     if (value) next[key] = value;
-
     router.push({ pathname: '/browse', query: next }, undefined, {
-      scroll: true,
+      scroll: false,
     });
   };
 
-  const goToPage = (target: number) => {
-    const next: Record<string, string> = {};
-    Object.entries(q).forEach(([k, v]) => {
-      if (k === 'page') return;
-      const str = firstParam(v as string | string[] | undefined);
-      if (str) next[k] = str;
-    });
-    if (target > 1) next.page = String(target);
-    router.push({ pathname: '/browse', query: next }, undefined, {
-      scroll: true,
-    });
+  const goToPage = async (target: number) => {
+    const next = { ...q, page: String(target) };
+    const navigated = await router.push(
+      { pathname: '/browse', query: next },
+      undefined,
+      { scroll: false }
+    );
+    if (navigated) {
+      resultsRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+      resultsRef.current?.focus({ preventScroll: true });
+    }
   };
 
+  const toggle = (key: string, value: string, current: string) =>
+    setFilter(key, current === value ? '' : value);
   const hasActiveFilters = Boolean(
     activeGenre ||
       activeYear ||
       activeSeason ||
       activeFormat ||
       activeStatus ||
-      (activeSort && activeSort !== 'POPULARITY_DESC')
+      activeSort !== 'POPULARITY_DESC'
   );
-
-  // Toggle a single-select chip: clicking the active value clears it.
-  const toggle = (key: string, value: string, current: string) =>
-    setFilter(key, current === value ? '' : value);
+  const activeEntries = [
+    ['genre', activeGenre],
+    ['year', activeYear],
+    ['season', activeSeason],
+    ['format', activeFormat],
+    ['status', activeStatus],
+  ].filter(([, value]) => Boolean(value));
+  const reset = () => router.push('/browse', undefined, { scroll: false });
+  const feature = media[0];
+  const sortLabel =
+    SORTS.find((sort) => sort.value === activeSort)?.label || 'Popularity';
+  const catalogStatus = loadError
+    ? 'Catalog temporarily unavailable'
+    : `${media.length} titles on this page · ${sortLabel}`;
+  const sortNames: Record<string, string> = {
+    Popularity: 'Popular',
+    Score: 'Top rated',
+  };
 
   return (
-    <>
+    <div className={styles.page}>
       <NextSeo title="Browse anime | kessoku moe" />
-
       <Header />
-
-      <main className="mx-auto w-full max-w-screen-2xl px-4 pb-20 pt-6 sm:px-6 lg:px-8">
-        {/* Heading with accent tick */}
-        <div className="mb-6 flex items-center gap-2.5">
-          <span className="h-7 w-1 rounded-full bg-aurora" aria-hidden />
-          <h1 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-            Browse
-          </h1>
+      <main className={styles.main}>
+        <div className={styles.heading}>
+          <div>
+            <h1>Find your next favorite.</h1>
+            <p>A new world, a familiar comfort, or a little chaos.</p>
+          </div>
+          <Link href="/schedule">
+            <a>
+              See what&apos;s airing <ArrowRightIcon aria-hidden />
+            </a>
+          </Link>
         </div>
-
-        {/* Filter bar */}
-        <section
-          aria-label="Filters"
-          className="mb-8 space-y-5 rounded-2xl border border-line/50 bg-surface/40 p-4 backdrop-blur-sm sm:p-5"
-        >
-          <AnimeVibeSearch />
-
-          {/* Genre chips */}
-          <fieldset>
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">
-              Genre
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {GENRES.map((genre) => {
-                const active = activeGenre === genre;
-                return (
-                  <button
-                    key={genre}
-                    type="button"
-                    onClick={() => toggle('genre', genre, activeGenre)}
-                    aria-pressed={active}
-                    className={`rounded-full border px-3 py-1 text-xs font-medium backdrop-blur-sm transition duration-200 sm:text-sm ${
-                      active
-                        ? 'border-accent bg-accent text-accent-ink shadow-glow'
-                        : 'border-line/70 bg-surface/60 text-muted hover:border-accent/60 hover:bg-surface-2 hover:text-fg'
-                    }`}
-                  >
-                    {genre}
-                  </button>
+        <div className={styles.toolbar}>
+          <div className={styles.sorts} aria-label="Sort anime">
+            {SORTS.map((sort) => (
+              <button
+                key={sort.value}
+                type="button"
+                disabled={loading}
+                aria-pressed={activeSort === sort.value}
+                onClick={() => setFilter('sort', sort.value)}
+              >
+                {sortNames[sort.label] || sort.label}
+              </button>
+            ))}
+          </div>
+          <button
+            className={styles.filterToggle}
+            type="button"
+            aria-expanded={filtersOpen}
+            aria-controls="browse-filters"
+            onClick={() => {
+              setFiltersOpen(!filtersOpen);
+              if (!filtersOpen)
+                requestAnimationFrame(() =>
+                  document
+                    .getElementById('browse-filters')
+                    ?.scrollIntoView({ block: 'start', behavior: 'auto' })
                 );
-              })}
+            }}
+          >
+            <AdjustmentsIcon aria-hidden />
+            Filters {activeEntries.length ? `(${activeEntries.length})` : ''}
+          </button>
+        </div>
+        <section
+          id="browse-filters"
+          className={styles.filters}
+          hidden={!filtersOpen}
+          aria-label="Filters"
+        >
+          <fieldset disabled={loading}>
+            <legend>Pick a genre</legend>
+            <div className={styles.genres}>
+              {GENRES.map((genre) => (
+                <button
+                  key={genre}
+                  type="button"
+                  onClick={() => toggle('genre', genre, activeGenre)}
+                  aria-pressed={activeGenre === genre}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+            <div className={styles.selects}>
+              <SelectFilter
+                label="Year"
+                value={activeYear}
+                onChange={(v) => setFilter('year', v)}
+                options={YEARS.map((year) => ({
+                  value: String(year),
+                  label: String(year),
+                }))}
+                placeholder="Any year"
+              />
+              <SelectFilter
+                label="Season"
+                value={activeSeason}
+                onChange={(v) => setFilter('season', v)}
+                options={SEASONS.map((season) => ({
+                  value: season,
+                  label: season.charAt(0) + season.slice(1).toLowerCase(),
+                }))}
+                placeholder="Any season"
+              />
+              <SelectFilter
+                label="Format"
+                value={activeFormat}
+                onChange={(v) => setFilter('format', v)}
+                options={FORMATS.map((format) => ({
+                  value: format,
+                  label: format,
+                }))}
+                placeholder="Any format"
+              />
+              <SelectFilter
+                label="Status"
+                value={activeStatus}
+                onChange={(v) => setFilter('status', v)}
+                options={STATUSES}
+                placeholder="Any status"
+              />
             </div>
           </fieldset>
-
-          {/* Selects row */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <SelectFilter
-              label="Sort"
-              value={activeSort}
-              onChange={(v) => setFilter('sort', v)}
-              options={SORTS}
-              allowEmpty={false}
-            />
-            <SelectFilter
-              label="Year"
-              value={activeYear}
-              onChange={(v) => setFilter('year', v)}
-              options={YEARS.map((y) => ({
-                value: String(y),
-                label: String(y),
-              }))}
-              placeholder="Any year"
-            />
-            <SelectFilter
-              label="Season"
-              value={activeSeason}
-              onChange={(v) => setFilter('season', v)}
-              options={SEASONS.map((s) => ({
-                value: s,
-                label: s.charAt(0) + s.slice(1).toLowerCase(),
-              }))}
-              placeholder="Any season"
-            />
-            <SelectFilter
-              label="Format"
-              value={activeFormat}
-              onChange={(v) => setFilter('format', v)}
-              options={FORMATS.map((f) => ({ value: f, label: f }))}
-              placeholder="Any format"
-            />
-            <SelectFilter
-              label="Status"
-              value={activeStatus}
-              onChange={(v) => setFilter('status', v)}
-              options={STATUSES}
-              placeholder="Any status"
-            />
+          <details className={styles.vibe}>
+            <summary>Have a mood in mind? Try vibe search</summary>
+            <AnimeVibeSearch />
+          </details>
+        </section>
+        <div ref={resultsRef} tabIndex={-1} className={styles.resultHeader}>
+          <div>
+            <h2>{activeGenre || 'The anime lineup'}</h2>
+            <p role="status">
+              {loading ? 'Finding your lineup…' : catalogStatus}
+            </p>
           </div>
-
           {hasActiveFilters && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() =>
-                  router.push({ pathname: '/browse' }, undefined, {
-                    scroll: true,
-                  })
-                }
-                className="rounded-full border border-line/70 bg-surface/60 px-4 py-1.5 text-xs font-medium text-muted transition duration-200 hover:border-accent/60 hover:text-fg sm:text-sm"
-              >
-                Clear filters
+            <div className={styles.activeFilters}>
+              {activeEntries.map(([key, value]) => (
+                <button
+                  key={key}
+                  type="button"
+                  disabled={loading}
+                  onClick={() => setFilter(key, '')}
+                  aria-label={`Remove ${key} filter: ${value}`}
+                >
+                  {value}
+                  <XIcon aria-hidden />
+                </button>
+              ))}
+              <button type="button" disabled={loading} onClick={reset}>
+                Clear all
               </button>
             </div>
           )}
-        </section>
-
-        {/* Results */}
-        {media.length > 0 ? (
-          <>
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] justify-items-center gap-x-5 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">
-              {media.map((anime) => (
-                <Card key={anime.id} anime={anime as never} />
-              ))}
+        </div>
+        <div aria-busy={loading} className={loading ? styles.busy : undefined}>
+          {feature ? (
+            <>
+              <div className={styles.grid}>
+                <article className={styles.feature}>
+                  <div className={styles.featureArt}>
+                    <Link href={`/anime/${feature.id}`}>
+                      <a aria-label={`View ${featuredTitle}`}>
+                        {(feature.bannerImage ||
+                          feature.coverImage.large ||
+                          feature.coverImage.medium) && (
+                          <Image
+                            src={
+                              feature.bannerImage ||
+                              feature.coverImage.large ||
+                              feature.coverImage.medium ||
+                              ''
+                            }
+                            alt={`Artwork for ${featuredTitle}`}
+                            layout="fill"
+                            objectFit="cover"
+                            sizes="(max-width: 639px) 90vw, (max-width: 1023px) 60vw, 40vw"
+                            priority
+                          />
+                        )}
+                      </a>
+                    </Link>
+                    <span>
+                      {activeGenre
+                        ? `${activeGenre.toUpperCase()} SPOTLIGHT`
+                        : 'FIRST ON THE LINEUP'}
+                    </span>
+                    <div className={styles.featureSave}>
+                      <WatchlistButton
+                        id={feature.id}
+                        className="!h-11 !w-11"
+                      />
+                    </div>
+                  </div>
+                  <h3>
+                    <Link href={`/anime/${feature.id}`}>
+                      <a>{featuredTitle}</a>
+                    </Link>
+                  </h3>
+                  <p>
+                    {[
+                      feature.format,
+                      feature.seasonYear,
+                      feature.meanScore ? `${feature.meanScore}% score` : null,
+                      ...(feature.genres || []).slice(0, 2),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                </article>
+                {media.slice(1).map((anime) => (
+                  <Card key={anime.id} anime={anime as never} fluid />
+                ))}
+              </div>
+              <nav className={styles.pagination} aria-label="Pagination">
+                <button
+                  type="button"
+                  disabled={loading || currentPage <= 1}
+                  onClick={() => goToPage(currentPage - 1)}
+                >
+                  <ArrowLeftIcon aria-hidden />
+                  Previous
+                </button>
+                <span>Page {currentPage}</span>
+                <button
+                  type="button"
+                  disabled={loading || !hasNextPage}
+                  onClick={() => goToPage(currentPage + 1)}
+                >
+                  Next page
+                  <ArrowRightIcon aria-hidden />
+                </button>
+              </nav>
+            </>
+          ) : (
+            <div className={styles.empty}>
+              <h2>
+                {loadError
+                  ? 'The lineup is taking a break.'
+                  : 'No matches this time.'}
+              </h2>
+              <p>
+                {loadError
+                  ? 'We could not reach the anime catalog. Your filters are still here. Give it another try.'
+                  : 'Try another genre or remove a filter to give more stories a chance.'}
+              </p>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={
+                  loadError
+                    ? () =>
+                        router.replace(router.asPath, undefined, {
+                          scroll: false,
+                        })
+                    : reset
+                }
+              >
+                {loadError ? 'Try again' : 'Reset filters'}
+              </button>
             </div>
-
-            {/* Pagination */}
-            <nav
-              aria-label="Pagination"
-              className="mt-10 flex items-center justify-center gap-3"
-            >
-              <button
-                type="button"
-                disabled={currentPage <= 1}
-                onClick={() => goToPage(currentPage - 1)}
-                className="rounded-full border border-line/70 bg-surface/60 px-5 py-2 text-sm font-semibold text-fg transition duration-200 hover:border-accent/60 hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line/70 disabled:hover:bg-surface/60"
-              >
-                Previous
-              </button>
-              <span className="min-w-[5rem] text-center text-sm font-medium text-muted">
-                Page {currentPage}
-              </span>
-              <button
-                type="button"
-                disabled={!hasNextPage}
-                onClick={() => goToPage(currentPage + 1)}
-                className="rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none disabled:hover:brightness-100"
-              >
-                Next
-              </button>
-            </nav>
-          </>
-        ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-line/50 bg-surface/30 px-6 py-20 text-center">
-            <p className="font-display text-lg font-bold text-fg">
-              No anime found
-            </p>
-            <p className="mt-2 max-w-sm text-sm text-muted">
-              Nothing matched these filters. Try widening your search — clear a
-              filter or pick a different season.
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                router.push({ pathname: '/browse' }, undefined, {
-                  scroll: true,
-                })
-              }
-              className="mt-6 rounded-full bg-aurora px-5 py-2 text-sm font-semibold text-accent-ink shadow-glow transition duration-200 hover:brightness-110"
-            >
-              Reset filters
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </main>
-    </>
+    </div>
   );
 };
 

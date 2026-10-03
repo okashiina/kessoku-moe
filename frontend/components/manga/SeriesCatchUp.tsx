@@ -95,7 +95,7 @@ const SeriesCatchUp: React.FC<{ anilistId: number; title: string }> = ({
         onClick={run}
         disabled={phase === 'loading'}
         aria-label={label}
-        className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line/60 bg-surface/60 px-4 text-sm font-semibold text-muted transition [touch-action:manipulation] hover:border-accent/60 hover:text-fg active:scale-95 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
+        className="inline-flex min-h-[44px] items-center gap-2 rounded-[5px] border border-[#66516a] bg-surface/60 px-4 text-sm font-bold text-muted transition [touch-action:manipulation] hover:text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas active:scale-95 disabled:opacity-50 motion-reduce:transition-none motion-reduce:active:scale-100"
       >
         <SparklesIcon
           className={`h-4 w-4 text-accent ${
@@ -121,17 +121,12 @@ const SeriesCatchUp: React.FC<{ anilistId: number; title: string }> = ({
       {phase === 'done' && recap && (
         <div
           aria-live="polite"
-          className="mt-3 rounded-2xl border border-line/50 bg-surface/40 px-4 py-3.5 shadow-lift"
+          className="mt-3 rounded-lg border border-[#463b49] bg-surface/40 px-4 py-3.5"
         >
-          <div className="mb-2 flex items-center gap-2">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-aurora text-accent-ink shadow-glow">
-              <SparklesIcon className="h-4 w-4" aria-hidden="true" />
-            </span>
-            <p className="min-w-0 truncate font-display text-sm font-bold text-fg">
-              {title}: story so far
-            </p>
-          </div>
-          <p className="whitespace-pre-line text-sm leading-relaxed text-muted">
+          <h3 className="font-display text-sm font-extrabold tracking-tight text-fg">
+            {title}: story so far
+          </h3>
+          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted">
             {recap}
           </p>
         </div>

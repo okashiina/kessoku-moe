@@ -1,5 +1,36 @@
 # DESIGN.md — "Midnight Aurora"
 
+## September 2026: Kessoku setlist redesign
+
+The landing and anime browse now use a gig-poster editorial direction chosen with
+the owner: dark, cute, a little rock; preserve the existing logo, pink and Bocchi
+identity. Landing is expressive; browsing stays quiet and quick. This section
+supersedes the older page-specific patterns below for `/` and `/browse`.
+
+- Landing: Nunito 800 display type, Comfortaa wordmark, ink `#17141c`, pale pink
+  `#f591ba`, warm text `#f4ecef`. Tilted real anime covers, native scroll parallax,
+  interactive headliner selection, feature spreads, a pink closing plate.
+- Browse: sticky sort/filter controls, progressively disclosed genre/year/season/
+  format/status filters, a double-width opening artwork and a fluid poster grid.
+  Two columns on phones, three on tablets, five on desktop. Query parameters
+  retain filters; changing sort preserves scroll; pagination focuses the results.
+- Shared cards: 8px corners, separate 44px bookmark buttons outside title links.
+  Shared rails have 44px previous/next controls and never steal focus on hover.
+- Header: compact menu below 1024px, 44px logo target, safe-area top padding.
+  Search keeps 16px input text at every width to avoid mobile focus zoom.
+- Motion uses the existing Framer Motion dependency. Reduced motion removes hero
+  parallax; native rail scrolling remains usable. No generated video or new runtime.
+- Nunito and Comfortaa are now served locally from `public/fonts`, with the
+  original OFL licenses and all supplied language subsets. Font declarations live
+  in `styles/fonts.css`; the Latin subsets are preloaded in `_document.tsx`.
+  This fixes missing Google Fonts after Next.js production font optimization.
+
+The October 2026 release adds a cartoon promo and poster preview to the landing,
+Home-style cartoon discovery, and a persistent mobile dock. Home and Cartoon share
+the featured banner. Catalog rails use native scrolling with 44px arrow controls.
+Landing reduced-motion preferences hydrate safely; Nunito and Comfortaa remain
+local assets. Release details are recorded in STREAMING-ROADMAP.md.
+
 The design system for animeflix. Premium dark, cinematic, one electric accent.
 Tokens live in [frontend/styles/globals.css](../frontend/styles/globals.css) (CSS
 variables) and are mapped to Tailwind in

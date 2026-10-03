@@ -48,10 +48,10 @@ const PageButton: React.FC<PageButtonProps> = ({
 }) => (
   <button
     onClick={onClick}
-    className={`rounded-lg border px-3 py-1 text-sm tabular-nums transition duration-150 active:scale-95 ${
+    className={`inline-flex min-h-[44px] items-center rounded-[5px] border px-3 py-2.5 text-sm font-bold tabular-nums transition duration-150 active:scale-95 motion-reduce:active:scale-100 ${
       active
-        ? 'border-transparent bg-aurora font-semibold text-accent-ink'
-        : 'border-line/70 bg-surface text-muted hover:bg-surface-2 hover:text-fg'
+        ? 'border-transparent bg-accent text-accent-ink'
+        : 'border-[#463b49] text-[#bfb2c1] hover:bg-[#332735] hover:text-[#f4ecef]'
     }`}
   >
     {start}-{end}
@@ -68,7 +68,7 @@ const GoToEpisode: React.FC = () => {
       <input
         ref={inputRef}
         inputMode="numeric"
-        className="w-24 rounded-lg border border-line/70 bg-surface px-3 py-2 text-base text-fg placeholder-faint outline-none transition focus:border-accent/70"
+        className="min-h-[48px] w-24 rounded-[5px] border border-[#66516a] bg-surface px-3 text-base text-fg placeholder-faint outline-none transition focus:border-accent/70"
         placeholder="Ep no."
         onKeyDown={(e) => {
           if (e.key !== 'Enter') return;
@@ -348,14 +348,14 @@ const Episode: React.FC<EpisodeProps> = ({ title, altTitle }) => {
                   WebkitUserSelect: 'none',
                   touchAction: 'manipulation',
                 }}
-                className={`relative flex select-none items-center rounded-md text-sm tabular-nums transition duration-150 active:scale-95 ${
+                className={`relative flex select-none items-center rounded-[5px] text-sm font-bold tabular-nums transition duration-150 active:scale-95 motion-reduce:active:scale-100 ${
                   hasRatings
-                    ? 'h-14 flex-col justify-center gap-0.5'
-                    : 'h-11 justify-center'
+                    ? 'min-h-[56px] flex-col justify-center gap-0.5'
+                    : 'min-h-[44px] justify-center'
                 } ${
                   isCurrent
-                    ? 'bg-aurora font-semibold text-accent-ink shadow-glow'
-                    : `bg-surface text-muted hover:bg-surface-2 hover:text-fg ${
+                    ? 'bg-accent text-accent-ink'
+                    : `border border-[#463b49] bg-surface text-[#bfb2c1] hover:bg-[#332735] hover:text-[#f4ecef] ${
                         isWatchedEp ? 'opacity-60 ring-1 ring-accent/40' : ''
                       }`
                 }`}
