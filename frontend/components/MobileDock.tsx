@@ -26,6 +26,7 @@ const MobileDock: React.FC = () => {
   const { pathname } = router;
   const [keyboardInset, setKeyboardInset] = useState(0);
   const visible =
+    pathname !== '/' &&
     !pathname.startsWith('/watch/') &&
     !pathname.startsWith('/read/') &&
     pathname !== '/cartoon/[id]';

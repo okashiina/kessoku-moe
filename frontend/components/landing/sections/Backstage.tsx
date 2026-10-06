@@ -38,13 +38,13 @@ const Backstage = () => (
   <section id="backstage" className={styles.backstage}>
     <div className={styles.sectionIntro}>
       <h2>
-        A little more
+        One stage.
         <br />
-        than pressing play.
+        So many stories.
       </h2>
       <p>
-        From the opening song to the chapter you fell asleep on, keep the good
-        parts close.
+        From the opening song to the chapter you fell asleep on, your next
+        favorite is closer than you think.
       </p>
     </div>
     <div className={styles.featureIndex}>

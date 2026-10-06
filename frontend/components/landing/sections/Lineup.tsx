@@ -36,38 +36,51 @@ const Headliner = ({ items }: { items: MediaInfo[] }) => {
       alt={`Cover for ${title}`}
       layout="fill"
       objectFit="cover"
-      sizes="(max-width: 700px) 75vw, 360px"
+      sizes="(max-width: 700px) 40vw, 360px"
     />
   );
 
   return (
     <div className={styles.headliner}>
-      <div className={styles.headlinerArt}>
-        {reduced ? (
-          coverImage
-        ) : (
-          <motion.div
-            key={selected}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.25 }}
-            style={{
-              position: 'absolute',
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-            }}
-          >
-            {coverImage}
-          </motion.div>
-        )}
-        <span className={styles.ticketLabel}>YOUR NEXT HEADLINER</span>
-      </div>
+      <Link href={`/anime/${anime.id}`}>
+        <a className={styles.headlinerArt} aria-label={`Watch ${title}`}>
+          {reduced ? (
+            coverImage
+          ) : (
+            <motion.div
+              key={selected}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+              }}
+            >
+              {coverImage}
+            </motion.div>
+          )}
+          <span className={styles.ticketLabel}>YOUR NEXT HEADLINER</span>
+        </a>
+      </Link>
       <div className={styles.headlinerInfo}>
         <p className={styles.kicker}>ON THE LINEUP</p>
         <div aria-live="polite" aria-atomic="true">
-          <h3>{title}</h3>
+          <h3 id="headliner-title">
+            {title.split('×').map((part, index) => (
+              <span key={`${index}-${part}`}>
+                {index > 0 && (
+                  <>
+                    <wbr />×<wbr />
+                  </>
+                )}
+                {part}
+              </span>
+            ))}
+          </h3>
           <p className={styles.meta}>
             {[
               anime.format,

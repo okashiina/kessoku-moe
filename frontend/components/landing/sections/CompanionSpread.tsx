@@ -27,13 +27,13 @@ export default function CompanionSpread({ companion }: CompanionSpreadProps) {
     <div className={styles.featureCopy}>
       <p className={styles.kicker}>BETTER WITH A SEAT-MATE</p>
       <h2>
-        Someone to talk
+        Meet your
         <br />
-        through the episode.
+        seat-mate.
       </h2>
       <p>
-        Ask your watch companion about what you&apos;ve seen. Choose its tone,
-        from thoughtful to completely off the rails.
+        Ask about what you&apos;ve seen. Pick a tone, from thoughtful to
+        completely off the rails.
       </p>
       <Link href="/home">
         <a className={styles.textLink}>
@@ -63,8 +63,12 @@ export default function CompanionSpread({ companion }: CompanionSpreadProps) {
         </>
       ) : (
         <>
-          <motion.div style={{ y: copyY }}>{copy}</motion.div>
-          <motion.div style={{ y: demoY }}>{demo}</motion.div>
+          <motion.div className={styles.motionPanel} style={{ y: copyY }}>
+            {copy}
+          </motion.div>
+          <motion.div className={styles.motionPanel} style={{ y: demoY }}>
+            {demo}
+          </motion.div>
         </>
       )}
     </section>

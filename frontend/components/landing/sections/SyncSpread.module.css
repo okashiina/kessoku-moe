@@ -15,7 +15,7 @@
   max-width: 1400px;
   margin: auto;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 9%;
   padding: 110px 5%;
@@ -28,6 +28,14 @@
   letter-spacing: -0.05em;
 }
 
+.featureCopy {
+  order: 2;
+  min-width: 0;
+}
+.demo {
+  order: 1;
+}
+
 .featureCopy > p:not(.kicker) {
   color: #c9bdc8;
   margin: 24px 0 14px;
@@ -37,9 +45,7 @@
 }
 
 .demo {
-  background: #28212d;
-  padding: 32px 22px;
-  border-radius: 5px;
+  min-width: 0;
   transform: rotate(2deg);
 }
 
@@ -49,12 +55,12 @@
 
 .demoLabel {
   display: block;
-  text-align: center;
+  text-align: left;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.12em;
   color: #c9bdc8;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .demo button {
@@ -62,7 +68,7 @@
   min-width: 44px;
 }
 
-.demo [class*='text-faint'] {
+.demo [class*="text-faint"] {
   color: #b5a8b6;
 }
 
@@ -76,22 +82,34 @@
 }
 
 .syncSpread .demo > div {
-  transform: rotate(2deg);
+  transform: none;
 }
 
 @media (max-width: 700px) {
   .featureSpread {
     grid-template-columns: 1fr;
-    padding: 65px 6%;
-    gap: 36px;
+    padding: 40px 24px 48px;
+    gap: 24px;
   }
 
   .syncSpread .demo {
     order: 2;
   }
 
+  .featureCopy {
+    order: 1;
+  }
+
   .demo {
-    padding: 26px 12px;
+    transform: none !important;
+  }
+
+  .featureCopy h2 {
+    font-size: clamp(32px, 9vw, 44px);
+  }
+  .featureCopy > p:not(.kicker) {
+    margin: 16px 0 8px;
+    font-size: 15px;
   }
 }
 

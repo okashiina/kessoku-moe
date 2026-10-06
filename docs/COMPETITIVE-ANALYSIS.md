@@ -191,3 +191,12 @@ change the document height. The change keeps the current layout intact and adds 
 dependency.
 Reader navigation does not start the app-wide route loader, keeping the pink line
 an unambiguous scroll-progress indicator during chapter changes.
+
+## Mobile landing usability (2026-10-06)
+
+The landing now presents its headline, real cover fan, and primary watch action
+within the tested phone viewport instead of stretching a desktop sticky scene
+across several screens. Shorter feature sections, native catalog scrolling,
+44px controls, and consistent WebKit font weights keep the first visit readable
+and usable. The gig-poster identity remains distinct from generic streaming
+templates. Validation: [landing-mobile-redesign.md](landing-mobile-redesign.md).

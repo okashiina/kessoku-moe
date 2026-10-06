@@ -16,34 +16,8 @@ export default function SyncSpread({ sync }: SyncSpreadProps) {
   const reduced = useReducedMotion();
 
   return (
-    <section
-      className={`${styles.featureSpread} ${styles.syncSpread}`}
-      data-sc-act="flow"
-    >
-      <motion.div
-        className={styles.demo}
-        initial={reduced ? false : { clipPath: 'inset(0 100% 0 0)' }}
-        whileInView={{ clipPath: 'inset(0 0% 0 0)' }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{
-          duration: reduced ? 0 : 0.6,
-          ease: EASE,
-        }}
-      >
-        <span className={styles.demoLabel}>ANILIST SYNC · EXAMPLE</span>
-        {sync}
-      </motion.div>
-      <motion.div
-        className={styles.featureCopy}
-        initial={reduced ? false : { opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{
-          duration: reduced ? 0 : 0.55,
-          ease: EASE,
-          delay: reduced ? 0 : 0.15,
-        }}
-      >
+    <section className={`${styles.featureSpread} ${styles.syncSpread}`}>
+      <div className={styles.featureCopy}>
         <h2>
           Your list.
           <br />
@@ -58,6 +32,16 @@ export default function SyncSpread({ sync }: SyncSpreadProps) {
             Open My List <ArrowRightIcon aria-hidden />
           </a>
         </Link>
+      </div>
+      <motion.div
+        className={styles.demo}
+        initial={reduced ? false : { opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.2 }}
+        transition={{ duration: reduced ? 0 : 0.35, ease: EASE }}
+      >
+        <span className={styles.demoLabel}>ANILIST SYNC · EXAMPLE</span>
+        {sync}
       </motion.div>
     </section>
   );

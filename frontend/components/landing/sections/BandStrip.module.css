@@ -3,7 +3,7 @@
   --ink: var(--brand-ink, #17141c);
   background: var(--pink);
   color: var(--ink);
-  font-family: "Nunito", sans-serif;
+  font-family: "Nunito Landing", "Nunito", sans-serif;
   font-size: clamp(15px, 2vw, 25px);
   font-weight: 800;
 }
@@ -47,7 +47,7 @@
   }
 
   .bandStripScroll {
-    padding: 20px 0;
+    padding: 16px 0;
   }
 
   .row {

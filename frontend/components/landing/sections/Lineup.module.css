@@ -12,7 +12,7 @@
 
 .lineup h2,
 .lineup h3 {
-  font-family: "Nunito", sans-serif;
+  font-family: "Nunito Landing", "Nunito", sans-serif;
 }
 
 .lineup a,
@@ -50,12 +50,13 @@
 
 .headliner {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 34px;
 }
 
 .headlinerArt {
+  display: block;
   position: relative;
   aspect-ratio: 2/3;
   transform: rotate(-3deg);
@@ -84,6 +85,10 @@
   overflow-wrap: anywhere;
 }
 
+.headlinerInfo {
+  min-width: 0;
+}
+
 .meta {
   color: #c9bdc8;
   font-size: 13px;
@@ -110,6 +115,7 @@
 
 .picker {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-top: 22px;
 }
@@ -172,21 +178,61 @@
   }
 
   .lineup {
-    padding: 60px 6%;
+    min-height: 0;
+    gap: 28px;
+    padding: 44px 24px 48px;
+  }
+
+  .lineupHeading h2 {
+    margin: 14px 0;
+    font-size: clamp(32px, 9vw, 44px);
+  }
+
+  .lineupHeading > p:last-child {
+    font-size: 14px;
   }
 
   .headliner {
-    grid-template-columns: 1fr;
-    gap: 34px;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 18px;
   }
 
   .headlinerArt {
-    width: 76%;
-    margin: auto;
+    width: 100%;
+    margin: 8px 0 0;
+    border: 3px solid var(--brand-paper);
+    border-radius: 3px;
+    box-shadow: 6px 10px 0 oklch(0.77 0.13 354 / 0.14);
+  }
+
+  .ticketLabel {
+    bottom: 14px;
+    left: -5px;
+    padding: 8px;
+    font-size: 8px;
+    letter-spacing: 0.02em;
   }
 
   .headlinerInfo h3 {
-    font-size: 30px;
+    margin: 4px 0 10px;
+    font-size: clamp(21px, 5.6vw, 30px);
+  }
+
+  .meta {
+    font-size: 12px;
+  }
+
+  .headlinerInfo > .textLink {
+    gap: 8px;
+    margin-top: 12px;
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .picker {
+    gap: 8px;
+    margin-top: 14px;
   }
 
   .headlinerInfo > .kicker {
@@ -194,7 +240,12 @@
   }
 
   .picker button {
-    width: 66px;
-    height: 90px;
+    width: 44px;
+    height: 60px;
+  }
+
+  .note {
+    margin-top: 12px;
+    font-size: 11px;
   }
 }
