@@ -1,3 +1,42 @@
+/* Static landing weights keep the poster typography consistent in WebKit,
+   including platforms that do not apply variable-font weight axes. Derived
+   from the bundled OFL fonts; the shared app faces below remain available. */
+@font-face {
+  font-family: 'Nunito Landing';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/fonts/nunito-landing-400.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Landing';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/fonts/nunito-landing-600.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Landing';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/nunito-landing-700.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Nunito Landing';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/fonts/nunito-landing-800.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Comfortaa Landing';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/fonts/comfortaa-landing-700.woff2) format('woff2');
+}
+
 /* cyrillic-ext */
 @font-face {
   font-family: 'Comfortaa';

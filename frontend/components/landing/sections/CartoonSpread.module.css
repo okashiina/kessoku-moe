@@ -36,7 +36,7 @@
 }
 
 .copy h2 {
-  font-family: "Nunito", sans-serif;
+  font-family: "Nunito Landing", "Nunito", sans-serif;
   font-size: clamp(42px, 5vw, 68px);
   font-weight: 800;
   line-height: 1.02;
@@ -104,7 +104,7 @@
 .ticketTitle {
   position: relative;
   z-index: 1;
-  font-family: "Nunito", sans-serif;
+  font-family: "Nunito Landing", "Nunito", sans-serif;
   font-size: clamp(48px, 6vw, 82px);
   font-weight: 800;
   line-height: 0.88;
@@ -121,7 +121,7 @@
   right: -14px;
   bottom: -80px;
   color: var(--pink);
-  font-family: "Nunito", sans-serif;
+  font-family: "Nunito Landing", "Nunito", sans-serif;
   font-size: 250px;
   font-weight: 800;
   line-height: 1;
@@ -131,8 +131,8 @@
 @media (max-width: 700px) {
   .cartoonSpread {
     grid-template-columns: 1fr;
-    gap: 40px;
-    padding: 64px 6%;
+    gap: 28px;
+    padding: 48px 24px;
   }
 
   .kicker {
@@ -143,14 +143,36 @@
     font-size: 15px;
   }
 
+  .copy h2 {
+    font-size: clamp(36px, 10vw, 48px);
+  }
+
+  .primary {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .ticket {
-    min-height: 250px;
-    padding: 24px;
-    transform: rotate(1deg);
+    display: none;
   }
 
   .ticketTitle {
     font-size: clamp(52px, 15vw, 72px);
+  }
+
+  .catalog > div:first-child {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .catalog h2 {
+    font-size: 20px;
+  }
+  .catalog [role="region"] {
+    scroll-snap-type: x proximity;
+  }
+  .catalog [role="region"] > a {
+    width: 136px;
+    scroll-snap-align: start;
   }
 }
 

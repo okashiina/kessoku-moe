@@ -1,5 +1,37 @@
 # DESIGN.md — "Midnight Aurora"
 
+## October 2026: mobile landing composition
+
+The `/` landing keeps the pink Kessoku gig-poster identity, local Nunito and
+Comfortaa fonts, and real catalog artwork. Phone layouts now have their own
+composition rather than a stacked version of the desktop scroll scene.
+
+- Hero: two-line headline, three visible covers in fixed fan positions, paper
+  edges and tape, then a full-width play action. Content sets the height; no
+  viewport-height spacer or sticky text/poster collision. Desktop keeps the
+  split composition with small transform-only poster parallax.
+- Navigation: the shared app dock starts after entering the app; the landing
+  uses its own header and content links. This prevents a fixed dock covering
+  the first screen. Landing content clears landscape notches and the footer
+  clears the home indicator.
+- Phone sections: consistent 24px gutters, smaller section spacing, compact
+  anime/reader rows, selected headliner artwork beside its information. Long
+  titles wrap; multiplication signs can break without changing the title.
+- Companion preview: four native buttons in a two-column grid, 44px minimum
+  targets with 8px gaps, visible selected state and a polite live reply. AniList
+  preview uses the same pink UI treatment. Sync copy precedes its illustration
+  in the reading order on all devices.
+- Cartoon preview: retain native catalog scrolling and previous/next controls;
+  omit the oversized decorative ticket on phones. Show the actual catalog.
+- Reduced motion: preserves the same hero layout and disables mobile parallax.
+  No new dependency or changes to playback, providers, or catalog fetching.
+- Landing fonts use small static Latin weights derived from the bundled OFL
+  faces. This preserves Nunito/Comfortaa while avoiding a WebKit rendering case
+  that displays variable fonts at their thin default weight. Non-Latin glyphs
+  fall back to the existing variable-font language subsets.
+
+Verification and limits: `docs/landing-mobile-redesign.md`.
+
 ## September 2026: Kessoku setlist redesign
 
 The landing and anime browse now use a gig-poster editorial direction chosen with

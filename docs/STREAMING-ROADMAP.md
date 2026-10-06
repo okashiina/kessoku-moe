@@ -1026,3 +1026,13 @@ resyncs when lazy content changes height. This is isolated to reader behavior; n
 layout redesign or video-pipeline behavior changed. The manga source of truth
 remains [MANGA-ROADMAP.md](MANGA-ROADMAP.md). Reader navigation does not start
 the app-wide route loader, keeping the pink line unambiguous during chapter changes.
+
+## 15. Mobile landing release (2026-10-06)
+
+The landing uses a phone-specific poster composition with its watch action in
+the first screen, compact headliner and feature sections, and touch-sized
+companion previews. The app dock starts on app routes so it cannot cover the
+landing hero. Static local font weights preserve the Kessoku typography in
+WebKit. Catalog fetching and the video/source pipeline are unchanged.
+
+Release validation and real-device limits: [landing-mobile-redesign.md](landing-mobile-redesign.md).

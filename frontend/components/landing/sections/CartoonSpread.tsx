@@ -26,9 +26,8 @@ export default function CartoonSpread({
           take the stage.
         </h2>
         <p className={styles.description}>
-          Watch cartoon favorites like Ben 10 and discover your next adventure.
-          Find a series, choose an episode, and bring an AI companion along.
-          Your last season and episode are saved for next time.
+          Ben 10 after school. A new adventure after midnight. Pick an episode,
+          bring a companion, and come back right where you left off.
         </p>
         <Link href="/cartoon">
           <a className={styles.primary}>
@@ -52,7 +51,7 @@ export default function CartoonSpread({
       {cartoons.length > 0 && (
         <CoverflowCarousel
           className={styles.catalog}
-          label="A few from the cartoon lineup"
+          label="On the cartoon lineup"
           ariaLabel="Cartoon catalog preview"
           showNavigation
           slides={cartoons.map((show) => ({

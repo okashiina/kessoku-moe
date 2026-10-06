@@ -27,7 +27,7 @@ const TrendingNoise = ({ trending }: TrendingNoiseProps) => {
   return (
     <section className={styles.trending} data-sc-act="flow">
       <Section
-        title="Making some noise right now"
+        title="On repeat right now"
         animeList={trending.slice(0, 12) as AnimeInfoFragment[]}
       />
       <Link href="/browse?sort=TRENDING_DESC">

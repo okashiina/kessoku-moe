@@ -56,6 +56,9 @@ const Setlist = ({
           <Link href="/manga">
             <a>Manga</a>
           </Link>
+          <Link href="/cartoon">
+            <a>Cartoons</a>
+          </Link>
         </nav>
         <Link href="/home">
           <a className={styles.navCta}>
