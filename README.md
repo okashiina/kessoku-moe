@@ -37,6 +37,7 @@ It runs on Next.js and Tailwind, with the catalog, cover art, and airing schedul
 - **One-click server switch.** If a source stalls, jump to another without losing your place.
 - **Voice actors and studios.** Follow a voice actor or a studio and pull up everything they touched.
 - **Install it on your phone.** Add it to the home screen and it runs like an app, no store.
+- **A Windows app, too.** Grab `kessoku-moe-Setup.exe` from [Releases](https://github.com/okashiina/kessoku-moe/releases) for its own window, a Start menu entry and quiet auto-updates. Details in [desktop/README.md](desktop/README.md).
 
 <p align="center">
   <img alt="The watch companion talking through an episode, and an AniList list synced and counting itself" src="docs/screenshots/landing-features.png" width="100%">
@@ -81,6 +82,7 @@ This is a [Turborepo](https://turbo.build) monorepo:
 - `frontend/` is the Next.js app: pages, components, the player, the companion.
 - `packages/` holds shared code, including the AniList GraphQL client.
 - `services/source-service/` is the self-hosted source pipeline (Option B).
+- `desktop/` is the Windows desktop app (Electron shell + installer). It has its own `package.json` and stays out of the Yarn workspaces.
 - `docs/` keeps the [streaming roadmap](docs/STREAMING-ROADMAP.md), the [design system](docs/DESIGN.md) ("Midnight Aurora"), and a [competitive analysis](docs/COMPETITIVE-ANALYSIS.md).
 
 ## Deploy

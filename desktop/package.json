@@ -1,0 +1,33 @@
+{
+  "name": "kessoku-moe-desktop",
+  "productName": "kessoku moe",
+  "version": "1.0.0",
+  "description": "kessoku moe for desktop. All your anime, one stage.",
+  "private": true,
+  "license": "AGPL-3.0",
+  "author": {
+    "name": "okashiina",
+    "url": "https://github.com/okashiina/kessoku-moe"
+  },
+  "homepage": "https://github.com/okashiina/kessoku-moe",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env KESSOKU_URL=http://localhost:3000 electron .",
+    "assets": "node scripts/render-assets.mjs",
+    "check": "node --check src/main.js && node --check src/preload-shell.js && node --check src/preload-site.js && node --check renderer/shell.js",
+    "dist": "electron-builder --win --x64 --publish never",
+    "dist:dir": "electron-builder --win --x64 --dir --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
+  },
+  "devDependencies": {
+    "cross-env": "10.1.0",
+    "electron": "44.9.3",
+    "electron-builder": "26.15.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

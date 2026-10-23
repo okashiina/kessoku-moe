@@ -1,0 +1,59 @@
+# Packaging for the desktop app. `npm run dist` writes the Windows installer to
+# dist/kessoku-moe-Setup-<version>.exe (plus latest.yml for auto-updates).
+appId: moe.kessoku.desktop
+productName: kessoku moe
+copyright: Copyright © 2026 okashiina. AGPL-3.0.
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - src/**
+  - renderer/**
+  - build/icon.png
+  - package.json
+
+asar: true
+# No native modules, so skip the rebuild step.
+npmRebuild: false
+electronLanguages: [en-US, id, ja]
+
+protocols:
+  - name: kessoku moe
+    schemes: [kessoku-moe]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  executableName: kessoku-moe
+  legalTrademarks: kessoku moe
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: kessoku moe
+  uninstallDisplayName: kessoku moe
+  runAfterFinish: true
+  deleteAppDataOnUninstall: false
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  installerSidebar: build/installerSidebar.bmp
+  uninstallerSidebar: build/installerSidebar.bmp
+  installerHeader: build/installerHeader.bmp
+  include: build/installer.nsh
+  artifactName: kessoku-moe-Setup-${version}.${ext}
+
+# Auto-updates read latest.yml from the newest GitHub release of this repo.
+publish:
+  provider: github
+  owner: okashiina
+  repo: kessoku-moe
+  releaseType: release

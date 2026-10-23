@@ -1,0 +1,93 @@
+name: Desktop
+
+# Builds the Windows installer for the desktop app in desktop/.
+#  - Pull requests and pushes touching desktop/ build it and attach the .exe
+#    as a workflow artifact.
+#  - Pushing a tag like `desktop-v1.0.0` also publishes a GitHub release with
+#    the installer and latest.yml, which installed apps update from.
+on:
+  push:
+    branches: [main]
+    tags: ['desktop-v*']
+    paths: ['desktop/**', '.github/workflows/desktop.yml']
+  pull_request:
+    paths: ['desktop/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check sources
+        run: npm run check
+
+      # The tag and package.json must agree, or auto-update compares the
+      # wrong numbers.
+      - name: Check tag matches version
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "desktop-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+
+      # Optional code signing: add WIN_CSC_LINK (base64 .pfx) and
+      # WIN_CSC_KEY_PASSWORD as repository secrets to sign the installer.
+      - name: Load signing certificate
+        shell: bash
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "$WIN_CSC_LINK" ]; then
+            echo "CSC_LINK=$WIN_CSC_LINK" >> "$GITHUB_ENV"
+            echo "CSC_KEY_PASSWORD=$WIN_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build installer
+        run: npm run dist
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: kessoku-moe-windows
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.blockmap
+            desktop/dist/latest.yml
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: kessoku moe desktop ${{ github.ref_name }}
+          make_latest: true
+          files: |
+            desktop/dist/*.exe
+            desktop/dist/*.blockmap
+            desktop/dist/latest.yml

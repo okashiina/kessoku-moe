@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:"
+    />
+    <title>kessoku moe</title>
+    <link rel="stylesheet" href="shell.css" />
+  </head>
+  <body data-status="splash">
+    <svg width="0" height="0" class="defs" aria-hidden="true">
+      <defs>
+        <linearGradient id="pick" x1="22" y1="10" x2="96" y2="118" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#FF8AD0" />
+          <stop offset="0.42" stop-color="#FF4D8D" />
+          <stop offset="0.7" stop-color="#E0233E" />
+          <stop offset="1" stop-color="#9B3BE0" />
+        </linearGradient>
+        <linearGradient id="shine" x1="40" y1="14" x2="58" y2="66" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#ffffff" stop-opacity="0.55" />
+          <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+        </linearGradient>
+        <symbol id="logo" viewBox="6 8 112 114">
+          <path d="M30 17 C42 10 82 10 94 17 C110 26 116 43 111 60 C104 84 82 104 62 118 C42 104 20 84 13 60 C8 43 14 26 30 17 Z" fill="url(#pick)" />
+          <path d="M30 17 C42 10 82 10 94 17 C108 25 115 40 112 55 C103 44 86 38 62 38 C44 38 30 43 21 51 C20 38 23 24 30 17 Z" fill="url(#shine)" />
+          <ellipse cx="37" cy="72" rx="9" ry="5.5" fill="#ffffff" opacity="0.30" />
+          <ellipse cx="87" cy="72" rx="9" ry="5.5" fill="#ffffff" opacity="0.30" />
+          <ellipse class="eye" cx="46" cy="62" rx="7" ry="9" fill="#2A0A2E" />
+          <ellipse class="eye" cx="78" cy="62" rx="7" ry="9" fill="#2A0A2E" />
+          <circle cx="48.6" cy="58.2" r="2.6" fill="#ffffff" />
+          <circle cx="80.6" cy="58.2" r="2.6" fill="#ffffff" />
+          <path d="M54 81 Q58.5 87 62 82 Q65.5 87 70 81" fill="none" stroke="#2A0A2E" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M101 23 C101.6 28.4 104.4 31.2 109.8 31.8 C104.4 32.4 101.6 35.2 101 40.6 C100.4 35.2 97.6 32.4 92.2 31.8 C97.6 31.2 100.4 28.4 101 23 Z" fill="#FFE6F4" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <header class="titlebar">
+      <div class="brand">
+        <svg class="brand-mark" aria-hidden="true"><use href="#logo" /></svg>
+        <span class="wordmark">kessoku <em>moe</em></span>
+      </div>
+      <nav class="nav" aria-label="Navigation">
+        <button type="button" data-action="back" title="Back (Alt+Left)" aria-label="Back">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5 7 10l5.5 5.5" /></svg>
+        </button>
+        <button type="button" data-action="forward" title="Forward (Alt+Right)" aria-label="Forward">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4.5 13 10l-5.5 5.5" /></svg>
+        </button>
+        <button type="button" data-action="reload" title="Reload (Ctrl+R)" aria-label="Reload">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 10a5.5 5.5 0 1 1-1.7-4" /><path d="M14.3 2.8v3.6h-3.6" /></svg>
+        </button>
+        <button type="button" data-action="home" title="Home (Alt+Home)" aria-label="Home">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.8 9.2 10 4l6.2 5.2" /><path d="M5.6 8v7.5h8.8V8" /></svg>
+        </button>
+      </nav>
+      <div class="title" id="title"></div>
+      <button type="button" class="update" id="update" data-action="installUpdate" hidden>
+        <span class="update-dot" aria-hidden="true"></span>
+        <span id="update-label">Update ready</span>
+        <span class="update-cta">Restart</span>
+      </button>
+      <div class="caption-space" aria-hidden="true"></div>
+      <div class="progress" aria-hidden="true"></div>
+    </header>
+
+    <main class="stage">
+      <div class="aurora" aria-hidden="true"><span></span><span></span><span></span></div>
+
+      <section class="splash" aria-live="polite">
+        <div class="mark">
+          <div class="halo" aria-hidden="true"></div>
+          <svg class="mark-logo" aria-hidden="true"><use href="#logo" /></svg>
+        </div>
+        <h1 class="splash-word">kessoku <em>moe</em></h1>
+        <p class="splash-tag">all your anime, one stage.</p>
+        <div class="splash-bar" aria-hidden="true"><span></span></div>
+        <p class="visually-hidden">Loading kessoku moe</p>
+      </section>
+
+      <section class="offline" role="alert">
+        <svg class="offline-logo" aria-hidden="true"><use href="#logo" /></svg>
+        <h1 id="offline-heading">The stage went quiet.</h1>
+        <p id="offline-copy">
+          kessoku moe can't reach its server right now. Check your connection;
+          we'll keep trying on our own.
+        </p>
+        <button type="button" class="retry" data-action="retry">
+          <span class="retry-spin" aria-hidden="true"></span>
+          <span class="retry-label">Try again</span>
+        </button>
+        <p class="offline-hint" id="offline-hint"></p>
+      </section>
+    </main>
+
+    <script src="shell.js"></script>
+  </body>
+</html>
