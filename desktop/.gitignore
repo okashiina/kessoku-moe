@@ -1,2 +1,4 @@
 node_modules/
 dist/
+# Packaging art lives here; the root .gitignore ignores build/ for Next.js.
+!build/
