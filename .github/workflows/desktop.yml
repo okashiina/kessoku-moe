@@ -1,13 +1,13 @@
 name: Desktop
 
 # Builds the Windows installer for the desktop app in desktop/.
-#  - Pull requests and pushes touching desktop/ build it and attach the .exe
-#    as a workflow artifact.
+#  - Pull requests and pushes (any branch) touching desktop/ build it and
+#    attach the .exe as a workflow artifact.
 #  - Pushing a tag like `desktop-v1.0.0` also publishes a GitHub release with
 #    the installer and latest.yml, which installed apps update from.
 on:
   push:
-    branches: [main]
+    branches: ['**']
     tags: ['desktop-v*']
     paths: ['desktop/**', '.github/workflows/desktop.yml']
   pull_request:
