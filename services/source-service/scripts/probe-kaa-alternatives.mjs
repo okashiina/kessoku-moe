@@ -52,6 +52,7 @@ async function checkPlaylist(url, referer) {
     const r = await get(url, referer ? { Referer: referer, Origin: referer.replace(/\/$/, '') } : {});
     const isM3u8 = r.text.trimStart().startsWith('#EXTM3U');
     return {
+      ...(process.env.PROBE_SHOW_URLS ? { url, referer } : {}),
       status: r.status,
       host: host(url),
       isM3u8,
@@ -105,13 +106,21 @@ function pickByTitle(items, titles, getTitles) {
 // ---- AniZone (Laravel + Livewire + vidstack) ----
 const ANIZONE = 'https://anizone.to';
 
-// Values are embedded as JSON.parse('...') with JS-escaped \uXXXX sequences.
+// Values are embedded as JSON.parse('...'): a JS string literal (inside an HTML
+// attribute) holding JSON. Undo the HTML entities, then the JS literal escapes in ONE
+// pass (so "\\u0022" stays an escaped quote for JSON), then parse the JSON.
 function anizoneJsonArg(html, re) {
   const m = html.match(re);
   if (!m) return null;
-  const decoded = m[1]
-    .replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
-    .replace(/\\'/g, "'");
+  const unescaped = m[1]
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+  const decoded = unescaped.replace(/\\(u[0-9a-fA-F]{4}|.)/g, (_, e) =>
+    e.length === 5 ? String.fromCharCode(parseInt(e.slice(1), 16)) : e
+  );
   try {
     return JSON.parse(decoded);
   } catch {
@@ -123,16 +132,21 @@ async function probeAnizone(titles, episode) {
   const out = { provider: 'anizone', site: ANIZONE };
   let slug;
   try {
-    const r = await get(`${ANIZONE}/anime?search=${encodeURIComponent(titles[0])}`, {
-      Referer: `${ANIZONE}/`,
-    });
-    out.searchStatus = r.status;
-    if (r.challenged) return { ...out, ...fail('search', 'Cloudflare challenge (try FlareSolverr)') };
-    const items = anizoneJsonArg(r.text, /items\s*:\s*JSON\.parse\('((?:[^'\\]|\\.)*)'\)/i) || [];
-    const show = pickByTitle(items, titles, (i) => [
-      i.main_title,
-      ...(i.title_list || []).map((t) => (typeof t === 'string' ? t : t?.title || t?.name)),
-    ]);
+    // Its search misses some English titles, so fall back through every candidate.
+    let items = [];
+    for (const t of [...new Set(titles)]) {
+      const r = await get(`${ANIZONE}/anime?search=${encodeURIComponent(t)}`, {
+        Referer: `${ANIZONE}/`,
+      });
+      out.searchStatus = r.status;
+      if (r.challenged) return { ...out, ...fail('search', 'Cloudflare challenge (try FlareSolverr)') };
+      items = anizoneJsonArg(r.text, /items\s*:\s*JSON\.parse\('((?:[^'\\]|\\.)*)'\)/i) || [];
+      if (items.length) break;
+    }
+    // title_list may be an array or a {lang: title} object; flatten either to strings.
+    const flat = (v) =>
+      v == null ? [] : typeof v === 'string' ? [v] : Object.values(v).flatMap(flat);
+    const show = pickByTitle(items, titles, (i) => [i.main_title, ...flat(i.title_list)]);
     if (!show?.slug) return { ...out, ...fail('search', `no match in ${items.length} results`) };
     slug = show.slug;
     out.match = { slug, title: show.main_title, episodeCount: show.episode_count ?? null };
