@@ -218,12 +218,6 @@ const SourcePlayer: React.FC<{
           (~30 to 60s on the first load)
         </span>
       )}
-      {pref === 'hianime' && (
-        <span className="text-faint">
-          HiAnime is soft-sub capable, but may fail on this network without a
-          clean VPS
-        </span>
-      )}
     </div>
   ) : null;
 
