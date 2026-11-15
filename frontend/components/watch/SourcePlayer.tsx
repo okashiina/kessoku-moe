@@ -15,7 +15,7 @@ import HlsPlayer, { type Subtitle } from './HlsPlayer';
 const SOURCE_SERVICE = process.env.NEXT_PUBLIC_SOURCE_SERVICE_URL;
 
 // Direct-pipeline server choice. 'auto' = resolver's fallback chain (KAA first, then
-// AnimePahe); the others force one provider. KAA is the primary pick: clean/RAW video
+// HiAnime via hianime.at, then AnimePahe); the others force one provider. KAA is the primary pick: clean/RAW video
 // with JP audio + soft subtitles, but it CF-solves so it starts a beat slower on a cold
 // title. AnimePahe (HLS, hardsub) is faster if you want an instant start.
 const PROVIDER_PREF_KEY = 'kessoku.source.provider';

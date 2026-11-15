@@ -27,7 +27,7 @@ const num = (v: string | undefined, d: number) => (v ? Number(v) : d);
 
 export const config = {
   port: num(process.env.PORT, 8080),
-  providers: (process.env.PROVIDERS || 'kaa,animepahe,allanime')
+  providers: (process.env.PROVIDERS || 'kaa,hianime,animepahe,allanime')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
